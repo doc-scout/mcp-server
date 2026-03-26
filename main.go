@@ -9,17 +9,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net/http"
 
 	"github.com/google/go-github/v60/github"
-	"github.com/mark3labs/mcp-go/server"
 	"golang.org/x/oauth2"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"docscout-mcp/scanner"
 	"docscout-mcp/tools"
 )
 
 const (
-	serverName          = "DocScout-MCP 🔭"
+	serverName          = "DocScout-MCP"
 	serverVersion       = "1.0.0"
 	defaultScanInterval = 30 * time.Minute
 )
@@ -31,12 +33,10 @@ func parseScanInterval(raw string) time.Duration {
 		return defaultScanInterval
 	}
 
-	// Try Go duration format first (e.g. "10s", "5m", "1h", "1h30m").
 	if d, err := time.ParseDuration(raw); err == nil && d > 0 {
 		return d
 	}
 
-	// Fallback: plain integer → minutes.
 	if n, err := strconv.Atoi(raw); err == nil && n > 0 {
 		return time.Duration(n) * time.Minute
 	}
@@ -46,7 +46,6 @@ func parseScanInterval(raw string) time.Duration {
 }
 
 // parseCSVEnv splits a comma-separated env var into trimmed, non-empty values.
-// Returns nil if the input is empty (falling back to scanner defaults).
 func parseCSVEnv(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -67,7 +66,6 @@ func parseCSVEnv(raw string) []string {
 }
 
 func main() {
-	// --- Configuration from environment variables ---
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		log.Fatal("GITHUB_TOKEN environment variable is required")
@@ -83,7 +81,7 @@ func main() {
 	scanDirs := parseCSVEnv(os.Getenv("SCAN_DIRS"))
 	extraRepos := parseCSVEnv(os.Getenv("EXTRA_REPOS"))
 	repoTopics := parseCSVEnv(os.Getenv("REPO_TOPICS"))
-	
+
 	var repoRegex *regexp.Regexp
 	if rx := os.Getenv("REPO_REGEX"); rx != "" {
 		compiled, err := regexp.Compile(rx)
@@ -92,6 +90,9 @@ func main() {
 		}
 		repoRegex = compiled
 	}
+
+	httpAddr := os.Getenv("HTTP_ADDR") // e.g. ":8080"
+	// memoryFile := os.Getenv("MEMORY_FILE_PATH") // Will be implemented in the next step
 
 	// --- GitHub client with PAT authentication ---
 	ctx := context.Background()
@@ -103,24 +104,34 @@ func main() {
 	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, extraRepos, repoTopics, repoRegex)
 	sc.Start(ctx)
 
-	// --- MCP Server ---
-	mcpServer := server.NewMCPServer(
-		serverName,
-		serverVersion,
-		server.WithToolCapabilities(true),
-	)
+	// --- MCP Server Initialization ---
+	mcpServer := mcp.NewServer(&mcp.Implementation{
+		Name:    serverName,
+		Version: serverVersion,
+	}, nil)
 
-	// Register tools.
+	// Register tools
 	tools.Register(mcpServer, sc)
-
-	// --- Start Stdio transport ---
-	stdio := server.NewStdioServer(mcpServer)
+	tools.RegisterMemory(mcpServer, os.Getenv("MEMORY_FILE_PATH"))
 
 	log.Printf("%s v%s starting (org=%s, scan_interval=%s)\n", serverName, serverVersion, org, scanInterval)
-	log.Println("Listening on stdio...")
 
-	if err := stdio.Listen(ctx, os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
-		os.Exit(1)
+	// --- Transport Selection ---
+	if httpAddr != "" {
+		log.Printf("Listening on HTTP SSE at %s...", httpAddr)
+		
+		handler := mcp.NewSSEHandler(func(*http.Request) *mcp.Server {
+			return mcpServer
+		}, nil)
+		
+		if err := http.ListenAndServe(httpAddr, handler); err != nil {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	} else {
+		log.Println("Listening on stdio...")
+		if err := mcpServer.Run(ctx, &mcp.StdioTransport{}); err != nil {
+			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }

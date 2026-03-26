@@ -2,11 +2,10 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"docscout-mcp/scanner"
 )
@@ -50,41 +49,20 @@ func TestListReposHandler(t *testing.T) {
 	}
 
 	handler := listReposHandler(mock)
-	req := mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{}
 	
-	res, err := handler(context.Background(), req)
+	// The new SDK generic API signature
+	res, output, err := handler(context.Background(), req, ListReposArgs{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if res.IsError {
+	// We expect SDK auto-marshaling, so CallToolResult is nil
+	if res != nil && res.IsError {
 		t.Fatalf("expected IsError false")
 	}
 
-	if len(res.Content) == 0 {
-		t.Fatalf("expected content, got empty")
-	}
-
-	textContent, ok := res.Content[0].(mcp.TextContent)
-	if !ok {
-		t.Fatalf("expected TextContent")
-	}
-
-	// Verify JSON unmarshals to the expected structure
-	type repoSummary struct {
-		Name        string   `json:"name"`
-		FullName    string   `json:"full_name"`
-		Description string   `json:"description"`
-		URL         string   `json:"url"`
-		FileCount   int      `json:"file_count"`
-		FileTypes   []string `json:"file_types"`
-	}
-
-	var summaries []repoSummary
-	if err := json.Unmarshal([]byte(textContent.Text), &summaries); err != nil {
-		t.Fatalf("failed to parse JSON: %v", err)
-	}
-
+	summaries := output.Repos
 	if len(summaries) != 1 {
 		t.Fatalf("expected 1 repo summary, got %d", len(summaries))
 	}
@@ -104,30 +82,18 @@ func TestSearchDocsHandler(t *testing.T) {
 	}
 
 	handler := searchDocsHandler(mock)
-	req := mcp.CallToolRequest{}
-	req.Params.Arguments = map[string]interface{}{
-		"query": "guide",
-	}
+	req := &mcp.CallToolRequest{}
 
-	res, err := handler(context.Background(), req)
+	res, output, err := handler(context.Background(), req, SearchDocsArgs{Query: "guide"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if res.IsError {
+	if res != nil && res.IsError {
 		t.Fatalf("expected IsError false")
 	}
 
-	textContent, ok := res.Content[0].(mcp.TextContent)
-	if !ok {
-		t.Fatalf("expected TextContent")
-	}
-
-	var results []scanner.FileEntry
-	if err := json.Unmarshal([]byte(textContent.Text), &results); err != nil {
-		t.Fatalf("failed to parse JSON: %v", err)
-	}
-
+	results := output.Files
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -146,43 +112,28 @@ func TestGetFileContentHandler(t *testing.T) {
 	handler := getFileContentHandler(mock)
 	
 	// Test successful case
-	req := mcp.CallToolRequest{}
-	req.Params.Arguments = map[string]interface{}{
-		"repo": "test-repo",
-		"path": "docs/guide.md",
-	}
+	req := &mcp.CallToolRequest{}
 
-	res, err := handler(context.Background(), req)
+	res, output, err := handler(context.Background(), req, GetFileContentArgs{Repo: "test-repo", Path: "docs/guide.md"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if res.IsError {
+	if res != nil && res.IsError {
 		t.Fatalf("expected IsError false")
 	}
 
-	textContent, ok := res.Content[0].(mcp.TextContent)
-	if !ok {
-		t.Fatalf("expected TextContent")
-	}
-	
-	if textContent.Text != "# Guide\nThis is a guide." {
-		t.Errorf("unexpected content: %s", textContent.Text)
+	if output.Content != "# Guide\nThis is a guide." {
+		t.Errorf("unexpected content: %s", output.Content)
 	}
 
 	// Test error case (file not indexed)
-	req2 := mcp.CallToolRequest{}
-	req2.Params.Arguments = map[string]interface{}{
-		"repo": "test-repo",
-		"path": "docs/secret.txt",
-	}
+	req2 := &mcp.CallToolRequest{}
 
-	res2, err := handler(context.Background(), req2)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !res2.IsError {
-		t.Errorf("expected IsError true for unindexed file")
+	_, _, err2 := handler(context.Background(), req2, GetFileContentArgs{Repo: "test-repo", Path: "docs/secret.txt"})
+	
+	// The new behavior returns a standard Go compilation error handled by the wrapper.
+	if err2 == nil {
+		t.Errorf("expected error for unindexed file")
 	}
 }

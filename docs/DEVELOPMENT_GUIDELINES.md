@@ -4,7 +4,7 @@ Welcome to the DocScout-MCP project! When contributing to this Model Context Pro
 
 ## 1. Official Go SDK Usage
 
-While early versions of MCP servers used community ports (like `mark3labs/mcp-go`), **all future architectural changes and refactors must target the official SDK**:
+**All architectural changes and refactors must target the official SDK**:
 `github.com/modelcontextprotocol/go-sdk`
 
 Whenever introducing new features (Prompts, Resources, or new Tools), consult the official Go SDK documentation to ensure spec compliance.
