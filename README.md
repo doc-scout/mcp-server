@@ -6,7 +6,7 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 
 - **Automated Org-Wide Scanning**: Recursively searches repositories for target documentation files on an interval (`catalog-info.yaml`, `mkdocs.yml`, `openapi.yaml`, `swagger.json`, `README.md`, and everything under `docs/**/*.md`).
 - **In-Memory Caching**: Prevents aggressive GitHub API Rate Limits by indexing your org's structure in memory.
-- **Security First**: Defends against LLM hallucination and Path Traversal by *only* allowing the AI to read files that were securely indexed as valid documentation. 
+- **Security First**: Defends against LLM hallucination and Path Traversal by _only_ allowing the AI to read files that were securely indexed as valid documentation.
 - **Lightweight & Fast**: Built in Go, utilizing goroutines and semaphores for high-performance concurrent repository scanning.
 
 ## Tools Exposed
@@ -19,10 +19,11 @@ DocScout-MCP exposes the following tools to the AI:
 
 ## Security & GitHub Tokens 🔒
 
-To run this server, you need a GitHub Personal Access Token (PAT). 
+To run this server, you need a GitHub Personal Access Token (PAT).
 **DO NOT use a Classic Token with broad scopes!**
 
 ### How to Create a Secure Token:
+
 1. Go to GitHub -> Settings -> Developer Settings -> [Personal access tokens (Fine-grained)](https://github.com/settings/tokens?type=beta).
 2. Click **Generate new token**.
 3. Under **Resource owner**, select your target Organization.
@@ -34,6 +35,14 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 
 ## Usage
 
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GITHUB_TOKEN` | ✅ | — | GitHub Personal Access Token (Fine-Grained) |
+| `GITHUB_ORG` | ✅ | — | GitHub Organization name |
+| `SCAN_INTERVAL` | ❌ | `30m` | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`, `1h30m`) or plain integers (treated as minutes) |
+
 ### 1. Running with Go
 
 Requires Go 1.22+
@@ -41,8 +50,7 @@ Requires Go 1.22+
 ```bash
 export GITHUB_TOKEN="github_pat_11A..."
 export GITHUB_ORG="my-awesome-org"
-# Optional: Change the background scan interval (Default is 30 minutes)
-export SCAN_INTERVAL="60"
+export SCAN_INTERVAL="1h"
 
 go run .
 ```
@@ -53,51 +61,19 @@ go run .
 docker run -i \
   -e GITHUB_TOKEN="github_pat_11A..." \
   -e GITHUB_ORG="my-awesome-org" \
-  -e SCAN_INTERVAL="30" \
+  -e SCAN_INTERVAL="1h" \
   ghcr.io/your-username/docscout-mcp:latest
 ```
 
 ## Client Configuration
 
-### Claude Desktop
+See the [`docs/`](docs/) folder for detailed setup guides for each AI client:
 
-Add this to your `claude_desktop_config.json`:
-
-**If using Go directly:**
-```json
-{
-  "mcpServers": {
-    "docscout": {
-      "command": "/path/to/docscout-mcp/binary",
-      "env": {
-        "GITHUB_TOKEN": "github_pat_...",
-        "GITHUB_ORG": "my-awesome-org"
-      }
-    }
-  }
-}
-```
-
-**If using Docker:**
-```json
-{
-  "mcpServers": {
-    "docscout": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "GITHUB_TOKEN=github_pat_...",
-        "-e",
-        "GITHUB_ORG=my-awesome-org",
-        "ghcr.io/your-username/docscout-mcp:latest"
-      ]
-    }
-  }
-}
-```
+- [VS Code (Copilot Chat)](docs/vscode.md)
+- [GitHub Copilot](docs/copilot.md)
+- [Antigravity (Google)](docs/antigravity.md)
+- [Gemini CLI](docs/gemini.md)
+- [ChatGPT Desktop](docs/chatgpt.md)
 
 ## Development
 
@@ -115,3 +91,4 @@ go test ./...
 ## License
 
 MIT
+

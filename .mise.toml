@@ -1,2 +1,19 @@
+[settings]
+experimental = true
+
+[env]
+_.file = ".env.local"
+
 [tools]
 go = "1.26.1"
+golangci-lint = "v2.11.4"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+
+[tasks.build]
+run = "go build -o docscout-mcp ."
+
+[tasks.test]
+run = "go test ./..."
+
+[tasks.format]
+run = "go tool gci write -s standard -s default -s localmodule --skip-generated --skip-vendor"

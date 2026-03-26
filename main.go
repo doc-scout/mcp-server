@@ -17,9 +17,31 @@ import (
 )
 
 const (
-	serverName    = "DocScout-MCP"
-	serverVersion = "1.0.0"
+	serverName          = "DocScout-MCP"
+	serverVersion       = "1.0.0"
+	defaultScanInterval = 30 * time.Minute
 )
+
+// parseScanInterval accepts Go duration strings ("10s", "5m", "1h30m") or
+// plain integers which are treated as minutes for backward compatibility.
+func parseScanInterval(raw string) time.Duration {
+	if raw == "" {
+		return defaultScanInterval
+	}
+
+	// Try Go duration format first (e.g. "10s", "5m", "1h", "1h30m").
+	if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+		return d
+	}
+
+	// Fallback: plain integer → minutes.
+	if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+		return time.Duration(n) * time.Minute
+	}
+
+	log.Printf("Invalid SCAN_INTERVAL '%s', using default %s", raw, defaultScanInterval)
+	return defaultScanInterval
+}
 
 func main() {
 	// --- Configuration from environment variables ---
@@ -33,16 +55,7 @@ func main() {
 		log.Fatal("GITHUB_ORG environment variable is required")
 	}
 
-	scanIntervalMinutes := 30 // default
-	if v := os.Getenv("SCAN_INTERVAL"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			scanIntervalMinutes = n
-		} else {
-			log.Printf("Invalid SCAN_INTERVAL '%s', using default %d minutes", v, scanIntervalMinutes)
-		}
-	}
-
-	scanInterval := time.Duration(scanIntervalMinutes) * time.Minute
+	scanInterval := parseScanInterval(os.Getenv("SCAN_INTERVAL"))
 
 	// --- GitHub client with PAT authentication ---
 	ctx := context.Background()
@@ -67,7 +80,7 @@ func main() {
 	// --- Start Stdio transport ---
 	stdio := server.NewStdioServer(mcpServer)
 
-	log.Printf("%s v%s starting (org=%s, scan_interval=%dm)\n", serverName, serverVersion, org, scanIntervalMinutes)
+	log.Printf("%s v%s starting (org=%s, scan_interval=%s)\n", serverName, serverVersion, org, scanInterval)
 	log.Println("Listening on stdio...")
 
 	if err := stdio.Listen(ctx, os.Stdin, os.Stdout); err != nil {

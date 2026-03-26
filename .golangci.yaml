@@ -1,0 +1,22 @@
+version: 2
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+formatters:
+  enable:
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+      skip-generated: true
+      skip-vendor: true
+run:
+  allow-parallel-running: true
+  modules-download-mode: readonly
+  tests: true
+  timeout: 5m
