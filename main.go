@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -80,6 +81,17 @@ func main() {
 	scanInterval := parseScanInterval(os.Getenv("SCAN_INTERVAL"))
 	targetFiles := parseCSVEnv(os.Getenv("SCAN_FILES"))
 	scanDirs := parseCSVEnv(os.Getenv("SCAN_DIRS"))
+	extraRepos := parseCSVEnv(os.Getenv("EXTRA_REPOS"))
+	repoTopics := parseCSVEnv(os.Getenv("REPO_TOPICS"))
+	
+	var repoRegex *regexp.Regexp
+	if rx := os.Getenv("REPO_REGEX"); rx != "" {
+		compiled, err := regexp.Compile(rx)
+		if err != nil {
+			log.Fatalf("Invalid REPO_REGEX '%s': %v", rx, err)
+		}
+		repoRegex = compiled
+	}
 
 	// --- GitHub client with PAT authentication ---
 	ctx := context.Background()
@@ -88,7 +100,7 @@ func main() {
 	ghClient := github.NewClient(httpClient)
 
 	// --- Scanner ---
-	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs)
+	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, extraRepos, repoTopics, repoRegex)
 	sc.Start(ctx)
 
 	// --- MCP Server ---

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,9 @@ type Scanner struct {
 	scanInterval time.Duration
 	targetFiles  []string // files to look for at repo root
 	scanDirs     []string // directories to scan recursively for .md files
+	extraRepos   []string // extra explicit repos formatted as "owner/repo"
+	repoTopics   []string // filter org repos by topics
+	repoRegex    *regexp.Regexp // filter org repos by name using regex
 
 	mu    sync.RWMutex
 	repos map[string]*RepoInfo // keyed by repo name
@@ -60,7 +64,7 @@ type Scanner struct {
 }
 
 // New creates a new Scanner instance.
-func New(client *github.Client, org string, scanInterval time.Duration, targetFiles, scanDirs []string) *Scanner {
+func New(client *github.Client, org string, scanInterval time.Duration, targetFiles, scanDirs, extraRepos, repoTopics []string, repoRegex *regexp.Regexp) *Scanner {
 	if len(targetFiles) == 0 {
 		targetFiles = DefaultTargetFiles
 	}
@@ -73,6 +77,9 @@ func New(client *github.Client, org string, scanInterval time.Duration, targetFi
 		scanInterval: scanInterval,
 		targetFiles:  targetFiles,
 		scanDirs:     scanDirs,
+		extraRepos:   extraRepos,
+		repoTopics:   repoTopics,
+		repoRegex:    repoRegex,
 		repos:        make(map[string]*RepoInfo),
 	}
 }
@@ -126,7 +133,7 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 
 	log.Printf("[scanner] Found %d total repos for %s\n", len(allRepos), s.org)
 
-	// Use a semaphore to limit concurrent API calls.
+	// Start concurrent scanning with semaphore
 	const maxConcurrency = 5
 	sem := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
@@ -135,6 +142,9 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 	var mu sync.Mutex
 
 	for _, repo := range allRepos {
+		// Filter by regex if set (only for org repos, extra repos via env aren't filtered here)
+		// But in this loop, allRepos includes extraRepos. Let's filter everything consistently,
+		// or maybe filter inside listAllRepos? It's cleaner to filter in listAllRepos.
 		repoName := repo.GetName()
 		wg.Add(1)
 		sem <- struct{}{} // acquire
@@ -143,17 +153,24 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 			defer wg.Done()
 			defer func() { <-sem }() // release
 
-			files := s.scanRepo(ctx, repoName)
+			// For extra repos, the path we fetch from might be "owner/repo"
+			// Wait, client.Repositories.GetContents uses owner AND repo.
+			// s.org is fixed for org repos. What about extra repos?
+			// So scanRepo needs owner and repoName separately.
+			// The repository object has Owner.Login.
+			repoOwner := repo.GetOwner().GetLogin()
+			
+			files := s.scanRepo(ctx, repoOwner, repoName)
 			if len(files) > 0 {
 				info := &RepoInfo{
-					Name:        repoName,
+					Name:        fmt.Sprintf("%s/%s", repoOwner, repoName),
 					FullName:    repo.GetFullName(),
 					Description: repo.GetDescription(),
 					HTMLURL:     repo.GetHTMLURL(),
 					Files:       files,
 				}
 				mu.Lock()
-				newRepos[repoName] = info
+				newRepos[info.Name] = info
 				mu.Unlock()
 			}
 		}(repoName, repo)
@@ -168,22 +185,64 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 }
 
 // listAllRepos paginates through all repos for the configured owner.
-// It first tries the Organization endpoint; if the owner is a personal
-// account (404), it transparently falls back to the User endpoint.
+// It applies REPO_TOPICS and REPO_REGEX filters, and also fetches EXTRA_REPOS.
 func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error) {
 	repos, err := s.listByOrg(ctx)
-	if err == nil {
-		return repos, nil
+	if err != nil {
+		// Check if the error is a 404 (owner is a user, not an org).
+		var ghErr *github.ErrorResponse
+		if errors.As(err, &ghErr) && ghErr.Response != nil && ghErr.Response.StatusCode == 404 {
+			log.Printf("[scanner] '%s' is not an org, trying as user account...\n", s.org)
+			repos, err = s.listByUser(ctx)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Check if the error is a 404 (owner is a user, not an org).
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil && ghErr.Response.StatusCode == 404 {
-		log.Printf("[scanner] '%s' is not an org, trying as user account...\n", s.org)
-		return s.listByUser(ctx)
+	var filtered []*github.Repository
+	for _, r := range repos {
+		// Filter by Regex
+		if s.repoRegex != nil && !s.repoRegex.MatchString(r.GetName()) {
+			continue
+		}
+		// Filter by Topics
+		if len(s.repoTopics) > 0 {
+			matchTopic := false
+			for _, t := range r.Topics {
+				for _, reqT := range s.repoTopics {
+					if strings.EqualFold(t, reqT) {
+						matchTopic = true
+						break
+					}
+				}
+				if matchTopic {
+					break
+				}
+			}
+			if !matchTopic {
+				continue
+			}
+		}
+		filtered = append(filtered, r)
 	}
 
-	return nil, err
+	// Append Extra Repos
+	for _, er := range s.extraRepos {
+		parts := strings.SplitN(er, "/", 2)
+		if len(parts) != 2 {
+			log.Printf("[scanner] Invalid EXTRA_REPOS format '%s', skipping\n", er)
+			continue
+		}
+		r, _, err := s.client.Repositories.Get(ctx, parts[0], parts[1])
+		if err != nil {
+			log.Printf("[scanner] Error fetching extra repo %s: %v\n", er, err)
+			continue
+		}
+		filtered = append(filtered, r)
+	}
+
+	return filtered, nil
 }
 
 func (s *Scanner) listByOrg(ctx context.Context) ([]*github.Repository, error) {
@@ -225,12 +284,12 @@ func (s *Scanner) listByUser(ctx context.Context) ([]*github.Repository, error) 
 }
 
 // scanRepo checks a single repo for target documentation files.
-func (s *Scanner) scanRepo(ctx context.Context, repoName string) []FileEntry {
+func (s *Scanner) scanRepo(ctx context.Context, repoOwner, repoName string) []FileEntry {
 	var entries []FileEntry
 
 	// Check root-level target files.
 	for _, target := range s.targetFiles {
-		fc, _, resp, err := s.client.Repositories.GetContents(ctx, s.org, repoName, target, nil)
+		fc, _, resp, err := s.client.Repositories.GetContents(ctx, repoOwner, repoName, target, nil)
 		if err != nil {
 			if resp != nil && resp.StatusCode == 404 {
 				continue
@@ -250,7 +309,7 @@ func (s *Scanner) scanRepo(ctx context.Context, repoName string) []FileEntry {
 
 	// Check configured directories recursively for .md files.
 	for _, dir := range s.scanDirs {
-		dirEntries := s.scanDocsDir(ctx, repoName, dir)
+		dirEntries := s.scanDocsDir(ctx, repoOwner, repoName, dir)
 		entries = append(entries, dirEntries...)
 	}
 
@@ -258,10 +317,10 @@ func (s *Scanner) scanRepo(ctx context.Context, repoName string) []FileEntry {
 }
 
 // scanDocsDir recursively scans a directory for .md files.
-func (s *Scanner) scanDocsDir(ctx context.Context, repoName, path string) []FileEntry {
+func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path string) []FileEntry {
 	var entries []FileEntry
 
-	_, dirContents, resp, err := s.client.Repositories.GetContents(ctx, s.org, repoName, path, nil)
+	_, dirContents, resp, err := s.client.Repositories.GetContents(ctx, repoOwner, repoName, path, nil)
 	if err != nil {
 		if resp != nil && resp.StatusCode == 404 {
 			return nil
@@ -284,7 +343,7 @@ func (s *Scanner) scanDocsDir(ctx context.Context, repoName, path string) []File
 			}
 		case "dir":
 			// Recurse into subdirectories.
-			subEntries := s.scanDocsDir(ctx, repoName, itemPath)
+			subEntries := s.scanDocsDir(ctx, repoOwner, repoName, itemPath)
 			entries = append(entries, subEntries...)
 		}
 	}
@@ -369,7 +428,16 @@ func (s *Scanner) GetFileContent(ctx context.Context, repoName, path string) (st
 		return "", fmt.Errorf("security policy: path '%s' is not indexed as a documentation file", path)
 	}
 
-	fc, _, resp, err := s.client.Repositories.GetContents(ctx, s.org, repoName, path, nil)
+	// We need to parse repoName to support EXTRA_REPOS format: "owner/repo"
+	owner := s.org
+	repo := repoName
+	if strings.Contains(repoName, "/") {
+		parts := strings.SplitN(repoName, "/", 2)
+		owner = parts[0]
+		repo = parts[1]
+	}
+
+	fc, _, resp, err := s.client.Repositories.GetContents(ctx, owner, repo, path, nil)
 	if err != nil {
 		if resp != nil && resp.StatusCode == 404 {
 			return "", fmt.Errorf("file not found: %s/%s", repoName, path)

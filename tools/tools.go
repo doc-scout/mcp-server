@@ -11,8 +11,15 @@ import (
 	"docscout-mcp/scanner"
 )
 
+// DocumentScanner defines the interface for interacting with the documentation scanner.
+type DocumentScanner interface {
+	ListRepos() []scanner.RepoInfo
+	SearchDocs(query string) []scanner.FileEntry
+	GetFileContent(ctx context.Context, repo string, path string) (string, error)
+}
+
 // Register adds all DocScout MCP tools to the server.
-func Register(s *server.MCPServer, sc *scanner.Scanner) {
+func Register(s *server.MCPServer, sc DocumentScanner) {
 	// --- list_repos ---
 	listReposTool := mcp.NewTool(
 		"list_repos",
@@ -47,7 +54,7 @@ func Register(s *server.MCPServer, sc *scanner.Scanner) {
 	s.AddTool(getFileContentTool, getFileContentHandler(sc))
 }
 
-func listReposHandler(sc *scanner.Scanner) server.ToolHandlerFunc {
+func listReposHandler(sc DocumentScanner) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		repos := sc.ListRepos()
 
@@ -90,7 +97,7 @@ func listReposHandler(sc *scanner.Scanner) server.ToolHandlerFunc {
 	}
 }
 
-func searchDocsHandler(sc *scanner.Scanner) server.ToolHandlerFunc {
+func searchDocsHandler(sc DocumentScanner) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		query, err := request.RequireString("query")
 		if err != nil {
@@ -112,7 +119,7 @@ func searchDocsHandler(sc *scanner.Scanner) server.ToolHandlerFunc {
 	}
 }
 
-func getFileContentHandler(sc *scanner.Scanner) server.ToolHandlerFunc {
+func getFileContentHandler(sc DocumentScanner) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		repo, err := request.RequireString("repo")
 		if err != nil {
