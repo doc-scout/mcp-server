@@ -45,6 +45,9 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 | `SCAN_INTERVAL` | ❌ | `30m` | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`, `1h30m`) or plain integers (treated as minutes) |
 | `SCAN_FILES` | ❌ | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated list of filenames to look for at the repo root |
 | `SCAN_DIRS` | ❌ | `docs` | Comma-separated list of directories to scan recursively for `.md` files |
+| `EXTRA_REPOS` | ❌ | — | Comma-separated public/third-party repos to scan (e.g. `owner/repo, owner2/repo2`) |
+| `REPO_TOPICS` | ❌ | — | Filter org repos by GitHub topics (e.g. `frontend, backend, docscout`) |
+| `REPO_REGEX` | ❌ | — | Filter org repos by regex matching the repo name (e.g. `^srv-.*`) |
 
 ### 1. Running with Go
 
@@ -79,6 +82,11 @@ See the [`docs/`](docs/) folder for detailed setup guides for each AI client:
 - [ChatGPT Desktop](docs/chatgpt.md)
 
 ## Development
+
+We welcome contributions! Please make sure to review the official Development Guidelines before submitting any code:
+
+- **[Development Guidelines for Humans](docs/DEVELOPMENT_GUIDELINES.md)**
+- **AI Assistants:** This repository includes an `AGENTS.md` file that configures AI agents (like Cursor, Copilot, or Antigravity) with the exact constraints needed for the official MCP Go SDK.
 
 ```bash
 # Install dependencies
