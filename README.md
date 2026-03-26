@@ -4,10 +4,11 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 
 ## Features
 
-- **Automated Org-Wide Scanning**: Recursively searches repositories for target documentation files on an interval (`catalog-info.yaml`, `mkdocs.yml`, `openapi.yaml`, `swagger.json`, `README.md`, and everything under `docs/**/*.md`).
+- **Automated Org-Wide Scanning**: Recursively searches repositories for documentation files. Target files and directories are fully customizable via environment variables.
 - **In-Memory Caching**: Prevents aggressive GitHub API Rate Limits by indexing your org's structure in memory.
 - **Security First**: Defends against LLM hallucination and Path Traversal by _only_ allowing the AI to read files that were securely indexed as valid documentation.
 - **Lightweight & Fast**: Built in Go, utilizing goroutines and semaphores for high-performance concurrent repository scanning.
+- **Works with Orgs & Users**: Automatically detects whether the configured owner is an Organization or a personal account.
 
 ## Tools Exposed
 
@@ -40,8 +41,10 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GITHUB_TOKEN` | ✅ | — | GitHub Personal Access Token (Fine-Grained) |
-| `GITHUB_ORG` | ✅ | — | GitHub Organization name |
+| `GITHUB_ORG` | ✅ | — | GitHub Organization or User name |
 | `SCAN_INTERVAL` | ❌ | `30m` | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`, `1h30m`) or plain integers (treated as minutes) |
+| `SCAN_FILES` | ❌ | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated list of filenames to look for at the repo root |
+| `SCAN_DIRS` | ❌ | `docs` | Comma-separated list of directories to scan recursively for `.md` files |
 
 ### 1. Running with Go
 

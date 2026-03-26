@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"docscout-mcp/scanner"
-
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"docscout-mcp/scanner"
 )
 
 // Register adds all DocScout MCP tools to the server.

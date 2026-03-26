@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -12,13 +13,18 @@ import (
 	"github.com/google/go-github/v60/github"
 )
 
-// targetFiles defines the specific filenames we look for at the repo root.
-var targetFiles = []string{
+// DefaultTargetFiles defines the default filenames to look for at the repo root.
+var DefaultTargetFiles = []string{
 	"catalog-info.yaml",
 	"mkdocs.yml",
 	"openapi.yaml",
 	"swagger.json",
 	"README.md",
+}
+
+// DefaultScanDirs defines the default directories to scan recursively for .md files.
+var DefaultScanDirs = []string{
+	"docs",
 }
 
 // FileEntry represents an indexed documentation file.
@@ -43,6 +49,8 @@ type Scanner struct {
 	client       *github.Client
 	org          string
 	scanInterval time.Duration
+	targetFiles  []string // files to look for at repo root
+	scanDirs     []string // directories to scan recursively for .md files
 
 	mu    sync.RWMutex
 	repos map[string]*RepoInfo // keyed by repo name
@@ -52,11 +60,19 @@ type Scanner struct {
 }
 
 // New creates a new Scanner instance.
-func New(client *github.Client, org string, scanInterval time.Duration) *Scanner {
+func New(client *github.Client, org string, scanInterval time.Duration, targetFiles, scanDirs []string) *Scanner {
+	if len(targetFiles) == 0 {
+		targetFiles = DefaultTargetFiles
+	}
+	if len(scanDirs) == 0 {
+		scanDirs = DefaultScanDirs
+	}
 	return &Scanner{
 		client:       client,
 		org:          org,
 		scanInterval: scanInterval,
+		targetFiles:  targetFiles,
+		scanDirs:     scanDirs,
 		repos:        make(map[string]*RepoInfo),
 	}
 }
@@ -108,7 +124,7 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 		return
 	}
 
-	log.Printf("[scanner] Found %d total repos in org %s\n", len(allRepos), s.org)
+	log.Printf("[scanner] Found %d total repos for %s\n", len(allRepos), s.org)
 
 	// Use a semaphore to limit concurrent API calls.
 	const maxConcurrency = 5
@@ -151,17 +167,53 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 	s.mu.Unlock()
 }
 
-// listAllRepos paginates through all repos in the org.
+// listAllRepos paginates through all repos for the configured owner.
+// It first tries the Organization endpoint; if the owner is a personal
+// account (404), it transparently falls back to the User endpoint.
 func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error) {
+	repos, err := s.listByOrg(ctx)
+	if err == nil {
+		return repos, nil
+	}
+
+	// Check if the error is a 404 (owner is a user, not an org).
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil && ghErr.Response.StatusCode == 404 {
+		log.Printf("[scanner] '%s' is not an org, trying as user account...\n", s.org)
+		return s.listByUser(ctx)
+	}
+
+	return nil, err
+}
+
+func (s *Scanner) listByOrg(ctx context.Context) ([]*github.Repository, error) {
 	var all []*github.Repository
 	opts := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
-
 	for {
 		repos, resp, err := s.client.Repositories.ListByOrg(ctx, s.org, opts)
 		if err != nil {
-			return nil, fmt.Errorf("listing repos page %d: %w", opts.Page, err)
+			return nil, err
+		}
+		all = append(all, repos...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return all, nil
+}
+
+func (s *Scanner) listByUser(ctx context.Context) ([]*github.Repository, error) {
+	var all []*github.Repository
+	opts := &github.RepositoryListByUserOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+	for {
+		repos, resp, err := s.client.Repositories.ListByUser(ctx, s.org, opts)
+		if err != nil {
+			return nil, fmt.Errorf("listing user repos page %d: %w", opts.Page, err)
 		}
 		all = append(all, repos...)
 		if resp.NextPage == 0 {
@@ -177,7 +229,7 @@ func (s *Scanner) scanRepo(ctx context.Context, repoName string) []FileEntry {
 	var entries []FileEntry
 
 	// Check root-level target files.
-	for _, target := range targetFiles {
+	for _, target := range s.targetFiles {
 		fc, _, resp, err := s.client.Repositories.GetContents(ctx, s.org, repoName, target, nil)
 		if err != nil {
 			if resp != nil && resp.StatusCode == 404 {
@@ -196,9 +248,11 @@ func (s *Scanner) scanRepo(ctx context.Context, repoName string) []FileEntry {
 		}
 	}
 
-	// Check docs/ directory recursively for .md files.
-	docsEntries := s.scanDocsDir(ctx, repoName, "docs")
-	entries = append(entries, docsEntries...)
+	// Check configured directories recursively for .md files.
+	for _, dir := range s.scanDirs {
+		dirEntries := s.scanDocsDir(ctx, repoName, dir)
+		entries = append(entries, dirEntries...)
+	}
 
 	return entries
 }

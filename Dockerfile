@@ -23,6 +23,8 @@ COPY --from=builder /docscout-mcp /usr/local/bin/docscout-mcp
 # Environment variables (override at runtime).
 ENV GITHUB_TOKEN=""
 ENV GITHUB_ORG=""
-ENV SCAN_INTERVAL="30"
+ENV SCAN_INTERVAL="30m"
+ENV SCAN_FILES=""
+ENV SCAN_DIRS=""
 
 ENTRYPOINT ["docscout-mcp"]

@@ -6,18 +6,19 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
-
-	"docscout-mcp/scanner"
-	"docscout-mcp/tools"
 
 	"github.com/google/go-github/v60/github"
 	"github.com/mark3labs/mcp-go/server"
 	"golang.org/x/oauth2"
+
+	"docscout-mcp/scanner"
+	"docscout-mcp/tools"
 )
 
 const (
-	serverName          = "DocScout-MCP"
+	serverName          = "DocScout-MCP 🔭"
 	serverVersion       = "1.0.0"
 	defaultScanInterval = 30 * time.Minute
 )
@@ -43,6 +44,27 @@ func parseScanInterval(raw string) time.Duration {
 	return defaultScanInterval
 }
 
+// parseCSVEnv splits a comma-separated env var into trimmed, non-empty values.
+// Returns nil if the input is empty (falling back to scanner defaults).
+func parseCSVEnv(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	var result []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
 func main() {
 	// --- Configuration from environment variables ---
 	token := os.Getenv("GITHUB_TOKEN")
@@ -56,6 +78,8 @@ func main() {
 	}
 
 	scanInterval := parseScanInterval(os.Getenv("SCAN_INTERVAL"))
+	targetFiles := parseCSVEnv(os.Getenv("SCAN_FILES"))
+	scanDirs := parseCSVEnv(os.Getenv("SCAN_DIRS"))
 
 	// --- GitHub client with PAT authentication ---
 	ctx := context.Background()
@@ -64,7 +88,7 @@ func main() {
 	ghClient := github.NewClient(httpClient)
 
 	// --- Scanner ---
-	sc := scanner.New(ghClient, org, scanInterval)
+	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs)
 	sc.Start(ctx)
 
 	// --- MCP Server ---
