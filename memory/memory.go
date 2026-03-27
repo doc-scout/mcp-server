@@ -402,42 +402,40 @@ func (s store) OpenNodes(ctx context.Context, req *mcp.CallToolRequest, args Ope
 	return nil, graph, nil
 }
 
-// openDB creates a GORM database connection based on the URL scheme.
-func openDB(dbURL string) (*gorm.DB, error) {
+// OpenDB opens the database connection and runs auto-migration for all models.
+// dbURL accepts: "sqlite://path.db", "postgres://...", a plain file path, or "" for in-memory SQLite.
+func OpenDB(dbURL string) (*gorm.DB, error) {
 	cfg := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	}
 
-	if strings.HasPrefix(dbURL, "postgres://") || strings.HasPrefix(dbURL, "postgresql://") {
-		return gorm.Open(postgres.Open(dbURL), cfg)
-	}
+	var db *gorm.DB
+	var err error
 
-	if strings.HasPrefix(dbURL, "sqlite://") {
+	switch {
+	case strings.HasPrefix(dbURL, "postgres://"), strings.HasPrefix(dbURL, "postgresql://"):
+		db, err = gorm.Open(postgres.Open(dbURL), cfg)
+	case strings.HasPrefix(dbURL, "sqlite://"):
 		path := strings.TrimPrefix(dbURL, "sqlite://")
-		return gorm.Open(sqlite.Open(path), cfg)
+		db, err = gorm.Open(sqlite.Open(path), cfg)
+	case dbURL == "":
+		db, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), cfg)
+	default:
+		db, err = gorm.Open(sqlite.Open(dbURL), cfg)
 	}
 
-	// Fallback: empty → in-memory SQLite; plain path → SQLite file
-	if dbURL == "" {
-		return gorm.Open(sqlite.Open("file::memory:?cache=shared"), cfg)
+	if err != nil {
+		return nil, err
 	}
-	return gorm.Open(sqlite.Open(dbURL), cfg)
+	if err := db.AutoMigrate(&dbEntity{}, &dbRelation{}, &dbObservation{}); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 // Register adds the knowledge graph memory tools to the MCP server.
-// dbURL accepts: "sqlite://path.db", "postgres://...", a plain file path, or "" for in-memory.
-func Register(s *mcp.Server, dbURL string) {
-	db, err := openDB(dbURL)
-	if err != nil {
-		log.Printf("[memory] Failed to connect to database: %v", err)
-		return
-	}
-
-	if err := db.AutoMigrate(&dbEntity{}, &dbRelation{}, &dbObservation{}); err != nil {
-		log.Printf("[memory] Failed to migrate schema: %v", err)
-		return
-	}
-
+// db must be obtained via OpenDB (already migrated).
+func Register(s *mcp.Server, db *gorm.DB) {
 	mem := store{db: db}
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -477,18 +475,43 @@ func Register(s *mcp.Server, dbURL string) {
 		Description: "Retrieve specific nodes by name",
 	}, mem.OpenNodes)
 
-	log.Printf("[memory] Knowledge graph initialized (backend: %s)", backendLabel(dbURL))
+	log.Printf("[memory] Knowledge graph initialized")
 }
 
-func backendLabel(dbURL string) string {
-	switch {
-	case strings.HasPrefix(dbURL, "postgres://"), strings.HasPrefix(dbURL, "postgresql://"):
-		return "postgresql"
-	case strings.HasPrefix(dbURL, "sqlite://"):
-		return "sqlite (file)"
-	case dbURL == "":
-		return "sqlite (in-memory)"
-	default:
-		return "sqlite (file: " + dbURL + ")"
-	}
+// AutoWriter exposes a clean data-layer API for the auto-indexer.
+// It shares the same *gorm.DB as the MCP tool store.
+type AutoWriter struct {
+	s store
+}
+
+// NewAutoWriter creates an AutoWriter using an already-opened *gorm.DB.
+func NewAutoWriter(db *gorm.DB) *AutoWriter {
+	return &AutoWriter{s: store{db: db}}
+}
+
+// CreateEntities creates entities, skipping duplicates.
+func (w *AutoWriter) CreateEntities(entities []Entity) ([]Entity, error) {
+	return w.s.createEntities(entities)
+}
+
+// CreateRelations creates relations, skipping duplicates.
+func (w *AutoWriter) CreateRelations(relations []Relation) ([]Relation, error) {
+	return w.s.createRelations(relations)
+}
+
+// AddObservations appends observations to existing entities, skipping duplicates.
+func (w *AutoWriter) AddObservations(obs []Observation) ([]Observation, error) {
+	return w.s.addObservations(obs)
+}
+
+// SearchNodes searches entities by name, type, or observation content.
+func (w *AutoWriter) SearchNodes(query string) (KnowledgeGraph, error) {
+	return w.s.searchNodes(query)
+}
+
+// EntityCount returns the total number of entities in the knowledge graph.
+func (w *AutoWriter) EntityCount() (int64, error) {
+	var count int64
+	err := w.s.db.Model(&dbEntity{}).Count(&count).Error
+	return count, err
 }

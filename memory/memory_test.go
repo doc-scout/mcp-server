@@ -9,10 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var testCounter atomic.Int64
@@ -21,14 +18,9 @@ func newTestStore(t *testing.T) store {
 	t.Helper()
 	n := testCounter.Add(1)
 	dsn := fmt.Sprintf("file:memdb_%d?mode=memory&cache=shared", n)
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
+	db, err := OpenDB(dsn)
 	if err != nil {
-		t.Fatalf("failed to open test db: %v", err)
-	}
-	if err := db.AutoMigrate(&dbEntity{}, &dbRelation{}, &dbObservation{}); err != nil {
-		t.Fatalf("failed to migrate: %v", err)
+		t.Fatalf("OpenDB failed: %v", err)
 	}
 	return store{db: db}
 }
@@ -287,5 +279,96 @@ func TestDeleteRelations(t *testing.T) {
 	_, graph, _ := s.ReadGraph(ctx, req, nil)
 	if len(graph.Relations) != 1 || graph.Relations[0].RelationType != "notifies" {
 		t.Fatalf("expected only 'notifies' relation remaining, got %v", graph.Relations)
+	}
+}
+
+func TestOpenDB_InMemory(t *testing.T) {
+	db, err := OpenDB("")
+	if err != nil {
+		t.Fatalf("OpenDB failed: %v", err)
+	}
+	if db == nil {
+		t.Fatal("expected non-nil db")
+	}
+}
+
+func TestAutoWriter_EntityCount(t *testing.T) {
+	db, err := OpenDB(fmt.Sprintf("file:autowriter_%d?mode=memory&cache=shared", testCounter.Add(1)))
+	if err != nil {
+		t.Fatalf("OpenDB: %v", err)
+	}
+	w := NewAutoWriter(db)
+
+	count, err := w.EntityCount()
+	if err != nil {
+		t.Fatalf("EntityCount: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 entities, got %d", count)
+	}
+
+	_, err = w.CreateEntities([]Entity{
+		{Name: "svc-x", EntityType: "service"},
+		{Name: "svc-y", EntityType: "service"},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntities: %v", err)
+	}
+
+	count, err = w.EntityCount()
+	if err != nil {
+		t.Fatalf("EntityCount after create: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 entities, got %d", count)
+	}
+}
+
+func TestAutoWriter_CreateRelations(t *testing.T) {
+	db, err := OpenDB(fmt.Sprintf("file:autowriter_rel_%d?mode=memory&cache=shared", testCounter.Add(1)))
+	if err != nil {
+		t.Fatalf("OpenDB: %v", err)
+	}
+	w := NewAutoWriter(db)
+
+	_, err = w.CreateEntities([]Entity{
+		{Name: "svc-a", EntityType: "service"},
+		{Name: "svc-b", EntityType: "service"},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntities: %v", err)
+	}
+
+	rels, err := w.CreateRelations([]Relation{
+		{From: "svc-a", To: "svc-b", RelationType: "depends_on"},
+	})
+	if err != nil {
+		t.Fatalf("CreateRelations: %v", err)
+	}
+	if len(rels) != 1 {
+		t.Errorf("expected 1 relation, got %d", len(rels))
+	}
+}
+
+func TestAutoWriter_SearchNodes(t *testing.T) {
+	db, err := OpenDB(fmt.Sprintf("file:autowriter_search_%d?mode=memory&cache=shared", testCounter.Add(1)))
+	if err != nil {
+		t.Fatalf("OpenDB: %v", err)
+	}
+	w := NewAutoWriter(db)
+
+	_, err = w.CreateEntities([]Entity{
+		{Name: "payment-svc", EntityType: "service", Observations: []string{"_source:catalog-info"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntities: %v", err)
+	}
+
+	graph, err := w.SearchNodes("_source:catalog-info")
+	if err != nil {
+		t.Fatalf("SearchNodes: %v", err)
+	}
+	if len(graph.Entities) != 1 {
+		t.Errorf("expected 1 entity, got %d", len(graph.Entities))
 	}
 }
