@@ -1,3 +1,6 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: agpl
+
 [settings]
 experimental = true
 
@@ -9,6 +12,13 @@ go = "1.26.1"
 golangci-lint = "v2.11.4"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:github.com/daixiang0/gci" = "latest"
+"go:github.com/google/addlicense" = "latest"
+pre-commit = "latest"
+
+[tasks.setup]
+description = "Configura o ambiente de desenvolvimento e hooks"
+run = "pre-commit install"
+
 
 [tasks.local]
 run = "go run ."
@@ -22,3 +32,7 @@ run = "go test ./..."
 [tasks.format]
 run = "gci write -s standard -s default -s localmodule --skip-generated --skip-vendor ."
 run_windows = "cmd /c gci write -s standard -s default -s localmodule --skip-generated --skip-vendor ."
+
+[tasks.license]
+description = "Adiciona cabeçalhos de licença a todos os arquivos .go"
+run = "addlicense -s -c 'Leonan Carvalho' -l AGPL-3.0-only -ignore '**/*.md' -ignore '**/*.json' -ignore '**/*.yaml'  -ignore '**/*.txt' -ignore 'vendor/**' ."

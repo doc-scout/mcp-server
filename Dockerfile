@@ -1,3 +1,6 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # ---- Stage 1: Build ----
 FROM golang:1.22-alpine AS builder
 

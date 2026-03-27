@@ -1,0 +1,25 @@
+repos:
+  # Hooks padrão para manter o repo limpo
+  - repo: https://github.com
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  # Formatação nativa do Go
+  - repo: https://github.com
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-imports
+
+  # Automação da Licença
+  - repo: local
+    hooks:
+      - id: addlicense
+        name: Add License Header
+        entry: mise run license
+        language: system
+        files: \.go$

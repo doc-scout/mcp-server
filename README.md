@@ -144,4 +144,4 @@ go test ./...
 
 ## License
 
-MIT
+GNU AGPL v3

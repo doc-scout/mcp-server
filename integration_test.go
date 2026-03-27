@@ -1,3 +1,6 @@
+// Copyright 2026 Leonan Carvalho
+// SPDX-License-Identifier: AGPL-3.0-only
+
 package main_test
 
 import (

@@ -1,0 +1,13 @@
+name: Check/Fix License Header
+
+on: [push, pull_request]
+
+jobs:
+  license:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check/Fix License Header
+        uses: apache/skywalking-eyes/header@main
+        with:
+          mode: fix # 'fix' altera os arquivos automaticamente e você pode commitar as mudanças
