@@ -124,12 +124,12 @@ func main() {
 
 	// --- Transport Selection ---
 	if httpAddr != "" {
-		log.Printf("Listening on HTTP SSE at %s...", httpAddr)
-		
-		handler := mcp.NewSSEHandler(func(*http.Request) *mcp.Server {
+		log.Printf("Listening on Streamable HTTP at %s...", httpAddr)
+
+		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 			return mcpServer
 		}, nil)
-		
+
 		if err := http.ListenAndServe(httpAddr, handler); err != nil {
 			log.Fatalf("HTTP server error: %v", err)
 		}

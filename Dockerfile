@@ -29,5 +29,10 @@ ENV SCAN_DIRS=""
 ENV EXTRA_REPOS=""
 ENV REPO_TOPICS=""
 ENV REPO_REGEX=""
+ENV DATABASE_URL=""
+ENV HTTP_ADDR=""
+
+# Expose HTTP port for Streamable HTTP transport mode.
+EXPOSE 8080
 
 ENTRYPOINT ["docscout-mcp"]
