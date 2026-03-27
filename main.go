@@ -16,6 +16,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"docscout-mcp/memory"
 	"docscout-mcp/scanner"
 	"docscout-mcp/tools"
 )
@@ -110,9 +111,14 @@ func main() {
 		Version: serverVersion,
 	}, nil)
 
+	dbUrl := os.Getenv("DATABASE_URL")
+	if dbUrl == "" {
+		dbUrl = os.Getenv("MEMORY_FILE_PATH") // backward compatibility fallback
+	}
+
 	// Register tools
 	tools.Register(mcpServer, sc)
-	tools.RegisterMemory(mcpServer, os.Getenv("MEMORY_FILE_PATH"))
+	memory.Register(mcpServer, dbUrl)
 
 	log.Printf("%s v%s starting (org=%s, scan_interval=%s)\n", serverName, serverVersion, org, scanInterval)
 
