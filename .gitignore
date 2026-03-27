@@ -30,3 +30,14 @@ go.work.sum
 # OS files
 .DS_Store
 Thumbs.db
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Claude
+.claude/mcp.json
+
+# Local MCP server
+*.ps1

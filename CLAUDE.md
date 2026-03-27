@@ -1,0 +1,3 @@
+@AGENTS.md
+@SKILLS.md
+@TOOLS.md
