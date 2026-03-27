@@ -10,7 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"docscout-mcp/scanner"
+	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
 
 // mockScanner implements DocumentScanner for testing
@@ -53,7 +53,7 @@ func TestListReposHandler(t *testing.T) {
 
 	handler := listReposHandler(mock)
 	req := &mcp.CallToolRequest{}
-	
+
 	// The new SDK generic API signature
 	res, output, err := handler(context.Background(), req, ListReposArgs{})
 	if err != nil {
@@ -113,7 +113,7 @@ func TestGetFileContentHandler(t *testing.T) {
 	}
 
 	handler := getFileContentHandler(mock)
-	
+
 	// Test successful case
 	req := &mcp.CallToolRequest{}
 
@@ -134,7 +134,7 @@ func TestGetFileContentHandler(t *testing.T) {
 	req2 := &mcp.CallToolRequest{}
 
 	_, _, err2 := handler(context.Background(), req2, GetFileContentArgs{Repo: "test-repo", Path: "docs/secret.txt"})
-	
+
 	// The new behavior returns a standard Go compilation error handled by the wrapper.
 	if err2 == nil {
 		t.Errorf("expected error for unindexed file")

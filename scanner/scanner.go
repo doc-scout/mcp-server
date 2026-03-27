@@ -53,10 +53,10 @@ type Scanner struct {
 	client       *github.Client
 	org          string
 	scanInterval time.Duration
-	targetFiles  []string // files to look for at repo root
-	scanDirs     []string // directories to scan recursively for .md files
-	extraRepos   []string // extra explicit repos formatted as "owner/repo"
-	repoTopics   []string // filter org repos by topics
+	targetFiles  []string       // files to look for at repo root
+	scanDirs     []string       // directories to scan recursively for .md files
+	extraRepos   []string       // extra explicit repos formatted as "owner/repo"
+	repoTopics   []string       // filter org repos by topics
 	repoRegex    *regexp.Regexp // filter org repos by name using regex
 
 	mu    sync.RWMutex
@@ -162,7 +162,7 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 			// So scanRepo needs owner and repoName separately.
 			// The repository object has Owner.Login.
 			repoOwner := repo.GetOwner().GetLogin()
-			
+
 			files := s.scanRepo(ctx, repoOwner, repoName)
 			if len(files) > 0 {
 				info := &RepoInfo{

@@ -45,7 +45,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 	// Mock file contents for repo1
 	mux.HandleFunc("/repos/test-org/repo1/contents/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/repos/test-org/repo1/contents/")
-		
+
 		if path == "README.md" {
 			content := map[string]interface{}{
 				"type":     "file",
@@ -57,7 +57,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 			json.NewEncoder(w).Encode(content)
 			return
 		}
-		
+
 		if path == "docs" {
 			// dir contents
 			content := []map[string]interface{}{
@@ -70,7 +70,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 			json.NewEncoder(w).Encode(content)
 			return
 		}
-		
+
 		if path == "docs/guide.md" {
 			content := map[string]interface{}{
 				"type":     "file",
@@ -82,7 +82,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 			json.NewEncoder(w).Encode(content)
 			return
 		}
-		
+
 		// Fallback for missing files
 		http.Error(w, "Not found", http.StatusNotFound)
 	})
@@ -93,12 +93,12 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 	})
 
 	ts := httptest.NewServer(mux)
-	
+
 	client := github.NewClient(nil)
 	client.BaseURL, _ = url.Parse(ts.URL + "/")
-	// Important: To test endpoints correctly with httptest, we need to bypass github.Client's 
+	// Important: To test endpoints correctly with httptest, we need to bypass github.Client's
 	// validation or make sure our mock server's URL ends with a slash.
-	
+
 	return ts, client
 }
 

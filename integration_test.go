@@ -9,9 +9,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"docscout-mcp/memory"
-	"docscout-mcp/scanner"
-	"docscout-mcp/tools"
+	"github.com/leonancarvalho/docscout-mcp/memory"
+	"github.com/leonancarvalho/docscout-mcp/scanner"
+	"github.com/leonancarvalho/docscout-mcp/tools"
 )
 
 // mockScanner provides a minimal scanner for E2E tests.

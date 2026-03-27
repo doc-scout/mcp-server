@@ -7,21 +7,20 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"net/http"
 
 	"github.com/google/go-github/v60/github"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/oauth2"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-
-	"docscout-mcp/memory"
-	"docscout-mcp/scanner"
-	"docscout-mcp/tools"
+	"github.com/leonancarvalho/docscout-mcp/memory"
+	"github.com/leonancarvalho/docscout-mcp/scanner"
+	"github.com/leonancarvalho/docscout-mcp/tools"
 )
 
 const (

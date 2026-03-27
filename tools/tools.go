@@ -9,7 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"docscout-mcp/scanner"
+	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
 
 // DocumentScanner defines the interface for interacting with the documentation scanner.
