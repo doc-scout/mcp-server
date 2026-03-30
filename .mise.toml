@@ -23,6 +23,9 @@ run = "pre-commit install"
 [tasks.local]
 run = "go run ."
 
+[tasks.inspector]
+run = "npx @modelcontextprotocol/inspector go run ."
+
 [tasks.build]
 run = "go build -o docscout-mcp ."
 

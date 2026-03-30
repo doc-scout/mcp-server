@@ -153,8 +153,7 @@ func main() {
 	}, nil)
 
 	// --- Memory / Knowledge Graph ---
-	memory.Register(mcpServer, db)
-	autoWriter := memory.NewAutoWriter(db)
+	memorySrv := memory.NewMemoryService(db)
 
 	// --- Content Cache ---
 	var contentCache *memory.ContentCache
@@ -164,7 +163,7 @@ func main() {
 	}
 
 	// --- Auto-Indexer ---
-	ai := indexer.New(sc, autoWriter, contentCache)
+	ai := indexer.New(sc, memorySrv, contentCache)
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
 		ai.Run(context.Background(), repos)
 		
@@ -175,7 +174,7 @@ func main() {
 		}
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
-		tools.Register(mcpServer, sc, autoWriter, searcher)
+		tools.Register(mcpServer, sc, memorySrv, searcher)
 		slog.Info("Triggered tools/list_changed notification")
 	})
 
@@ -184,7 +183,7 @@ func main() {
 	if contentCache != nil {
 		searcher = contentCache
 	}
-	tools.Register(mcpServer, sc, autoWriter, searcher)
+	tools.Register(mcpServer, sc, memorySrv, searcher)
 
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)

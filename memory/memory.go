@@ -4,14 +4,10 @@
 package memory
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"runtime/debug"
 	"strings"
 
 	"github.com/glebarez/sqlite"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -297,110 +293,69 @@ func (s store) buildSubGraph(entities []dbEntity) (KnowledgeGraph, error) {
 	return KnowledgeGraph{Entities: resultEntities, Relations: resultRels}, nil
 }
 
-// --- MCP Tool Handler Args ---
+// --- Domain API ---
 
-type CreateEntitiesArgs struct {
-	Entities []Entity `json:"entities" jsonschema:"entities to create"`
-}
-type CreateEntitiesResult struct {
-	Entities []Entity `json:"entities"`
-}
-
-func (s store) CreateEntities(ctx context.Context, req *mcp.CallToolRequest, args CreateEntitiesArgs) (*mcp.CallToolResult, CreateEntitiesResult, error) {
-	entities, err := s.createEntities(args.Entities)
-	if err != nil {
-		return nil, CreateEntitiesResult{}, err
-	}
-	return nil, CreateEntitiesResult{Entities: entities}, nil
+// MemoryService exposes a clean data-layer API for the knowledge graph.
+// It shares the same *gorm.DB as the internal structure.
+type MemoryService struct {
+	s store
 }
 
-type CreateRelationsArgs struct {
-	Relations []Relation `json:"relations" jsonschema:"relations to create"`
-}
-type CreateRelationsResult struct {
-	Relations []Relation `json:"relations"`
+// NewMemoryService creates a MemoryService using an already-opened *gorm.DB.
+func NewMemoryService(db *gorm.DB) *MemoryService {
+	return &MemoryService{s: store{db: db}}
 }
 
-func (s store) CreateRelations(ctx context.Context, req *mcp.CallToolRequest, args CreateRelationsArgs) (*mcp.CallToolResult, CreateRelationsResult, error) {
-	relations, err := s.createRelations(args.Relations)
-	if err != nil {
-		return nil, CreateRelationsResult{}, err
-	}
-	return nil, CreateRelationsResult{Relations: relations}, nil
+// CreateEntities creates entities, skipping duplicates.
+func (srv *MemoryService) CreateEntities(entities []Entity) ([]Entity, error) {
+	return srv.s.createEntities(entities)
 }
 
-type AddObservationsArgs struct {
-	Observations []Observation `json:"observations" jsonschema:"observations to add"`
-}
-type AddObservationsResult struct {
-	Observations []Observation `json:"observations"`
+// CreateRelations creates relations, skipping duplicates.
+func (srv *MemoryService) CreateRelations(relations []Relation) ([]Relation, error) {
+	return srv.s.createRelations(relations)
 }
 
-func (s store) AddObservations(ctx context.Context, req *mcp.CallToolRequest, args AddObservationsArgs) (*mcp.CallToolResult, AddObservationsResult, error) {
-	observations, err := s.addObservations(args.Observations)
-	if err != nil {
-		return nil, AddObservationsResult{}, err
-	}
-	return nil, AddObservationsResult{Observations: observations}, nil
+// AddObservations appends observations to existing entities, skipping duplicates.
+func (srv *MemoryService) AddObservations(obs []Observation) ([]Observation, error) {
+	return srv.s.addObservations(obs)
 }
 
-type DeleteEntitiesArgs struct {
-	EntityNames []string `json:"entityNames" jsonschema:"entities to delete"`
+// DeleteEntities removes entities and their associated relations/observations.
+func (srv *MemoryService) DeleteEntities(names []string) error {
+	return srv.s.deleteEntities(names)
 }
 
-func (s store) DeleteEntities(ctx context.Context, req *mcp.CallToolRequest, args DeleteEntitiesArgs) (*mcp.CallToolResult, any, error) {
-	err := s.deleteEntities(args.EntityNames)
-	return nil, nil, err
+// DeleteObservations removes specific observations.
+func (srv *MemoryService) DeleteObservations(deletions []Observation) error {
+	return srv.s.deleteObservations(deletions)
 }
 
-type DeleteObservationsArgs struct {
-	Deletions []Observation `json:"deletions" jsonschema:"observations to delete"`
+// DeleteRelations removes specific relations.
+func (srv *MemoryService) DeleteRelations(relations []Relation) error {
+	return srv.s.deleteRelations(relations)
 }
 
-func (s store) DeleteObservations(ctx context.Context, req *mcp.CallToolRequest, args DeleteObservationsArgs) (*mcp.CallToolResult, any, error) {
-	err := s.deleteObservations(args.Deletions)
-	return nil, nil, err
+// ReadGraph returns the entire knowledge graph.
+func (srv *MemoryService) ReadGraph() (KnowledgeGraph, error) {
+	return srv.s.loadGraph()
 }
 
-type DeleteRelationsArgs struct {
-	Relations []Relation `json:"relations" jsonschema:"relations to delete"`
+// SearchNodes searches entities by name, type, or observation content.
+func (srv *MemoryService) SearchNodes(query string) (KnowledgeGraph, error) {
+	return srv.s.searchNodes(query)
 }
 
-func (s store) DeleteRelations(ctx context.Context, req *mcp.CallToolRequest, args DeleteRelationsArgs) (*mcp.CallToolResult, struct{}, error) {
-	err := s.deleteRelations(args.Relations)
-	return nil, struct{}{}, err
+// OpenNodes retrieves specific nodes by name.
+func (srv *MemoryService) OpenNodes(names []string) (KnowledgeGraph, error) {
+	return srv.s.openNodes(names)
 }
 
-func (s store) ReadGraph(ctx context.Context, req *mcp.CallToolRequest, args any) (*mcp.CallToolResult, KnowledgeGraph, error) {
-	graph, err := s.loadGraph()
-	if err != nil {
-		return nil, KnowledgeGraph{}, err
-	}
-	return nil, graph, nil
-}
-
-type SearchNodesArgs struct {
-	Query string `json:"query" jsonschema:"query string"`
-}
-
-func (s store) SearchNodes(ctx context.Context, req *mcp.CallToolRequest, args SearchNodesArgs) (*mcp.CallToolResult, KnowledgeGraph, error) {
-	graph, err := s.searchNodes(args.Query)
-	if err != nil {
-		return nil, KnowledgeGraph{}, err
-	}
-	return nil, graph, nil
-}
-
-type OpenNodesArgs struct {
-	Names []string `json:"names" jsonschema:"names of nodes to open"`
-}
-
-func (s store) OpenNodes(ctx context.Context, req *mcp.CallToolRequest, args OpenNodesArgs) (*mcp.CallToolResult, KnowledgeGraph, error) {
-	graph, err := s.openNodes(args.Names)
-	if err != nil {
-		return nil, KnowledgeGraph{}, err
-	}
-	return nil, graph, nil
+// EntityCount returns the total number of entities in the knowledge graph.
+func (srv *MemoryService) EntityCount() (int64, error) {
+	var count int64
+	err := srv.s.db.Model(&dbEntity{}).Count(&count).Error
+	return count, err
 }
 
 // OpenDB opens the database connection and runs auto-migration for all models.
@@ -432,103 +387,4 @@ func OpenDB(dbURL string) (*gorm.DB, error) {
 		return nil, err
 	}
 	return db, nil
-}
-
-// withRecovery wraps an MCP tool handler to catch and log panics gracefully.
-func withRecovery[A, R any](
-	name string,
-	handler func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error),
-) func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error) {
-	return func(ctx context.Context, req *mcp.CallToolRequest, args A) (res *mcp.CallToolResult, ret R, err error) {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("[memory] MCP tool panicked: tool=%s panic=%v\nstack=%s", name, r, string(debug.Stack()))
-				err = fmt.Errorf("internal server error in tool '%s' (panic recovered: %v)", name, r)
-			}
-		}()
-		return handler(ctx, req, args)
-	}
-}
-
-// Register adds the knowledge graph memory tools to the MCP server.
-// db must be obtained via OpenDB (already migrated).
-func Register(s *mcp.Server, db *gorm.DB) {
-	mem := store{db: db}
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "create_entities",
-		Description: "Create multiple new entities in the knowledge graph",
-	}, withRecovery("create_entities", mem.CreateEntities))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "create_relations",
-		Description: "Create multiple new relations between entities",
-	}, withRecovery("create_relations", mem.CreateRelations))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "add_observations",
-		Description: "Add new observations to existing entities",
-	}, withRecovery("add_observations", mem.AddObservations))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "delete_entities",
-		Description: "Remove entities and their relations",
-	}, withRecovery("delete_entities", mem.DeleteEntities))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "delete_observations",
-		Description: "Remove specific observations from entities",
-	}, withRecovery("delete_observations", mem.DeleteObservations))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "delete_relations",
-		Description: "Remove specific relations from the graph",
-	}, withRecovery("delete_relations", mem.DeleteRelations))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "read_graph",
-		Description: "Read the entire knowledge graph",
-	}, withRecovery("read_graph", mem.ReadGraph))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "search_nodes",
-		Description: "Search for nodes based on query",
-	}, withRecovery("search_nodes", mem.SearchNodes))
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "open_nodes",
-		Description: "Retrieve specific nodes by name",
-	}, withRecovery("open_nodes", mem.OpenNodes))
-
-	log.Printf("[memory] Knowledge graph initialized")
-}
-
-// AutoWriter exposes a clean data-layer API for the auto-indexer.
-// It shares the same *gorm.DB as the MCP tool store.
-type AutoWriter struct {
-	s store
-}
-
-// NewAutoWriter creates an AutoWriter using an already-opened *gorm.DB.
-func NewAutoWriter(db *gorm.DB) *AutoWriter {
-	return &AutoWriter{s: store{db: db}}
-}
-
-// CreateEntities creates entities, skipping duplicates.
-func (w *AutoWriter) CreateEntities(entities []Entity) ([]Entity, error) {
-	return w.s.createEntities(entities)
-}
-
-// CreateRelations creates relations, skipping duplicates.
-func (w *AutoWriter) CreateRelations(relations []Relation) ([]Relation, error) {
-	return w.s.createRelations(relations)
-}
-
-// AddObservations appends observations to existing entities, skipping duplicates.
-func (w *AutoWriter) AddObservations(obs []Observation) ([]Observation, error) {
-	return w.s.addObservations(obs)
-}
-
-// SearchNodes searches entities by name, type, or observation content.
-func (w *AutoWriter) SearchNodes(query string) (KnowledgeGraph, error) {
-	return w.s.searchNodes(query)
-}
-
-// EntityCount returns the total number of entities in the knowledge graph.
-func (w *AutoWriter) EntityCount() (int64, error) {
-	var count int64
-	err := w.s.db.Model(&dbEntity{}).Count(&count).Error
-	return count, err
 }

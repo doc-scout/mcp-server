@@ -164,13 +164,22 @@ func (m *mockContentSearcher) Count() (int64, error) {
 	return m.count, nil
 }
 
-type mockGraphCounter struct {
+type mockGraphStore struct {
 	count int64
 }
 
-func (m *mockGraphCounter) EntityCount() (int64, error) {
+func (m *mockGraphStore) EntityCount() (int64, error) {
 	return m.count, nil
 }
+func (m *mockGraphStore) CreateEntities(entities []memory.Entity) ([]memory.Entity, error) { return nil, nil }
+func (m *mockGraphStore) CreateRelations(relations []memory.Relation) ([]memory.Relation, error) { return nil, nil }
+func (m *mockGraphStore) AddObservations(observations []memory.Observation) ([]memory.Observation, error) { return nil, nil }
+func (m *mockGraphStore) DeleteEntities(entityNames []string) error { return nil }
+func (m *mockGraphStore) DeleteObservations(deletions []memory.Observation) error { return nil }
+func (m *mockGraphStore) DeleteRelations(relations []memory.Relation) error { return nil }
+func (m *mockGraphStore) ReadGraph() (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) SearchNodes(query string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{
@@ -179,7 +188,7 @@ func TestGetScanStatusHandler(t *testing.T) {
 			{Name: "org/svc-b"},
 		},
 	}
-	counter := &mockGraphCounter{count: 5}
+	counter := &mockGraphStore{count: 5}
 	searcher := &mockContentSearcher{count: 10, enabled: true}
 
 	handler := getScanStatusHandler(sc, counter, searcher)

@@ -4,17 +4,14 @@
 package memory
 
 import (
-	"context"
 	"fmt"
 	"sync/atomic"
 	"testing"
-
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 var testCounter atomic.Int64
 
-func newTestStore(t *testing.T) store {
+func newTestService(t *testing.T) *MemoryService {
 	t.Helper()
 	n := testCounter.Add(1)
 	dsn := fmt.Sprintf("file:memdb_%d?mode=memory&cache=shared", n)
@@ -22,122 +19,98 @@ func newTestStore(t *testing.T) store {
 	if err != nil {
 		t.Fatalf("OpenDB failed: %v", err)
 	}
-	return store{db: db}
+	return NewMemoryService(db)
 }
 
 func TestCreateEntities(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
 	// Create two entities
-	_, result, err := s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "service-a", EntityType: "Component", Observations: []string{"Go microservice", "uses gRPC"}},
-			{Name: "service-b", EntityType: "API"},
-		},
+	result, err := s.CreateEntities([]Entity{
+		{Name: "service-a", EntityType: "Component", Observations: []string{"Go microservice", "uses gRPC"}},
+		{Name: "service-b", EntityType: "API"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Entities) != 2 {
-		t.Fatalf("expected 2 created entities, got %d", len(result.Entities))
+	if len(result) != 2 {
+		t.Fatalf("expected 2 created entities, got %d", len(result))
 	}
 
 	// Duplicate should be skipped
-	_, result2, err := s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "service-a", EntityType: "Component"},
-			{Name: "service-c", EntityType: "Database"},
-		},
+	result2, err := s.CreateEntities([]Entity{
+		{Name: "service-a", EntityType: "Component"},
+		{Name: "service-c", EntityType: "Database"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error on duplicate: %v", err)
 	}
-	if len(result2.Entities) != 1 || result2.Entities[0].Name != "service-c" {
-		t.Fatalf("expected only service-c to be created, got %v", result2.Entities)
+	if len(result2) != 1 || result2[0].Name != "service-c" {
+		t.Fatalf("expected only service-c to be created, got %v", result2)
 	}
 }
 
 func TestCreateRelations(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
 	// Seed entities
-	s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "frontend", EntityType: "Component"},
-			{Name: "backend", EntityType: "Component"},
-		},
+	s.CreateEntities([]Entity{
+		{Name: "frontend", EntityType: "Component"},
+		{Name: "backend", EntityType: "Component"},
 	})
 
-	_, result, err := s.CreateRelations(ctx, req, CreateRelationsArgs{
-		Relations: []Relation{
-			{From: "frontend", To: "backend", RelationType: "dependsOn"},
-		},
+	result, err := s.CreateRelations([]Relation{
+		{From: "frontend", To: "backend", RelationType: "dependsOn"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Relations) != 1 {
-		t.Fatalf("expected 1 relation, got %d", len(result.Relations))
+	if len(result) != 1 {
+		t.Fatalf("expected 1 relation, got %d", len(result))
 	}
 
 	// Duplicate relation should be skipped
-	_, result2, err := s.CreateRelations(ctx, req, CreateRelationsArgs{
-		Relations: []Relation{
-			{From: "frontend", To: "backend", RelationType: "dependsOn"},
-		},
+	result2, err := s.CreateRelations([]Relation{
+		{From: "frontend", To: "backend", RelationType: "dependsOn"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error on duplicate: %v", err)
 	}
-	if len(result2.Relations) != 0 {
-		t.Fatalf("expected 0 new relations (duplicate), got %d", len(result2.Relations))
+	if len(result2) != 0 {
+		t.Fatalf("expected 0 new relations (duplicate), got %d", len(result2))
 	}
 }
 
 func TestAddObservations(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
 	// Seed entity
-	s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{{Name: "db-primary", EntityType: "Database"}},
-	})
+	s.CreateEntities([]Entity{{Name: "db-primary", EntityType: "Database"}})
 
-	_, result, err := s.AddObservations(ctx, req, AddObservationsArgs{
-		Observations: []Observation{
-			{EntityName: "db-primary", Contents: []string{"PostgreSQL 15", "runs on port 5432"}},
-		},
+	result, err := s.AddObservations([]Observation{
+		{EntityName: "db-primary", Contents: []string{"PostgreSQL 15", "runs on port 5432"}},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Observations) != 1 || len(result.Observations[0].Contents) != 2 {
-		t.Fatalf("expected 2 new observations, got %v", result.Observations)
+	if len(result) != 1 || len(result[0].Contents) != 2 {
+		t.Fatalf("expected 2 new observations, got %v", result)
 	}
 
 	// Adding duplicate observation should be skipped
-	_, result2, err := s.AddObservations(ctx, req, AddObservationsArgs{
-		Observations: []Observation{
-			{EntityName: "db-primary", Contents: []string{"PostgreSQL 15", "new fact"}},
-		},
+	result2, err := s.AddObservations([]Observation{
+		{EntityName: "db-primary", Contents: []string{"PostgreSQL 15", "new fact"}},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result2.Observations) != 1 || len(result2.Observations[0].Contents) != 1 {
-		t.Fatalf("expected only 'new fact' to be added, got %v", result2.Observations)
+	if len(result2) != 1 || len(result2[0].Contents) != 1 {
+		t.Fatalf("expected only 'new fact' to be added, got %v", result2)
 	}
 
 	// Error on non-existent entity
-	_, _, err = s.AddObservations(ctx, req, AddObservationsArgs{
-		Observations: []Observation{
-			{EntityName: "non-existent", Contents: []string{"data"}},
-		},
+	_, err = s.AddObservations([]Observation{
+		{EntityName: "non-existent", Contents: []string{"data"}},
 	})
 	if err == nil {
 		t.Fatal("expected error for non-existent entity")
@@ -145,23 +118,17 @@ func TestAddObservations(t *testing.T) {
 }
 
 func TestSearchNodes(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
 	// Seed
-	s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "auth-service", EntityType: "Component", Observations: []string{"handles JWT tokens"}},
-			{Name: "payment-api", EntityType: "API", Observations: []string{"Stripe integration"}},
-		},
+	s.CreateEntities([]Entity{
+		{Name: "auth-service", EntityType: "Component", Observations: []string{"handles JWT tokens"}},
+		{Name: "payment-api", EntityType: "API", Observations: []string{"Stripe integration"}},
 	})
-	s.CreateRelations(ctx, req, CreateRelationsArgs{
-		Relations: []Relation{{From: "auth-service", To: "payment-api", RelationType: "authenticates"}},
-	})
+	s.CreateRelations([]Relation{{From: "auth-service", To: "payment-api", RelationType: "authenticates"}})
 
 	// Search by name
-	_, graph, err := s.SearchNodes(ctx, req, SearchNodesArgs{Query: "auth"})
+	graph, err := s.SearchNodes("auth")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -170,7 +137,7 @@ func TestSearchNodes(t *testing.T) {
 	}
 
 	// Search by observation content
-	_, graph2, err := s.SearchNodes(ctx, req, SearchNodesArgs{Query: "stripe"})
+	graph2, err := s.SearchNodes("stripe")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -180,29 +147,23 @@ func TestSearchNodes(t *testing.T) {
 }
 
 func TestDeleteEntitiesCascade(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
 	// Seed
-	s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "svc-a", EntityType: "Component", Observations: []string{"obs1"}},
-			{Name: "svc-b", EntityType: "Component"},
-		},
+	s.CreateEntities([]Entity{
+		{Name: "svc-a", EntityType: "Component", Observations: []string{"obs1"}},
+		{Name: "svc-b", EntityType: "Component"},
 	})
-	s.CreateRelations(ctx, req, CreateRelationsArgs{
-		Relations: []Relation{{From: "svc-a", To: "svc-b", RelationType: "calls"}},
-	})
+	s.CreateRelations([]Relation{{From: "svc-a", To: "svc-b", RelationType: "calls"}})
 
 	// Delete svc-a → should cascade observations + relations
-	_, _, err := s.DeleteEntities(ctx, req, DeleteEntitiesArgs{EntityNames: []string{"svc-a"}})
+	err := s.DeleteEntities([]string{"svc-a"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	// Read graph and verify
-	_, graph, err := s.ReadGraph(ctx, req, nil)
+	graph, err := s.ReadGraph()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -215,12 +176,10 @@ func TestDeleteEntitiesCascade(t *testing.T) {
 }
 
 func TestReadGraph(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
 	// Empty graph
-	_, graph, err := s.ReadGraph(ctx, req, nil)
+	graph, err := s.ReadGraph()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -230,19 +189,15 @@ func TestReadGraph(t *testing.T) {
 }
 
 func TestOpenNodes(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
-	s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "node-1", EntityType: "Service"},
-			{Name: "node-2", EntityType: "Service"},
-			{Name: "node-3", EntityType: "Database"},
-		},
+	s.CreateEntities([]Entity{
+		{Name: "node-1", EntityType: "Service"},
+		{Name: "node-2", EntityType: "Service"},
+		{Name: "node-3", EntityType: "Database"},
 	})
 
-	_, graph, err := s.OpenNodes(ctx, req, OpenNodesArgs{Names: []string{"node-1", "node-3"}})
+	graph, err := s.OpenNodes([]string{"node-1", "node-3"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -252,31 +207,23 @@ func TestOpenNodes(t *testing.T) {
 }
 
 func TestDeleteRelations(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	s := newTestService(t)
 
-	s.CreateEntities(ctx, req, CreateEntitiesArgs{
-		Entities: []Entity{
-			{Name: "a", EntityType: "X"},
-			{Name: "b", EntityType: "Y"},
-		},
+	s.CreateEntities([]Entity{
+		{Name: "a", EntityType: "X"},
+		{Name: "b", EntityType: "Y"},
 	})
-	s.CreateRelations(ctx, req, CreateRelationsArgs{
-		Relations: []Relation{
-			{From: "a", To: "b", RelationType: "uses"},
-			{From: "b", To: "a", RelationType: "notifies"},
-		},
+	s.CreateRelations([]Relation{
+		{From: "a", To: "b", RelationType: "uses"},
+		{From: "b", To: "a", RelationType: "notifies"},
 	})
 
-	_, _, err := s.DeleteRelations(ctx, req, DeleteRelationsArgs{
-		Relations: []Relation{{From: "a", To: "b", RelationType: "uses"}},
-	})
+	err := s.DeleteRelations([]Relation{{From: "a", To: "b", RelationType: "uses"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, graph, _ := s.ReadGraph(ctx, req, nil)
+	graph, _ := s.ReadGraph()
 	if len(graph.Relations) != 1 || graph.Relations[0].RelationType != "notifies" {
 		t.Fatalf("expected only 'notifies' relation remaining, got %v", graph.Relations)
 	}
@@ -292,12 +239,12 @@ func TestOpenDB_InMemory(t *testing.T) {
 	}
 }
 
-func TestAutoWriter_EntityCount(t *testing.T) {
+func TestMemoryService_EntityCount(t *testing.T) {
 	db, err := OpenDB(fmt.Sprintf("file:autowriter_%d?mode=memory&cache=shared", testCounter.Add(1)))
 	if err != nil {
 		t.Fatalf("OpenDB: %v", err)
 	}
-	w := NewAutoWriter(db)
+	w := NewMemoryService(db)
 
 	count, err := w.EntityCount()
 	if err != nil {
@@ -321,54 +268,5 @@ func TestAutoWriter_EntityCount(t *testing.T) {
 	}
 	if count != 2 {
 		t.Errorf("expected 2 entities, got %d", count)
-	}
-}
-
-func TestAutoWriter_CreateRelations(t *testing.T) {
-	db, err := OpenDB(fmt.Sprintf("file:autowriter_rel_%d?mode=memory&cache=shared", testCounter.Add(1)))
-	if err != nil {
-		t.Fatalf("OpenDB: %v", err)
-	}
-	w := NewAutoWriter(db)
-
-	_, err = w.CreateEntities([]Entity{
-		{Name: "svc-a", EntityType: "service"},
-		{Name: "svc-b", EntityType: "service"},
-	})
-	if err != nil {
-		t.Fatalf("CreateEntities: %v", err)
-	}
-
-	rels, err := w.CreateRelations([]Relation{
-		{From: "svc-a", To: "svc-b", RelationType: "depends_on"},
-	})
-	if err != nil {
-		t.Fatalf("CreateRelations: %v", err)
-	}
-	if len(rels) != 1 {
-		t.Errorf("expected 1 relation, got %d", len(rels))
-	}
-}
-
-func TestAutoWriter_SearchNodes(t *testing.T) {
-	db, err := OpenDB(fmt.Sprintf("file:autowriter_search_%d?mode=memory&cache=shared", testCounter.Add(1)))
-	if err != nil {
-		t.Fatalf("OpenDB: %v", err)
-	}
-	w := NewAutoWriter(db)
-
-	_, err = w.CreateEntities([]Entity{
-		{Name: "payment-svc", EntityType: "service", Observations: []string{"_source:catalog-info"}},
-	})
-	if err != nil {
-		t.Fatalf("CreateEntities: %v", err)
-	}
-
-	graph, err := w.SearchNodes("_source:catalog-info")
-	if err != nil {
-		t.Fatalf("SearchNodes: %v", err)
-	}
-	if len(graph.Entities) != 1 {
-		t.Errorf("expected 1 entity, got %d", len(graph.Entities))
 	}
 }
