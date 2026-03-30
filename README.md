@@ -1,4 +1,5 @@
 <div align="center">
+
 # DocScout-MCP
 
 ![DocScout-MCP](docs/images/doc-scout-mcp-server.png)
