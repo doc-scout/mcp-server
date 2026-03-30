@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-github/v60/github"
 )
@@ -182,5 +183,29 @@ func TestScanner_SearchDocs(t *testing.T) {
 	}
 	if results[0].Path != "docs/guide.md" {
 		t.Errorf("expected 'docs/guide.md', got %s", results[0].Path)
+	}
+}
+
+func TestScanner_RepoScanRespectsContext(t *testing.T) {
+	ts, client := setupMockGitHub()
+	defer ts.Close()
+
+	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+
+	// Run with a pre-cancelled context — scanOrg should return without blocking.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	done := make(chan struct{})
+	go func() {
+		s.scanOrg(ctx)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Good: completed without blocking
+	case <-time.After(3 * time.Second):
+		t.Fatal("scanOrg did not complete within 3 seconds with a cancelled context")
 	}
 }

@@ -166,14 +166,13 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 			defer wg.Done()
 			defer func() { <-sem }() // release
 
-			// For extra repos, the path we fetch from might be "owner/repo"
-			// Wait, client.Repositories.GetContents uses owner AND repo.
-			// s.org is fixed for org repos. What about extra repos?
-			// So scanRepo needs owner and repoName separately.
-			// The repository object has Owner.Login.
 			repoOwner := repo.GetOwner().GetLogin()
 
-			files := s.scanRepo(ctx, repoOwner, repoName)
+			// Per-repo timeout prevents a single slow GitHub response from stalling the scan.
+			repoCtx, repoCancel := context.WithTimeout(ctx, 30*time.Second)
+			defer repoCancel()
+
+			files := s.scanRepo(repoCtx, repoOwner, repoName)
 			if len(files) > 0 {
 				info := &RepoInfo{
 					Name:        fmt.Sprintf("%s/%s", repoOwner, repoName),
