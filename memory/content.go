@@ -5,6 +5,7 @@ package memory
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -65,7 +66,8 @@ func (cc *ContentCache) Upsert(repoName, path, sha, content string) error {
 		return nil
 	}
 	if len(content) > cc.maxSize {
-		return nil // skip oversized files silently
+		slog.Debug("[content] Skipping oversized file", "repo", repoName, "path", path, "size", len(content), "max", cc.maxSize)
+		return nil
 	}
 	row := dbDocContent{
 		RepoName:  repoName,

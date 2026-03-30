@@ -5,7 +5,7 @@ package indexer
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/leonancarvalho/docscout-mcp/memory"
@@ -52,17 +52,20 @@ func (ai *AutoIndexer) Run(ctx context.Context, repos []scanner.RepoInfo) {
 
 	// Phase 1: Refresh content cache.
 	if ai.cache != nil {
+		slog.Info("[indexer] Phase 1: refreshing content cache", "repos", len(repos))
 		ai.refreshContent(ctx, repos)
 		activeRepoList := make([]string, 0, len(activeRepos))
 		for name := range activeRepos {
 			activeRepoList = append(activeRepoList, name)
 		}
 		if err := ai.cache.DeleteOrphanedContent(activeRepoList); err != nil {
-			log.Printf("[indexer] Failed to delete orphaned content: %v", err)
+			slog.Error("[indexer] Failed to delete orphaned content", "error", err)
 		}
 	}
 
 	// Phase 2: Auto-graph from catalog-info.yaml.
+	slog.Info("[indexer] Phase 2: parsing catalog-info.yaml files", "repos", len(repos))
+	var fetchFailures, parseFailures int
 	for _, repo := range repos {
 		for _, file := range repo.Files {
 			if file.Type != "catalog-info" {
@@ -70,20 +73,28 @@ func (ai *AutoIndexer) Run(ctx context.Context, repos []scanner.RepoInfo) {
 			}
 			content, err := ai.sc.GetFileContent(ctx, repo.Name, file.Path)
 			if err != nil {
-				log.Printf("[indexer] Failed to fetch %s/%s: %v", repo.Name, file.Path, err)
+				fetchFailures++
+				slog.Warn("[indexer] Failed to fetch catalog file", "repo", repo.Name, "path", file.Path, "error", err)
 				continue
 			}
 			parsed, err := parser.ParseCatalog([]byte(content))
 			if err != nil {
-				log.Printf("[indexer] Failed to parse catalog for %s: %v", repo.Name, err)
+				parseFailures++
+				slog.Warn("[indexer] Failed to parse catalog", "repo", repo.Name, "error", err)
 				continue
 			}
 			ai.upsertCatalog(ctx, parsed, repo.Name)
 		}
 	}
+	if fetchFailures > 0 || parseFailures > 0 {
+		slog.Warn("[indexer] Phase 2 completed with errors", "fetch_failures", fetchFailures, "parse_failures", parseFailures)
+	}
 
 	// Phase 3: Soft-delete stale entities.
+	slog.Info("[indexer] Phase 3: archiving stale entities")
 	ai.archiveStale(ctx, activeRepos)
+
+	slog.Info("[indexer] Indexing complete", "active_repos", len(repos))
 }
 
 // refreshContent fetches and caches content for files whose SHA has changed.
@@ -95,11 +106,11 @@ func (ai *AutoIndexer) refreshContent(ctx context.Context, repos []scanner.RepoI
 			}
 			content, err := ai.sc.GetFileContent(ctx, repo.Name, file.Path)
 			if err != nil {
-				log.Printf("[indexer] Content fetch failed %s/%s: %v", repo.Name, file.Path, err)
+				slog.Warn("[indexer] Content fetch failed", "repo", repo.Name, "path", file.Path, "error", err)
 				continue
 			}
 			if err := ai.cache.Upsert(repo.Name, file.Path, file.SHA, content); err != nil {
-				log.Printf("[indexer] Content store failed %s/%s: %v", repo.Name, file.Path, err)
+				slog.Warn("[indexer] Content store failed", "repo", repo.Name, "path", file.Path, "error", err)
 			}
 		}
 	}
@@ -109,6 +120,9 @@ func (ai *AutoIndexer) refreshContent(ctx context.Context, repos []scanner.RepoI
 // Upsert rules:
 //   - New entity → create with auto observations.
 //   - Existing entity → add missing observations only, never overwrite.
+//
+// Note: between SearchNodes and CreateEntities, a concurrent scan could create the
+// same entity. The store's COUNT(*) deduplication handles this gracefully.
 func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCatalog, repoFullName string) {
 	autoObs := []string{
 		"_source:catalog-info",
@@ -116,10 +130,9 @@ func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCa
 	}
 	autoObs = append(autoObs, parsed.Observations...)
 
-	// Check if entity already exists.
 	graph, err := ai.graph.SearchNodes(parsed.EntityName)
 	if err != nil {
-		log.Printf("[indexer] SearchNodes failed for %s: %v", parsed.EntityName, err)
+		slog.Error("[indexer] SearchNodes failed", "entity", parsed.EntityName, "error", err)
 		return
 	}
 
@@ -132,7 +145,6 @@ func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCa
 	}
 
 	if !entityExists {
-		// Create new entity with all auto observations.
 		_, err := ai.graph.CreateEntities([]memory.Entity{
 			{
 				Name:         parsed.EntityName,
@@ -141,20 +153,18 @@ func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCa
 			},
 		})
 		if err != nil {
-			log.Printf("[indexer] CreateEntities failed for %s: %v", parsed.EntityName, err)
+			slog.Error("[indexer] CreateEntities failed", "entity", parsed.EntityName, "error", err)
 			return
 		}
 	} else {
-		// Entity exists: add missing observations without overwriting.
 		_, err := ai.graph.AddObservations([]memory.Observation{
 			{EntityName: parsed.EntityName, Contents: autoObs},
 		})
 		if err != nil {
-			log.Printf("[indexer] AddObservations failed for %s: %v", parsed.EntityName, err)
+			slog.Error("[indexer] AddObservations failed", "entity", parsed.EntityName, "error", err)
 		}
 	}
 
-	// Create relations (idempotent).
 	if len(parsed.Relations) > 0 {
 		rels := make([]memory.Relation, 0, len(parsed.Relations))
 		for _, r := range parsed.Relations {
@@ -165,17 +175,16 @@ func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCa
 			})
 		}
 		if _, err := ai.graph.CreateRelations(rels); err != nil {
-			log.Printf("[indexer] CreateRelations failed for %s: %v", parsed.EntityName, err)
+			slog.Error("[indexer] CreateRelations failed", "entity", parsed.EntityName, "error", err)
 		}
 	}
 }
 
 // archiveStale adds _status:archived to entities whose source repo is no longer active.
 func (ai *AutoIndexer) archiveStale(ctx context.Context, activeRepos map[string]bool) {
-	// Find all auto-indexed entities.
 	graph, err := ai.graph.SearchNodes("_source:catalog-info")
 	if err != nil {
-		log.Printf("[indexer] SearchNodes for stale check failed: %v", err)
+		slog.Error("[indexer] SearchNodes for stale check failed", "error", err)
 		return
 	}
 
@@ -188,14 +197,13 @@ func (ai *AutoIndexer) archiveStale(ctx context.Context, activeRepos map[string]
 			}
 		}
 		if repoName == "" || activeRepos[repoName] {
-			continue // still active or unknown source
+			continue
 		}
-		// Mark as archived.
 		_, err := ai.graph.AddObservations([]memory.Observation{
 			{EntityName: entity.Name, Contents: []string{"_status:archived"}},
 		})
 		if err != nil {
-			log.Printf("[indexer] Failed to archive %s: %v", entity.Name, err)
+			slog.Error("[indexer] Failed to archive entity", "entity", entity.Name, "error", err)
 		}
 	}
 }
