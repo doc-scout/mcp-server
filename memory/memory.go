@@ -427,7 +427,7 @@ func OpenDB(dbURL string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&dbEntity{}, &dbRelation{}, &dbObservation{}); err != nil {
+	if err := db.AutoMigrate(&dbEntity{}, &dbRelation{}, &dbObservation{}, &dbDocContent{}); err != nil {
 		return nil, err
 	}
 	return db, nil
