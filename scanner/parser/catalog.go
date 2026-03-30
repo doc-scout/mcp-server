@@ -5,6 +5,8 @@ package parser
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -42,6 +44,22 @@ type backstageCatalog struct {
 	} `yaml:"spec"`
 }
 
+// validEntityName matches Backstage-compatible entity names:
+// optional "namespace/" prefix, then 1–253 chars of [a-zA-Z0-9._-].
+var validEntityName = regexp.MustCompile(`^([a-zA-Z0-9._-]+/)?[a-zA-Z0-9._-]{1,253}$`)
+
+// isValidEntityName returns false for names containing dangerous characters
+// (null bytes, newlines, control characters) or exceeding length limits.
+func isValidEntityName(name string) bool {
+	// Reject any control characters (including null bytes and newlines).
+	for _, r := range name {
+		if r < 0x20 {
+			return false
+		}
+	}
+	return validEntityName.MatchString(strings.TrimSpace(name))
+}
+
 func kindToEntityType(kind, specType string) string {
 	switch kind {
 	case "API":
@@ -72,6 +90,9 @@ func ParseCatalog(data []byte) (ParsedCatalog, error) {
 	}
 	if raw.Metadata.Name == "" {
 		return ParsedCatalog{}, fmt.Errorf("catalog-info.yaml: missing metadata.name")
+	}
+	if !isValidEntityName(raw.Metadata.Name) {
+		return ParsedCatalog{}, fmt.Errorf("catalog-info.yaml: invalid metadata.name %q (must match [a-zA-Z0-9._-]{1,253} with optional namespace/ prefix)", raw.Metadata.Name)
 	}
 
 	name := raw.Metadata.Name

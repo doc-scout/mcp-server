@@ -4,6 +4,7 @@
 package parser_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/leonancarvalho/docscout-mcp/scanner/parser"
@@ -133,5 +134,33 @@ func TestParseCatalog_MalformedYAML(t *testing.T) {
 	_, err := parser.ParseCatalog([]byte("this: is: not: valid: yaml: :::"))
 	if err == nil {
 		t.Fatal("expected error for malformed YAML")
+	}
+}
+
+func TestParseCatalog_InvalidEntityNames(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"null byte", "payment\x00service", true},
+		{"newline", "payment\nservice", true},
+		{"too long", "a" + strings.Repeat("b", 253), true},
+		{"empty after trim", "  ", true},
+		{"valid with dash", "payment-service", false},
+		{"valid with dot", "payment.v2", false},
+		{"valid with namespace", "default/payment-service", false},
+		{"valid with underscore", "payment_service", false},
+		{"valid with number", "svc-1", false},
+	}
+	for _, tc := range cases {
+		yaml := []byte("apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: " + tc.input + "\nspec:\n  type: service\n")
+		_, err := parser.ParseCatalog(yaml)
+		if tc.wantErr && err == nil {
+			t.Errorf("name=%q: expected error but got none", tc.name)
+		}
+		if !tc.wantErr && err != nil {
+			t.Errorf("name=%q: unexpected error: %v", tc.name, err)
+		}
 	}
 }
