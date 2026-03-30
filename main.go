@@ -168,13 +168,23 @@ func main() {
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
 		ai.Run(context.Background(), repos)
 		
+		// Map concrete pointers to interface accurately to avoid typed-nils
+		var searcher tools.ContentSearcher
+		if contentCache != nil {
+			searcher = contentCache
+		}
+
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
-		tools.Register(mcpServer, sc, autoWriter, contentCache)
+		tools.Register(mcpServer, sc, autoWriter, searcher)
 		slog.Info("Triggered tools/list_changed notification")
 	})
 
 	// --- Register MCP Tools ---
-	tools.Register(mcpServer, sc, autoWriter, contentCache)
+	var searcher tools.ContentSearcher
+	if contentCache != nil {
+		searcher = contentCache
+	}
+	tools.Register(mcpServer, sc, autoWriter, searcher)
 
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)

@@ -12,7 +12,8 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 
 - **Automated Org-Wide Scanning**: Recursively searches repositories for documentation files. Target files and directories are fully customizable via environment variables.
 - **Knowledge Graph Memory**: Built-in persistent memory powered by GORM (SQLite or PostgreSQL). AI agents can create entities, track relations, and add observations — surviving across sessions.
-- **Flexible Transports**: Supports both **Stdio** (default) and **Streamable HTTP** transports.
+- **Content Caching**: Opt-in caching for file contents to speed up retrieval and offload GitHub API requests, integrating automatically with the indexing engine.
+- **Flexible Transports & Security**: Supports both **Stdio** (default) and **Streamable HTTP** transports, with optional **Bearer Token Authentication** for HTTP.
 - **Multi-Database Support**: Stores the knowledge graph in SQLite (file or in-memory) or PostgreSQL via `DATABASE_URL`.
 - **Security First**: Defends against LLM hallucination and Path Traversal by _only_ allowing the AI to read files that were securely indexed as valid documentation.
 - **Lightweight & Fast**: Built in Go with goroutines and semaphores for high-performance concurrent scanning.
@@ -58,18 +59,21 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 
 ### Environment Variables
 
-| Variable        | Required | Default                                                                | Description                                                                                   |
-| --------------- | -------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `GITHUB_TOKEN`  | ✅       | —                                                                      | GitHub Personal Access Token (Fine-Grained)                                                   |
-| `GITHUB_ORG`    | ✅       | —                                                                      | GitHub Organization or User name                                                              |
-| `SCAN_INTERVAL` | ❌       | `30m`                                                                  | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
-| `SCAN_FILES`    | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated filenames to scan at repo root                                                |
-| `SCAN_DIRS`     | ❌       | `docs`                                                                 | Comma-separated directories to scan recursively for `.md` files                               |
-| `EXTRA_REPOS`   | ❌       | —                                                                      | Comma-separated public/third-party repos to scan (e.g. `owner/repo`)                          |
-| `REPO_TOPICS`   | ❌       | —                                                                      | Filter org repos by GitHub topics (e.g. `frontend, backend`)                                  |
-| `REPO_REGEX`    | ❌       | —                                                                      | Filter org repos by regex matching the repo name (e.g. `^srv-.*`)                             |
-| `DATABASE_URL`  | ❌       | In-memory SQLite                                                       | Knowledge graph storage. Accepts `sqlite://path.db` or `postgres://user:pass@host/db`         |
-| `HTTP_ADDR`     | ❌       | —                                                                      | If set, starts Streamable HTTP transport at this address (e.g. `:8080`) instead of stdio      |
+| Variable                | Required | Default                                                                | Description                                                                                   |
+| ----------------------- | -------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `GITHUB_TOKEN`          | ✅       | —                                                                      | GitHub Personal Access Token (Fine-Grained)                                                   |
+| `GITHUB_ORG`            | ✅       | —                                                                      | GitHub Organization or User name                                                              |
+| `SCAN_INTERVAL`         | ❌       | `30m`                                                                  | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
+| `SCAN_FILES`            | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated filenames to scan at repo root                                                |
+| `SCAN_DIRS`             | ❌       | `docs`                                                                 | Comma-separated directories to scan recursively for `.md` files                               |
+| `EXTRA_REPOS`           | ❌       | —                                                                      | Comma-separated public/third-party repos to scan (e.g. `owner/repo`)                          |
+| `REPO_TOPICS`           | ❌       | —                                                                      | Filter org repos by GitHub topics (e.g. `frontend, backend`)                                  |
+| `REPO_REGEX`            | ❌       | —                                                                      | Filter org repos by regex matching the repo name (e.g. `^srv-.*`)                             |
+| `DATABASE_URL`          | ❌       | In-memory SQLite                                                       | Knowledge graph storage. Accepts `sqlite://path.db` or `postgres://user:pass@host/db`         |
+| `HTTP_ADDR`             | ❌       | —                                                                      | If set, starts Streamable HTTP transport at this address (e.g. `:8080`) instead of stdio      |
+| `MCP_HTTP_BEARER_TOKEN` | ❌       | —                                                                      | Basic Bearer Token for HTTP Authentication (when `HTTP_ADDR` is used)                         |
+| `SCAN_CONTENT`          | ❌       | `false`                                                                | Enables content caching to offload GitHub API requests (requires persistent `DATABASE_URL`)   |
+| `MAX_CONTENT_SIZE`      | ❌       | `204800` (200 KB)                                                      | Maximum content size in bytes to cache per file                                               |
 
 ### 1. Running with Go (Stdio)
 
@@ -121,6 +125,30 @@ docker run -p 8080:8080 \
   -e DATABASE_URL="postgres://user:pass@db-host:5432/docscout" \
   ghcr.io/your-username/docscout-mcp:latest
 ```
+
+## Testing with MCP Inspector
+
+The official [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) is the recommended tool for testing and debugging this server interactively. 
+
+### Walkthrough
+
+1. Ensure you have Node.js and `npx` installed.
+2. Make sure you have built the project (`go build -o docscout-mcp .`) or have your go environment ready.
+3. Run the Inspector using `npx`, passing your server execution command as an argument.
+
+**Testing Stdio Transport (Default)**
+
+```bash
+# Using go run
+GITHUB_TOKEN="github_pat_11A..." GITHUB_ORG="my-awesome-org" \
+  npx @modelcontextprotocol/inspector go run .
+
+# Or using the compiled binary
+GITHUB_TOKEN="github_pat_11A..." GITHUB_ORG="my-awesome-org" \
+  npx @modelcontextprotocol/inspector ./docscout-mcp
+```
+
+When the Inspector launches, it will securely start your DocScout-MCP server and display a local URL (e.g., `http://localhost:5173`). Open this URL in your browser to access the interactive GUI. There you can verify connections, list the available Prompts, Resources, and Tools (like `list_repos`, `search_docs`, etc.), and test them out by filling their payload forms.
 
 ## Client Configuration
 

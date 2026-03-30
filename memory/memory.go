@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strings"
 
 	"github.com/glebarez/sqlite"
@@ -433,6 +434,22 @@ func OpenDB(dbURL string) (*gorm.DB, error) {
 	return db, nil
 }
 
+// withRecovery wraps an MCP tool handler to catch and log panics gracefully.
+func withRecovery[A, R any](
+	name string,
+	handler func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error),
+) func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args A) (res *mcp.CallToolResult, ret R, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[memory] MCP tool panicked: tool=%s panic=%v\nstack=%s", name, r, string(debug.Stack()))
+				err = fmt.Errorf("internal server error in tool '%s' (panic recovered: %v)", name, r)
+			}
+		}()
+		return handler(ctx, req, args)
+	}
+}
+
 // Register adds the knowledge graph memory tools to the MCP server.
 // db must be obtained via OpenDB (already migrated).
 func Register(s *mcp.Server, db *gorm.DB) {
@@ -441,39 +458,39 @@ func Register(s *mcp.Server, db *gorm.DB) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create_entities",
 		Description: "Create multiple new entities in the knowledge graph",
-	}, mem.CreateEntities)
+	}, withRecovery("create_entities", mem.CreateEntities))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create_relations",
 		Description: "Create multiple new relations between entities",
-	}, mem.CreateRelations)
+	}, withRecovery("create_relations", mem.CreateRelations))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "add_observations",
 		Description: "Add new observations to existing entities",
-	}, mem.AddObservations)
+	}, withRecovery("add_observations", mem.AddObservations))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete_entities",
 		Description: "Remove entities and their relations",
-	}, mem.DeleteEntities)
+	}, withRecovery("delete_entities", mem.DeleteEntities))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete_observations",
 		Description: "Remove specific observations from entities",
-	}, mem.DeleteObservations)
+	}, withRecovery("delete_observations", mem.DeleteObservations))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete_relations",
 		Description: "Remove specific relations from the graph",
-	}, mem.DeleteRelations)
+	}, withRecovery("delete_relations", mem.DeleteRelations))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "read_graph",
 		Description: "Read the entire knowledge graph",
-	}, mem.ReadGraph)
+	}, withRecovery("read_graph", mem.ReadGraph))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_nodes",
 		Description: "Search for nodes based on query",
-	}, mem.SearchNodes)
+	}, withRecovery("search_nodes", mem.SearchNodes))
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "open_nodes",
 		Description: "Retrieve specific nodes by name",
-	}, mem.OpenNodes)
+	}, withRecovery("open_nodes", mem.OpenNodes))
 
 	log.Printf("[memory] Knowledge graph initialized")
 }

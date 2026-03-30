@@ -374,18 +374,18 @@ func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path str
 func classifyFile(name string) string {
 	base := filepath.Base(strings.ToLower(name))
 	switch base {
-	case "catalog-info.yaml":
+	case "catalog-info.yaml": // Backstage
 		return "catalog-info"
-	case "mkdocs.yml":
+	case "mkdocs.yml": // MkDocs
 		return "mkdocs"
-	case "openapi.yaml":
+	case "openapi.yaml": // OpenAPI
 		return "openapi"
-	case "swagger.json":
+	case "swagger.json": // Swagger
 		return "swagger"
-	case "readme.md":
+	case "readme.md": // README
 		return "readme"
 	default:
-		return "docs"
+		return "docs" // Custom markdown files
 	}
 }
 

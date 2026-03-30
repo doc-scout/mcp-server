@@ -6,6 +6,8 @@ package tools
 import (
 	"context"
 	"fmt"
+	"log"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -34,6 +36,22 @@ type ContentSearcher interface {
 	Count() (int64, error)
 }
 
+// withRecovery wraps an MCP tool handler to catch and log panics gracefully.
+func withRecovery[A, R any](
+	name string,
+	handler func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error),
+) func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args A) (res *mcp.CallToolResult, ret R, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[tools] MCP tool panicked: tool=%s panic=%v\nstack=%s", name, r, string(debug.Stack()))
+				err = fmt.Errorf("internal server error in tool '%s' (panic recovered: %v)", name, r)
+			}
+		}()
+		return handler(ctx, req, args)
+	}
+}
+
 // Register adds all DocScout MCP tools to the server.
 // graph and search may be nil — get_scan_status degrades gracefully, search_content is omitted.
 func Register(s *mcp.Server, sc DocumentScanner, graph GraphCounter, search ContentSearcher) {
@@ -41,32 +59,32 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphCounter, search Cont
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_repos",
 		Description: "Lists all repositories in the organization that contain documentation files (catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md, docs/*.md).",
-	}, listReposHandler(sc))
+	}, withRecovery("list_repos", listReposHandler(sc)))
 
 	// --- search_docs ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_docs",
 		Description: "Searches for documentation files by matching a query term against file paths and repository names.",
-	}, searchDocsHandler(sc))
+	}, withRecovery("search_docs", searchDocsHandler(sc)))
 
 	// --- get_file_content ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_file_content",
 		Description: "Retrieves the raw content of a specific documentation file from a GitHub repository. Note: For security reasons, this tool will only return files that have been successfully indexed as documentation (i.e. returned by list_repos or search_docs).",
-	}, getFileContentHandler(sc))
+	}, withRecovery("get_file_content", getFileContentHandler(sc)))
 
 	// --- get_scan_status ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_scan_status",
 		Description: "Returns the current state of the documentation scanner and knowledge graph index. Call this before searching to confirm the index is populated, especially right after startup.",
-	}, getScanStatusHandler(sc, graph, search))
+	}, withRecovery("get_scan_status", getScanStatusHandler(sc, graph, search)))
 
 	// --- search_content (only when content caching is enabled) ---
 	if search != nil {
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "search_content",
 			Description: "Full-text search across the content of all cached documentation files. Use this to find which service handles a specific responsibility (e.g. 'payment', 'authentication'). Only available when SCAN_CONTENT=true.",
-		}, searchContentHandler(search))
+		}, withRecovery("search_content", searchContentHandler(search)))
 	}
 }
 
