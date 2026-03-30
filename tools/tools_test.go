@@ -7,9 +7,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
 
@@ -34,6 +36,10 @@ func (m *mockScanner) GetFileContent(ctx context.Context, repo, path string) (st
 		return content, nil
 	}
 	return "", fmt.Errorf("security policy: path '%s' is not indexed as a documentation file", path)
+}
+
+func (m *mockScanner) Status() (bool, time.Time, int) {
+	return false, time.Time{}, len(m.repos)
 }
 
 func TestListReposHandler(t *testing.T) {
@@ -138,5 +144,106 @@ func TestGetFileContentHandler(t *testing.T) {
 	// The new behavior returns a standard Go compilation error handled by the wrapper.
 	if err2 == nil {
 		t.Errorf("expected error for unindexed file")
+	}
+}
+
+type mockContentSearcher struct {
+	matches []memory.ContentMatch
+	count   int64
+	enabled bool
+}
+
+func (m *mockContentSearcher) Search(query, repo string) ([]memory.ContentMatch, error) {
+	if !m.enabled {
+		return nil, fmt.Errorf("content search is disabled")
+	}
+	return m.matches, nil
+}
+
+func (m *mockContentSearcher) Count() (int64, error) {
+	return m.count, nil
+}
+
+type mockGraphCounter struct {
+	count int64
+}
+
+func (m *mockGraphCounter) EntityCount() (int64, error) {
+	return m.count, nil
+}
+
+func TestGetScanStatusHandler(t *testing.T) {
+	sc := &mockScanner{
+		repos: []scanner.RepoInfo{
+			{Name: "org/svc-a"},
+			{Name: "org/svc-b"},
+		},
+	}
+	counter := &mockGraphCounter{count: 5}
+	searcher := &mockContentSearcher{count: 10, enabled: true}
+
+	handler := getScanStatusHandler(sc, counter, searcher)
+	req := &mcp.CallToolRequest{}
+
+	_, result, err := handler(context.Background(), req, ScanStatusArgs{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.RepoCount != 2 {
+		t.Errorf("expected RepoCount=2, got %d", result.RepoCount)
+	}
+	if result.GraphEntities != 5 {
+		t.Errorf("expected GraphEntities=5, got %d", result.GraphEntities)
+	}
+	if result.ContentIndexed != 10 {
+		t.Errorf("expected ContentIndexed=10, got %d", result.ContentIndexed)
+	}
+	if !result.ContentEnabled {
+		t.Error("expected ContentEnabled=true")
+	}
+}
+
+func TestSearchContentHandler_Success(t *testing.T) {
+	searcher := &mockContentSearcher{
+		enabled: true,
+		matches: []memory.ContentMatch{
+			{RepoName: "org/payment-svc", Path: "README.md", Snippet: "...handles Stripe payments..."},
+		},
+	}
+
+	handler := searchContentHandler(searcher)
+	req := &mcp.CallToolRequest{}
+
+	_, result, err := handler(context.Background(), req, SearchContentArgs{Query: "stripe"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Matches) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(result.Matches))
+	}
+	if result.Matches[0].RepoName != "org/payment-svc" {
+		t.Errorf("wrong repo: %s", result.Matches[0].RepoName)
+	}
+}
+
+func TestSearchContentHandler_Disabled(t *testing.T) {
+	searcher := &mockContentSearcher{enabled: false}
+	handler := searchContentHandler(searcher)
+	req := &mcp.CallToolRequest{}
+
+	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: "anything"})
+	if err == nil {
+		t.Error("expected error when content search is disabled")
+	}
+}
+
+func TestSearchContentHandler_EmptyQuery(t *testing.T) {
+	searcher := &mockContentSearcher{enabled: true}
+	handler := searchContentHandler(searcher)
+	req := &mcp.CallToolRequest{}
+
+	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: ""})
+	if err == nil {
+		t.Error("expected error for empty query")
 	}
 }

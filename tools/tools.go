@@ -6,9 +6,11 @@ package tools
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
 
@@ -17,10 +19,23 @@ type DocumentScanner interface {
 	ListRepos() []scanner.RepoInfo
 	SearchDocs(query string) []scanner.FileEntry
 	GetFileContent(ctx context.Context, repo string, path string) (string, error)
+	Status() (scanning bool, lastScan time.Time, repoCount int)
+}
+
+// GraphCounter provides the entity count for get_scan_status.
+type GraphCounter interface {
+	EntityCount() (int64, error)
+}
+
+// ContentSearcher provides full-text search over cached documentation content.
+type ContentSearcher interface {
+	Search(query, repo string) ([]memory.ContentMatch, error)
+	Count() (int64, error)
 }
 
 // Register adds all DocScout MCP tools to the server.
-func Register(s *mcp.Server, sc DocumentScanner) {
+// graph and search may be nil — get_scan_status degrades gracefully, search_content is omitted.
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphCounter, search ContentSearcher) {
 	// --- list_repos ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_repos",
@@ -38,6 +53,20 @@ func Register(s *mcp.Server, sc DocumentScanner) {
 		Name:        "get_file_content",
 		Description: "Retrieves the raw content of a specific documentation file from a GitHub repository. Note: For security reasons, this tool will only return files that have been successfully indexed as documentation (i.e. returned by list_repos or search_docs).",
 	}, getFileContentHandler(sc))
+
+	// --- get_scan_status ---
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "get_scan_status",
+		Description: "Returns the current state of the documentation scanner and knowledge graph index. Call this before searching to confirm the index is populated, especially right after startup.",
+	}, getScanStatusHandler(sc, graph, search))
+
+	// --- search_content (only when content caching is enabled) ---
+	if search != nil {
+		mcp.AddTool(s, &mcp.Tool{
+			Name:        "search_content",
+			Description: "Full-text search across the content of all cached documentation files. Use this to find which service handles a specific responsibility (e.g. 'payment', 'authentication'). Only available when SCAN_CONTENT=true.",
+		}, searchContentHandler(search))
+	}
 }
 
 // --- Handler Implementations ---
@@ -128,5 +157,68 @@ func getFileContentHandler(sc DocumentScanner) func(ctx context.Context, req *mc
 		}
 
 		return nil, RawContentResult{Content: content}, nil
+	}
+}
+
+// --- get_scan_status ---
+
+type ScanStatusArgs struct{}
+
+type ScanStatusResult struct {
+	Scanning       bool      `json:"scanning"`
+	LastScanAt     time.Time `json:"last_scan_at"`
+	RepoCount      int       `json:"repo_count"`
+	ContentIndexed int64     `json:"content_indexed"`
+	GraphEntities  int64     `json:"graph_entities"`
+	ContentEnabled bool      `json:"content_enabled"`
+}
+
+func getScanStatusHandler(sc DocumentScanner, graph GraphCounter, search ContentSearcher) func(ctx context.Context, req *mcp.CallToolRequest, args ScanStatusArgs) (*mcp.CallToolResult, ScanStatusResult, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args ScanStatusArgs) (*mcp.CallToolResult, ScanStatusResult, error) {
+		scanning, lastScan, repoCount := sc.Status()
+
+		var graphEntities int64
+		if graph != nil {
+			graphEntities, _ = graph.EntityCount()
+		}
+
+		var contentIndexed int64
+		contentEnabled := search != nil
+		if search != nil {
+			contentIndexed, _ = search.Count()
+		}
+
+		return nil, ScanStatusResult{
+			Scanning:       scanning,
+			LastScanAt:     lastScan,
+			RepoCount:      repoCount,
+			ContentIndexed: contentIndexed,
+			GraphEntities:  graphEntities,
+			ContentEnabled: contentEnabled,
+		}, nil
+	}
+}
+
+// --- search_content ---
+
+type SearchContentArgs struct {
+	Query string `json:"query" jsonschema:"The term to search for inside documentation content. Use natural language terms like 'payment', 'authentication', 'event sourcing'."`
+	Repo  string `json:"repo,omitempty" jsonschema:"Optional: filter results to a single repository name (e.g. 'org/payment-service')."`
+}
+
+type SearchContentResult struct {
+	Matches []memory.ContentMatch `json:"matches" jsonschema:"List of files containing the query term, with a snippet showing the matched context."`
+}
+
+func searchContentHandler(search ContentSearcher) func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
+		if args.Query == "" {
+			return nil, SearchContentResult{}, fmt.Errorf("parameter 'query' is required")
+		}
+		matches, err := search.Search(args.Query, args.Repo)
+		if err != nil {
+			return nil, SearchContentResult{}, err
+		}
+		return nil, SearchContentResult{Matches: matches}, nil
 	}
 }
