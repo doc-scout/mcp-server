@@ -5,13 +5,14 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/go-github/v60/github"
@@ -42,7 +43,7 @@ func parseScanInterval(raw string) time.Duration {
 	if n, err := strconv.Atoi(raw); err == nil && n > 0 {
 		return time.Duration(n) * time.Minute
 	}
-	log.Printf("Invalid SCAN_INTERVAL '%s', using default %s", raw, defaultScanInterval)
+	slog.Warn("Invalid SCAN_INTERVAL, using default", "raw", raw, "default", defaultScanInterval)
 	return defaultScanInterval
 }
 
@@ -71,14 +72,20 @@ func isInMemoryDB(dbURL string) bool {
 }
 
 func main() {
+	// Configure slog to write to stderr to prevent MCP stdio corruption
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	slog.SetDefault(logger)
+
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		log.Fatal("GITHUB_TOKEN environment variable is required")
+		slog.Error("GITHUB_TOKEN environment variable is required")
+		os.Exit(1)
 	}
 
 	org := os.Getenv("GITHUB_ORG")
 	if org == "" {
-		log.Fatal("GITHUB_ORG environment variable is required")
+		slog.Error("GITHUB_ORG environment variable is required")
+		os.Exit(1)
 	}
 
 	scanInterval := parseScanInterval(os.Getenv("SCAN_INTERVAL"))
@@ -91,7 +98,8 @@ func main() {
 	if rx := os.Getenv("REPO_REGEX"); rx != "" {
 		compiled, err := regexp.Compile(rx)
 		if err != nil {
-			log.Fatalf("Invalid REPO_REGEX '%s': %v", rx, err)
+			slog.Error("Invalid REPO_REGEX", "regex", rx, "error", err)
+			os.Exit(1)
 		}
 		repoRegex = compiled
 	}
@@ -109,18 +117,21 @@ func main() {
 		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
 			maxContentSize = n
 		} else {
-			log.Printf("Invalid MAX_CONTENT_SIZE '%s', using default %d", raw, defaultMaxContent)
+			slog.Warn("Invalid MAX_CONTENT_SIZE, using default", "raw", raw, "default", defaultMaxContent)
 		}
 	}
 
 	// Disable content caching silently when using in-memory SQLite.
 	if scanContent && isInMemoryDB(dbURL) {
-		log.Println("[main] SCAN_CONTENT=true requires a persistent DATABASE_URL; content caching disabled.")
+		slog.Warn("SCAN_CONTENT=true requires a persistent DATABASE_URL; content caching disabled.")
 		scanContent = false
 	}
 
+	// --- Context & Graceful Shutdown ---
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
 	// --- GitHub client ---
-	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	httpClient := oauth2.NewClient(ctx, ts)
 	ghClient := github.NewClient(httpClient)
@@ -131,7 +142,8 @@ func main() {
 	// --- Database ---
 	db, err := memory.OpenDB(dbURL)
 	if err != nil {
-		log.Fatalf("[main] Failed to open database: %v", err)
+		slog.Error("Failed to open database", "error", err)
+		os.Exit(1)
 	}
 
 	// --- MCP Server ---
@@ -148,13 +160,17 @@ func main() {
 	var contentCache *memory.ContentCache
 	if scanContent {
 		contentCache = memory.NewContentCache(db, true, maxContentSize)
-		log.Printf("[main] Content caching enabled (max file size: %d bytes)", maxContentSize)
+		slog.Info("Content caching enabled", "maxFileSize", maxContentSize)
 	}
 
 	// --- Auto-Indexer ---
 	ai := indexer.New(sc, autoWriter, contentCache)
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
 		ai.Run(context.Background(), repos)
+		
+		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
+		tools.Register(mcpServer, sc, autoWriter, contentCache)
+		slog.Info("Triggered tools/list_changed notification")
 	})
 
 	// --- Register MCP Tools ---
@@ -163,22 +179,58 @@ func main() {
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)
 
-	log.Printf("%s v%s starting (org=%s, scan_interval=%s)\n", serverName, serverVersion, org, scanInterval)
+	slog.Info("Server starting", "name", serverName, "version", serverVersion, "org", org, "scan_interval", scanInterval)
 
 	// --- Transport ---
 	if httpAddr != "" {
-		log.Printf("Listening on Streamable HTTP at %s...", httpAddr)
-		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
+		slog.Info("Listening on Streamable HTTP", "addr", httpAddr)
+		mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 			return mcpServer
 		}, nil)
-		if err := http.ListenAndServe(httpAddr, handler); err != nil {
-			log.Fatalf("HTTP server error: %v", err)
+
+		// Basic Bearer Token Auth Middleware
+		authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			expectedToken := os.Getenv("MCP_HTTP_BEARER_TOKEN")
+			if expectedToken != "" {
+				authHeader := r.Header.Get("Authorization")
+				if authHeader != "Bearer "+expectedToken {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+			}
+			mcpHandler.ServeHTTP(w, r)
+		})
+
+		srv := &http.Server{
+			Addr:    httpAddr,
+			Handler: authHandler,
 		}
+
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				slog.Error("HTTP server error", "error", err)
+				os.Exit(1)
+			}
+		}()
+
+		<-ctx.Done()
+		slog.Info("Shutting down HTTP server...")
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		srv.Shutdown(shutdownCtx)
 	} else {
-		log.Println("Listening on stdio...")
+		slog.Info("Listening on stdio...")
+		go func() {
+			<-ctx.Done()
+			slog.Info("Received shutdown signal, exiting...")
+			os.Exit(0)
+		}()
+		
 		if err := mcpServer.Run(ctx, &mcp.StdioTransport{}); err != nil {
-			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
-			os.Exit(1)
+			if err != context.Canceled {
+				slog.Error("Server error", "error", err)
+				os.Exit(1)
+			}
 		}
 	}
 }

@@ -133,7 +133,7 @@ func searchDocsHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.Ca
 
 // GetFileContentArgs describes the input to the get_file_content tool.
 type GetFileContentArgs struct {
-	Repo string `json:"repo" jsonschema:"The repository name (not full name, just the repo part)."`
+	Repo string `json:"repo" jsonschema:"The repository name, MUST be in the format 'owner/repo' as returned by list_repos (e.g. 'my-org/my-service')."`
 	Path string `json:"path" jsonschema:"The file path within the repository (e.g. 'docs/guide.md' or 'README.md')."`
 }
 
