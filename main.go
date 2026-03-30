@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"log/slog"
 	"net/http"
 	"os"
@@ -121,9 +122,10 @@ func main() {
 		}
 	}
 
-	// Disable content caching silently when using in-memory SQLite.
+	// Disable content caching when using in-memory SQLite — data would be lost on restart.
 	if scanContent && isInMemoryDB(dbURL) {
-		slog.Warn("SCAN_CONTENT=true requires a persistent DATABASE_URL; content caching disabled.")
+		slog.Error("SCAN_CONTENT=true requires a persistent DATABASE_URL. Content caching has been disabled. " +
+			"Set DATABASE_URL to a SQLite file path (e.g. sqlite:///data/docs.db) or a PostgreSQL URL to enable full-text search.")
 		scanContent = false
 	}
 
@@ -138,6 +140,13 @@ func main() {
 
 	// --- Scanner ---
 	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, extraRepos, repoTopics, repoRegex)
+
+	// Warn operators that active repo filters will cause excluded repos' entities to be archived.
+	if repoRegex != nil || len(repoTopics) > 0 {
+		slog.Warn("Repository filters are active. Entities from repos excluded by these filters will be marked _status:archived on the next scan.",
+			"REPO_REGEX", os.Getenv("REPO_REGEX"),
+			"REPO_TOPICS", os.Getenv("REPO_TOPICS"))
+	}
 
 	// --- Database ---
 	db, err := memory.OpenDB(dbURL)
@@ -165,7 +174,10 @@ func main() {
 	// --- Auto-Indexer ---
 	ai := indexer.New(sc, memorySrv, contentCache)
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
+		start := time.Now()
+		slog.Info("[indexer] Auto-indexing started", "repos", len(repos))
 		ai.Run(context.Background(), repos)
+		slog.Info("[indexer] Auto-indexing complete", "duration", time.Since(start).String())
 		
 		// Map concrete pointers to interface accurately to avoid typed-nils
 		var searcher tools.ContentSearcher
@@ -197,12 +209,13 @@ func main() {
 			return mcpServer
 		}, nil)
 
-		// Basic Bearer Token Auth Middleware
+		// Bearer Token Auth Middleware — uses constant-time comparison to prevent timing attacks.
 		authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedToken := os.Getenv("MCP_HTTP_BEARER_TOKEN")
 			if expectedToken != "" {
-				authHeader := r.Header.Get("Authorization")
-				if authHeader != "Bearer "+expectedToken {
+				provided := r.Header.Get("Authorization")
+				expected := "Bearer " + expectedToken
+				if subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) != 1 {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
