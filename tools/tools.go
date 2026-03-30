@@ -6,6 +6,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -123,8 +124,8 @@ type SearchDocsResult struct {
 
 func searchDocsHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.CallToolRequest, args SearchDocsArgs) (*mcp.CallToolResult, SearchDocsResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchDocsArgs) (*mcp.CallToolResult, SearchDocsResult, error) {
-		if args.Query == "" {
-			return nil, SearchDocsResult{}, fmt.Errorf("parameter 'query' is required")
+		if strings.TrimSpace(args.Query) == "" {
+			return nil, SearchDocsResult{}, fmt.Errorf("parameter 'query' must not be empty or whitespace-only")
 		}
 		results := sc.SearchDocs(args.Query)
 		return nil, SearchDocsResult{Files: results}, nil
@@ -212,8 +213,8 @@ type SearchContentResult struct {
 
 func searchContentHandler(search ContentSearcher) func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
-		if args.Query == "" {
-			return nil, SearchContentResult{}, fmt.Errorf("parameter 'query' is required")
+		if strings.TrimSpace(args.Query) == "" {
+			return nil, SearchContentResult{}, fmt.Errorf("parameter 'query' must not be empty or whitespace-only")
 		}
 		matches, err := search.Search(args.Query, args.Repo)
 		if err != nil {

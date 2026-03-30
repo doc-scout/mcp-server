@@ -88,12 +88,17 @@ func (cc *ContentCache) Search(query, repoName string) ([]ContentMatch, error) {
 	if !cc.enabled {
 		return nil, fmt.Errorf("content search is disabled: set SCAN_CONTENT=true and restart with a persistent DATABASE_URL to enable it")
 	}
-	if query == "" {
-		return nil, fmt.Errorf("query must not be empty")
+	if strings.TrimSpace(query) == "" {
+		return nil, fmt.Errorf("query must not be empty or whitespace-only")
 	}
 
+	// Escape SQL LIKE special characters so the query is treated as a literal string.
+	escaped := strings.ReplaceAll(query, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, "%", `\%`)
+	escaped = strings.ReplaceAll(escaped, "_", `\_`)
+
 	var rows []dbDocContent
-	q := cc.db.Where("LOWER(content) LIKE LOWER(?)", "%"+query+"%")
+	q := cc.db.Where("LOWER(content) LIKE LOWER(?) ESCAPE ?", "%"+escaped+"%", `\`)
 	if repoName != "" {
 		q = q.Where("repo_name = ?", repoName)
 	}

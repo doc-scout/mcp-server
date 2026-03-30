@@ -247,3 +247,25 @@ func TestSearchContentHandler_EmptyQuery(t *testing.T) {
 		t.Error("expected error for empty query")
 	}
 }
+
+func TestSearchDocsHandler_WhitespaceQuery(t *testing.T) {
+	sc := &mockScanner{}
+	handler := searchDocsHandler(sc)
+	req := &mcp.CallToolRequest{}
+
+	_, _, err := handler(context.Background(), req, SearchDocsArgs{Query: "   "})
+	if err == nil {
+		t.Error("expected error for whitespace-only query in search_docs")
+	}
+}
+
+func TestSearchContentHandler_WhitespaceQuery(t *testing.T) {
+	searcher := &mockContentSearcher{enabled: true}
+	handler := searchContentHandler(searcher)
+	req := &mcp.CallToolRequest{}
+
+	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: "\t\n"})
+	if err == nil {
+		t.Error("expected error for whitespace-only query in search_content")
+	}
+}

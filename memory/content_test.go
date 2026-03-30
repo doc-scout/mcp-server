@@ -164,3 +164,29 @@ func TestContentCache_Disabled(t *testing.T) {
 		t.Error("Search on disabled cache should return error")
 	}
 }
+
+func TestContentCache_Search_WildcardInQuery(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+
+	cache.Upsert("org/svc", "README.md", "sha1", "discount: 50% off all items")
+	cache.Upsert("org/svc2", "README.md", "sha2", "discount: anything off all items")
+
+	// A literal "50%" should only match files that contain the literal string "50%".
+	matches, err := cache.Search("50%", "")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(matches) != 1 {
+		t.Errorf("expected exactly 1 match for literal '50%%', got %d", len(matches))
+	}
+}
+
+func TestContentCache_Search_WhitespaceOnlyQuery(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+	cache.Upsert("org/svc", "README.md", "sha1", "some content")
+
+	_, err := cache.Search("   ", "")
+	if err == nil {
+		t.Error("expected error for whitespace-only query")
+	}
+}
