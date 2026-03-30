@@ -24,11 +24,15 @@ var DefaultTargetFiles = []string{
 	"openapi.yaml",
 	"swagger.json",
 	"README.md",
+	"SKILLS.md",
+	"AGENTS.md",
+	"go.mod",
 }
 
 // DefaultScanDirs defines the default directories to scan recursively for .md files.
 var DefaultScanDirs = []string{
 	"docs",
+	".agents",
 }
 
 // FileEntry represents an indexed documentation file.
@@ -351,7 +355,10 @@ func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path str
 		itemPath := item.GetPath()
 		switch item.GetType() {
 		case "file":
-			if strings.HasSuffix(strings.ToLower(itemPath), ".md") {
+			lowerPath := strings.ToLower(itemPath)
+			isAgentDir := strings.Contains(lowerPath, ".agents/") || strings.Contains(lowerPath, ".agent/") || strings.Contains(lowerPath, "_agents/") || strings.Contains(lowerPath, "_agent/")
+			
+			if strings.HasSuffix(lowerPath, ".md") || isAgentDir {
 				entries = append(entries, FileEntry{
 					RepoName: repoName,
 					Path:     itemPath,
@@ -383,6 +390,12 @@ func classifyFile(name string) string {
 		return "swagger"
 	case "readme.md": // README
 		return "readme"
+	case "skills.md":
+		return "skills"
+	case "agents.md":
+		return "agents"
+	case "go.mod":
+		return "gomod"
 	default:
 		return "docs" // Custom markdown files
 	}
