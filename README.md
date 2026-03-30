@@ -1,7 +1,7 @@
 <div align="center">
 # DocScout-MCP
 
-![DocScout-MCP](docs/images/docscout-mcp.png)
+![DocScout-MCP](docs/images/doc-scout-mcp-server.png)
 
 DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that securely connects to your GitHub Organization, scans all repositories for documentation files, and provides intelligent context to AI Assistants (like Claude, Cursor, Antigravity, and others).
 
