@@ -64,6 +64,8 @@ type Scanner struct {
 
 	scanning   bool
 	lastScanAt time.Time
+
+	onScanComplete func([]RepoInfo) // called after each full scan completes
 }
 
 // New creates a new Scanner instance.
@@ -85,6 +87,14 @@ func New(client *github.Client, org string, scanInterval time.Duration, targetFi
 		repoRegex:    repoRegex,
 		repos:        make(map[string]*RepoInfo),
 	}
+}
+
+// SetOnScanComplete registers a callback invoked after each full scan with the current repo list.
+// The callback runs synchronously in the scan goroutine.
+func (s *Scanner) SetOnScanComplete(fn func([]RepoInfo)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onScanComplete = fn
 }
 
 // Start begins the initial scan and schedules periodic re-scans.
@@ -184,7 +194,13 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 	// Swap entire cache atomically.
 	s.mu.Lock()
 	s.repos = newRepos
+	onComplete := s.onScanComplete
 	s.mu.Unlock()
+
+	// Invoke callback outside the lock to avoid deadlock if callback calls ListRepos.
+	if onComplete != nil {
+		onComplete(s.ListRepos())
+	}
 }
 
 // listAllRepos paginates through all repos for the configured owner.

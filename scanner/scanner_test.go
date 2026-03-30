@@ -146,6 +146,29 @@ func TestScanner_GetFileContent(t *testing.T) {
 	}
 }
 
+func TestScanner_OnScanComplete(t *testing.T) {
+	ts, client := setupMockGitHub()
+	defer ts.Close()
+
+	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+
+	called := false
+	var callbackRepos []RepoInfo
+	s.SetOnScanComplete(func(repos []RepoInfo) {
+		called = true
+		callbackRepos = repos
+	})
+
+	s.scanOrg(context.Background())
+
+	if !called {
+		t.Fatal("OnScanComplete callback was not called")
+	}
+	if len(callbackRepos) != 1 {
+		t.Errorf("expected 1 repo in callback, got %d", len(callbackRepos))
+	}
+}
+
 func TestScanner_SearchDocs(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
