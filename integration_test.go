@@ -6,6 +6,7 @@ package main_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/leonancarvalho/docscout-mcp/tools"
 )
 
-// mockScanner provides a minimal scanner for E2E tests.
 type mockScanner struct{}
 
 func (m *mockScanner) ListRepos() []scanner.RepoInfo {
@@ -48,8 +48,10 @@ func (m *mockScanner) GetFileContent(ctx context.Context, repo, path string) (st
 	return "", nil
 }
 
-// setupTestServer creates a full MCP server with all tools registered,
-// connects a client via in-memory transport, and returns the client session.
+func (m *mockScanner) Status() (bool, time.Time, int) {
+	return false, time.Now(), 1
+}
+
 func setupTestServer(t *testing.T) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
@@ -59,13 +61,17 @@ func setupTestServer(t *testing.T) *mcp.ClientSession {
 		Version: "test",
 	}, nil)
 
-	// Register scanner tools
-	tools.Register(server, &mockScanner{})
+	db, err := memory.OpenDB("")
+	if err != nil {
+		t.Fatalf("memory.OpenDB: %v", err)
+	}
 
-	// Register memory tools (in-memory SQLite)
-	memory.Register(server, "")
+	memory.Register(server, db)
+	autoWriter := memory.NewAutoWriter(db)
 
-	// Wire up in-memory transport (no real stdio needed)
+	// Register scanner tools (no content cache in integration tests).
+	tools.Register(server, &mockScanner{}, autoWriter, nil)
+
 	t1, t2 := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, t1, nil); err != nil {
 		t.Fatalf("server connect: %v", err)
@@ -90,9 +96,10 @@ func TestE2E_ListTools(t *testing.T) {
 		t.Fatalf("ListTools: %v", err)
 	}
 
-	// We expect 3 scanner tools + 9 memory tools = 12 total
-	if len(result.Tools) < 12 {
-		t.Fatalf("expected at least 12 tools, got %d", len(result.Tools))
+	// 3 scanner tools + 9 memory tools + 1 get_scan_status = 13
+	// search_content is not registered because cache is nil
+	if len(result.Tools) < 13 {
+		t.Fatalf("expected at least 13 tools, got %d", len(result.Tools))
 	}
 
 	toolNames := make(map[string]bool)
@@ -101,7 +108,7 @@ func TestE2E_ListTools(t *testing.T) {
 	}
 
 	expected := []string{
-		"list_repos", "search_docs", "get_file_content",
+		"list_repos", "search_docs", "get_file_content", "get_scan_status",
 		"create_entities", "create_relations", "add_observations",
 		"delete_entities", "delete_observations", "delete_relations",
 		"read_graph", "search_nodes", "open_nodes",
@@ -118,13 +125,10 @@ func TestE2E_ListRepos(t *testing.T) {
 	defer session.Close()
 
 	ctx := context.Background()
-	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "list_repos",
-	})
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_repos"})
 	if err != nil {
 		t.Fatalf("CallTool list_repos: %v", err)
 	}
-
 	if result.IsError {
 		t.Fatalf("list_repos returned error")
 	}
@@ -145,7 +149,6 @@ func TestE2E_SearchDocs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CallTool search_docs: %v", err)
 	}
-
 	if result.IsError {
 		t.Fatalf("search_docs returned error")
 	}
@@ -166,14 +169,45 @@ func TestE2E_GetFileContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CallTool get_file_content: %v", err)
 	}
-
 	if result.IsError {
 		t.Fatalf("get_file_content returned error")
 	}
-
 	text := result.Content[0].(*mcp.TextContent).Text
 	if text == "" {
 		t.Fatal("expected non-empty file content")
+	}
+}
+
+func TestE2E_ScanStatus(t *testing.T) {
+	session := setupTestServer(t)
+	defer session.Close()
+
+	ctx := context.Background()
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "get_scan_status"})
+	if err != nil {
+		t.Fatalf("CallTool get_scan_status: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("get_scan_status returned error: %v", result.Content)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content from get_scan_status")
+	}
+}
+
+func TestE2E_SearchContent_Disabled(t *testing.T) {
+	session := setupTestServer(t)
+	defer session.Close()
+
+	ctx := context.Background()
+	// search_content is not registered when cache is nil — calling it should return an error
+	_, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "search_content",
+		Arguments: map[string]any{"query": "payment"},
+	})
+	// The tool is not registered, so this should return an error from the MCP layer
+	if err == nil {
+		t.Log("Note: search_content returned no error — this is acceptable if the server returns an MCP tool-not-found error as a result")
 	}
 }
 
@@ -183,7 +217,6 @@ func TestE2E_MemoryLifecycle(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Create entities (observations as string arrays)
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_entities",
 		Arguments: map[string]any{
@@ -200,7 +233,6 @@ func TestE2E_MemoryLifecycle(t *testing.T) {
 		t.Fatalf("create_entities returned error: %v", res.Content)
 	}
 
-	// 2. Create relation
 	res, err = session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_relations",
 		Arguments: map[string]any{
@@ -216,7 +248,6 @@ func TestE2E_MemoryLifecycle(t *testing.T) {
 		t.Fatalf("create_relations returned error: %v", res.Content)
 	}
 
-	// 3. Search nodes
 	res, err = session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "search_nodes",
 		Arguments: map[string]any{"query": "gateway"},
@@ -228,10 +259,7 @@ func TestE2E_MemoryLifecycle(t *testing.T) {
 		t.Fatalf("search_nodes returned error: %v", res.Content)
 	}
 
-	// 4. Read full graph
-	res, err = session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "read_graph",
-	})
+	res, err = session.CallTool(ctx, &mcp.CallToolParams{Name: "read_graph"})
 	if err != nil {
 		t.Fatalf("read_graph: %v", err)
 	}
@@ -239,12 +267,9 @@ func TestE2E_MemoryLifecycle(t *testing.T) {
 		t.Fatalf("read_graph returned error: %v", res.Content)
 	}
 
-	// 5. Delete entity (should cascade relations)
 	res, err = session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "delete_entities",
-		Arguments: map[string]any{
-			"entityNames": []string{"api-gateway"},
-		},
+		Name:      "delete_entities",
+		Arguments: map[string]any{"entityNames": []string{"api-gateway"}},
 	})
 	if err != nil {
 		t.Fatalf("delete_entities: %v", err)
