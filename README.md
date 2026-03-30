@@ -1,6 +1,11 @@
+<div align="center">
 # DocScout-MCP
 
+![DocScout-MCP](docs/images/docscout-mcp.png)
+
 DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that securely connects to your GitHub Organization, scans all repositories for documentation files, and provides intelligent context to AI Assistants (like Claude, Cursor, Antigravity, and others).
+
+</div>
 
 ## Features
 
@@ -15,11 +20,13 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 ## Tools Exposed
 
 ### Scanner Tools
+
 1. `list_repos`: Lists all repositories that contain documentation files.
 2. `search_docs`: Searches documentation files by matching a query against file paths and repo names.
 3. `get_file_content`: Retrieves the raw content of a specific documentation file.
 
 ### Knowledge Graph Tools
+
 4. `create_entities`: Create nodes in the knowledge graph.
 5. `create_relations`: Create directed edges between entities.
 6. `add_observations`: Append facts to existing entities.
@@ -50,18 +57,18 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `GITHUB_TOKEN` | ✅ | — | GitHub Personal Access Token (Fine-Grained) |
-| `GITHUB_ORG` | ✅ | — | GitHub Organization or User name |
-| `SCAN_INTERVAL` | ❌ | `30m` | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
-| `SCAN_FILES` | ❌ | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated filenames to scan at repo root |
-| `SCAN_DIRS` | ❌ | `docs` | Comma-separated directories to scan recursively for `.md` files |
-| `EXTRA_REPOS` | ❌ | — | Comma-separated public/third-party repos to scan (e.g. `owner/repo`) |
-| `REPO_TOPICS` | ❌ | — | Filter org repos by GitHub topics (e.g. `frontend, backend`) |
-| `REPO_REGEX` | ❌ | — | Filter org repos by regex matching the repo name (e.g. `^srv-.*`) |
-| `DATABASE_URL` | ❌ | In-memory SQLite | Knowledge graph storage. Accepts `sqlite://path.db` or `postgres://user:pass@host/db` |
-| `HTTP_ADDR` | ❌ | — | If set, starts Streamable HTTP transport at this address (e.g. `:8080`) instead of stdio |
+| Variable        | Required | Default                                                                | Description                                                                                   |
+| --------------- | -------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `GITHUB_TOKEN`  | ✅       | —                                                                      | GitHub Personal Access Token (Fine-Grained)                                                   |
+| `GITHUB_ORG`    | ✅       | —                                                                      | GitHub Organization or User name                                                              |
+| `SCAN_INTERVAL` | ❌       | `30m`                                                                  | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
+| `SCAN_FILES`    | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated filenames to scan at repo root                                                |
+| `SCAN_DIRS`     | ❌       | `docs`                                                                 | Comma-separated directories to scan recursively for `.md` files                               |
+| `EXTRA_REPOS`   | ❌       | —                                                                      | Comma-separated public/third-party repos to scan (e.g. `owner/repo`)                          |
+| `REPO_TOPICS`   | ❌       | —                                                                      | Filter org repos by GitHub topics (e.g. `frontend, backend`)                                  |
+| `REPO_REGEX`    | ❌       | —                                                                      | Filter org repos by regex matching the repo name (e.g. `^srv-.*`)                             |
+| `DATABASE_URL`  | ❌       | In-memory SQLite                                                       | Knowledge graph storage. Accepts `sqlite://path.db` or `postgres://user:pass@host/db`         |
+| `HTTP_ADDR`     | ❌       | —                                                                      | If set, starts Streamable HTTP transport at this address (e.g. `:8080`) instead of stdio      |
 
 ### 1. Running with Go (Stdio)
 
