@@ -1,0 +1,25 @@
+{{/*
+Copyright 2026 Leonan Carvalho
+SPDX-License-Identifier: AGPL-3.0-only
+*/}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docscout-mcp.configmapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "docscout-mcp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+data:
+  GITHUB_ORG: {{ .Values.config.githubOrg | quote }}
+  SCAN_INTERVAL: {{ .Values.config.scanInterval | quote }}
+  HTTP_ADDR: {{ .Values.config.httpAddr | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  SCAN_CONTENT: {{ .Values.config.scanContent | quote }}
+  MAX_CONTENT_SIZE: {{ .Values.config.maxContentSize | quote }}
+  SCAN_FILES: {{ .Values.config.scanFiles | quote }}
+  SCAN_DIRS: {{ .Values.config.scanDirs | quote }}
+  EXTRA_REPOS: {{ .Values.config.extraRepos | quote }}
+  REPO_TOPICS: {{ .Values.config.repoTopics | quote }}
+  REPO_REGEX: {{ .Values.config.repoRegex | quote }}

@@ -1,0 +1,46 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docscout-mcp-config
+  namespace: docscout-mcp
+  labels:
+    app.kubernetes.io/name: docscout-mcp
+    app.kubernetes.io/component: config
+data:
+  # Required: GitHub organisation (or user) to scan.
+  GITHUB_ORG: ""
+
+  # How often to re-scan repositories (Go duration string).
+  SCAN_INTERVAL: "30m"
+
+  # Enable HTTP transport on this address; also required for /webhook endpoint.
+  HTTP_ADDR: ":8080"
+
+  # SQLite path or PostgreSQL DSN.
+  # SQLite example:  sqlite:///data/docscout.db
+  # Postgres example: postgres://user:pass@host:5432/docscout?sslmode=require
+  DATABASE_URL: "sqlite:///data/docscout.db"
+
+  # Whether to index full file contents (true/false).
+  SCAN_CONTENT: "false"
+
+  # Maximum bytes to index per file when SCAN_CONTENT=true (default 200 KiB).
+  MAX_CONTENT_SIZE: "204800"
+
+  # Comma-separated list of file names to scan (e.g. README.md,CHANGELOG.md).
+  SCAN_FILES: ""
+
+  # Comma-separated list of directories to scan (e.g. docs,wiki).
+  SCAN_DIRS: ""
+
+  # Comma-separated list of additional repositories to scan beyond org discovery.
+  EXTRA_REPOS: ""
+
+  # Comma-separated list of repository topics used to filter discovered repos.
+  REPO_TOPICS: ""
+
+  # Regular expression applied to repository names to filter discovered repos.
+  REPO_REGEX: ""

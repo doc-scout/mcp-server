@@ -1,0 +1,114 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Local development and testing compose file.
+# Copy .env.local.example to .env.local and fill in your credentials before running.
+#
+# Profiles:
+#   http      — HTTP transport with SQLite  (default)
+#   postgres  — HTTP transport with PostgreSQL
+#   stdio     — Stdio transport (for MCP Inspector / Claude Desktop testing)
+#
+# Usage:
+#   docker compose up                              # HTTP + SQLite
+#   docker compose --profile postgres up           # HTTP + PostgreSQL
+#   docker compose --profile stdio run --rm stdio  # Stdio mode
+
+services:
+
+  # ── HTTP transport + SQLite ──────────────────────────────────────────────────
+  docscout-http:
+    build:
+      context: .
+      args:
+        VERSION: local
+    image: docscout-mcp:local
+    ports:
+      - "8080:8080"
+    environment:
+      GITHUB_TOKEN:         ${GITHUB_TOKEN:?GITHUB_TOKEN is required}
+      GITHUB_ORG:           ${GITHUB_ORG:?GITHUB_ORG is required}
+      HTTP_ADDR:            ":8080"
+      DATABASE_URL:         "sqlite:///data/docscout.db"
+      SCAN_INTERVAL:        ${SCAN_INTERVAL:-30m}
+      SCAN_FILES:           ${SCAN_FILES:-}
+      SCAN_DIRS:            ${SCAN_DIRS:-}
+      EXTRA_REPOS:          ${EXTRA_REPOS:-}
+      REPO_TOPICS:          ${REPO_TOPICS:-}
+      REPO_REGEX:           ${REPO_REGEX:-}
+      MCP_HTTP_BEARER_TOKEN: ${MCP_HTTP_BEARER_TOKEN:-}
+      SCAN_CONTENT:         ${SCAN_CONTENT:-false}
+      MAX_CONTENT_SIZE:     ${MAX_CONTENT_SIZE:-204800}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+    volumes:
+      - docscout-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── HTTP transport + PostgreSQL ──────────────────────────────────────────────
+  docscout-postgres:
+    profiles: [postgres]
+    build:
+      context: .
+      args:
+        VERSION: local
+    image: docscout-mcp:local
+    ports:
+      - "8081:8080"
+    environment:
+      GITHUB_TOKEN:         ${GITHUB_TOKEN:?GITHUB_TOKEN is required}
+      GITHUB_ORG:           ${GITHUB_ORG:?GITHUB_ORG is required}
+      HTTP_ADDR:            ":8080"
+      DATABASE_URL:         "postgres://docscout:docscout@postgres:5432/docscout?sslmode=disable"
+      SCAN_INTERVAL:        ${SCAN_INTERVAL:-30m}
+      MCP_HTTP_BEARER_TOKEN: ${MCP_HTTP_BEARER_TOKEN:-}
+      SCAN_CONTENT:         ${SCAN_CONTENT:-false}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    profiles: [postgres]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     docscout
+      POSTGRES_PASSWORD: docscout
+      POSTGRES_DB:       docscout
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docscout"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Stdio transport (MCP Inspector / Claude Desktop) ─────────────────────────
+  stdio:
+    profiles: [stdio]
+    build:
+      context: .
+      args:
+        VERSION: local
+    image: docscout-mcp:local
+    stdin_open: true
+    tty: false
+    # Disable the HTTP-based healthcheck — stdio mode has no HTTP endpoint.
+    healthcheck:
+      disable: true
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?GITHUB_TOKEN is required}
+      GITHUB_ORG:   ${GITHUB_ORG:?GITHUB_ORG is required}
+      SCAN_INTERVAL: ${SCAN_INTERVAL:-30m}
+    restart: "no"
+
+volumes:
+  docscout-data:
+  postgres-data:

@@ -1,0 +1,10 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docscout-mcp
+  labels:
+    app.kubernetes.io/name: docscout-mcp
+    app.kubernetes.io/managed-by: kubectl

@@ -2,28 +2,43 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 # ---- Stage 1: Build ----
-FROM golang:1.22-alpine AS builder
+# BUILDPLATFORM uses the host OS/arch for the compiler (fast on multi-arch builds).
+# TARGETOS/TARGETARCH are injected by `docker buildx build --platform`.
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ARG VERSION=dev
 
 RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
-# Cache dependencies first.
+# Cache module downloads before copying source.
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source and build.
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /docscout-mcp .
+
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -ldflags="-s -w -X main.version=${VERSION}" -o /docscout-mcp .
 
 # ---- Stage 2: Runtime ----
-FROM alpine:3.19
+FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates wget \
+    && addgroup -S appgroup \
+    && adduser  -S appuser -G appgroup
 
 COPY --from=builder /docscout-mcp /usr/local/bin/docscout-mcp
 
-# Environment variables (override at runtime).
+# Persistent storage mount point for SQLite database.
+RUN mkdir /data && chown appuser:appgroup /data
+VOLUME ["/data"]
+
+USER appuser
+
+# Environment variables with defaults (override at runtime via -e or env file).
 ENV GITHUB_TOKEN=""
 ENV GITHUB_ORG=""
 ENV SCAN_INTERVAL="30m"
@@ -34,8 +49,16 @@ ENV REPO_TOPICS=""
 ENV REPO_REGEX=""
 ENV DATABASE_URL=""
 ENV HTTP_ADDR=""
+ENV MCP_HTTP_BEARER_TOKEN=""
+ENV SCAN_CONTENT="false"
+ENV MAX_CONTENT_SIZE="204800"
+ENV GITHUB_WEBHOOK_SECRET=""
 
 # Expose HTTP port for Streamable HTTP transport mode.
 EXPOSE 8080
+
+# Health check for HTTP transport mode. Override with --no-healthcheck for stdio mode.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget -qO- http://localhost:8080/metrics > /dev/null 2>&1 || exit 1
 
 ENTRYPOINT ["docscout-mcp"]

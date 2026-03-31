@@ -1,0 +1,22 @@
+{{/*
+Copyright 2026 Leonan Carvalho
+SPDX-License-Identifier: AGPL-3.0-only
+*/}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docscout-mcp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "docscout-mcp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "docscout-mcp.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: 8080

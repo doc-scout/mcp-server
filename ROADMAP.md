@@ -57,9 +57,15 @@ This document outlines the current technical debts and the path forward for DocS
 - **Goal**: Build a generic "Provider" interface to support GitLab, Bitbucket, Confluence, Notion, and other internal enterprise wikis out-of-the-box.
 
 
-### 7. Deployment and Operations
-- **Current State**: Manual deployment via `go run` or raw Docker commands.
-- **Goal**: Create production-ready deployment assets ("One-click deploy" Helm charts, Terraform modules, and K8s manifests).
+### 7. Deployment and Operations ✅
+- **Implemented**: Full production-ready deployment suite across multiple targets.
+- `Dockerfile` — multi-stage, multi-arch (`linux/amd64`, `linux/arm64`), non-root user, HEALTHCHECK, all env vars declared.
+- `docker-compose.yml` — three profiles: `http` (SQLite, default), `postgres` (PostgreSQL backend), `stdio` (MCP Inspector / Claude Desktop).
+- `Makefile` — `build`, `test`, `lint`, `docker-build`, `docker-build-multiarch`, `compose-up`, `k8s-deploy`, `helm-install`, `release` targets and more.
+- `.mise.toml` — extended with `docker-build`, `compose-up/down`, `helm-lint`, `helm-template`, `clean` tasks.
+- `deploy/k8s/` — raw Kubernetes manifests: Namespace, Secret, ConfigMap, PVC, Deployment (non-root, probes, resource limits), Service, Ingress.
+- `deploy/helm/` — full Helm chart v2 with `values.yaml`, `_helpers.tpl`, and templates for all resources (Deployment, Service, ConfigMap, Secret, PVC, Ingress).
+- `deploy/terraform/` — Kubernetes Terraform module (`hashicorp/kubernetes` provider): Namespace, Secret, ConfigMap, PVC, Deployment, Service, optional Ingress. Works with any K8s cluster (EKS, GKE, AKS, local).
 
 ### 8. Observability — Remaining
 - **Current State**: Tool call counts are tracked. Per-document access is not yet measured.

@@ -1,0 +1,124 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/leonancarvalho/docscout-mcp
+  # tag overrides the appVersion from Chart.yaml when set.
+  tag: "latest"
+  pullPolicy: Always
+
+# ---------------------------------------------------------------------------
+# Non-sensitive configuration — rendered as a ConfigMap.
+# ---------------------------------------------------------------------------
+config:
+  # Required: GitHub organisation (or user) to scan.
+  githubOrg: ""
+
+  # How often to re-scan repositories (Go duration string).
+  scanInterval: "30m"
+
+  # Bind address for the HTTP transport and /webhook endpoint.
+  httpAddr: ":8080"
+
+  # SQLite path or PostgreSQL DSN.
+  databaseUrl: "sqlite:///data/docscout.db"
+
+  # Whether to index full file contents.
+  scanContent: "false"
+
+  # Maximum bytes to index per file when scanContent is true (default 200 KiB).
+  maxContentSize: "204800"
+
+  # Comma-separated list of file names to scan (e.g. "README.md,CHANGELOG.md").
+  scanFiles: ""
+
+  # Comma-separated list of directories to scan (e.g. "docs,wiki").
+  scanDirs: ""
+
+  # Comma-separated list of additional repositories to scan beyond org discovery.
+  extraRepos: ""
+
+  # Comma-separated list of repository topics used to filter discovered repos.
+  repoTopics: ""
+
+  # Regular expression applied to repository names to filter discovered repos.
+  repoRegex: ""
+
+  # Set to true to enable the /webhook endpoint (requires httpAddr and githubWebhookSecret).
+  webhookEnabled: false
+
+# ---------------------------------------------------------------------------
+# Sensitive credentials — rendered as a Kubernetes Secret.
+# Prefer providing these via --set at deploy time or an external secret manager
+# (e.g. External Secrets Operator, Vault Agent) rather than committing values.
+# ---------------------------------------------------------------------------
+secrets:
+  # Required: GitHub personal access token or GitHub App installation token.
+  githubToken: ""
+
+  # Optional: Bearer token for HTTP MCP client authentication.
+  mcpHttpBearerToken: ""
+
+  # Optional: HMAC secret for GitHub webhook payload verification.
+  # Only used when config.webhookEnabled is true.
+  githubWebhookSecret: ""
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 80
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: nginx
+  host: docscout.example.com
+  annotations: {}
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    enabled: false
+    # secretName: docscout-mcp-tls
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Persistence (SQLite data volume)
+# ---------------------------------------------------------------------------
+persistence:
+  enabled: true
+  size: 1Gi
+  # storageClass: "" uses the cluster default StorageClass.
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+# ---------------------------------------------------------------------------
+# Pod security
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# ---------------------------------------------------------------------------
+# Scheduling
+# ---------------------------------------------------------------------------
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

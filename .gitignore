@@ -44,3 +44,15 @@ Thumbs.db
 
 # Agentic MCP docs
 .claude/
+
+# Terraform state and local overrides
+deploy/terraform/.terraform/
+deploy/terraform/.terraform.lock.hcl
+deploy/terraform/terraform.tfstate
+deploy/terraform/terraform.tfstate.backup
+deploy/terraform/*.tfvars
+deploy/terraform/override.tf
+deploy/terraform/override.tf.json
+
+# Build output dir
+bin/

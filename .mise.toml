@@ -39,3 +39,27 @@ run_windows = "cmd /c gci write -s standard -s default -s localmodule --skip-gen
 [tasks.license]
 description = "Adiciona cabeçalhos de licença a todos os arquivos .go"
 run = "addlicense -s -c 'Leonan Carvalho' -l AGPL-3.0-only -ignore '**/*.md' -ignore '**/*.json' -ignore '**/*.yaml'  -ignore '**/*.txt' -ignore 'vendor/**' ."
+
+[tasks.clean]
+description = "Remove binários gerados"
+run = "rm -f docscout-mcp docscout-mcp-linux-amd64 && rm -rf bin/"
+
+[tasks.docker-build]
+description = "Build da imagem Docker local"
+run = "docker build --build-arg VERSION=local -t docscout-mcp:local ."
+
+[tasks.compose-up]
+description = "Sobe o stack HTTP + SQLite via Docker Compose"
+run = "docker compose up -d --build"
+
+[tasks.compose-down]
+description = "Para e remove os containers do Compose"
+run = "docker compose --profile postgres down"
+
+[tasks.helm-lint]
+description = "Valida o chart Helm"
+run = "helm lint deploy/helm"
+
+[tasks.helm-template]
+description = "Renderiza os templates Helm no stdout"
+run = "helm template docscout-mcp deploy/helm --set secrets.githubToken=dummy --set config.githubOrg=my-org"

@@ -1,0 +1,17 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: docscout-data
+  namespace: docscout-mcp
+  labels:
+    app.kubernetes.io/name: docscout-mcp
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

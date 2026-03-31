@@ -1,0 +1,42 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# NOTE: This Ingress requires ingress-nginx (https://kubernetes.github.io/ingress-nginx)
+# or a compatible Ingress controller to be installed in your cluster.
+# For cloud-managed ingress (GKE, EKS, AKS) adjust the annotations accordingly.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docscout-mcp
+  namespace: docscout-mcp
+  labels:
+    app.kubernetes.io/name: docscout-mcp
+    app.kubernetes.io/component: ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # TODO: Uncomment and configure the following annotations as needed:
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  # TODO: Configure TLS — replace docscout.example.com with your actual hostname
+  # and ensure a TLS certificate is provisioned (e.g. via cert-manager).
+  # tls:
+  #   - hosts:
+  #       - docscout.example.com
+  #     secretName: docscout-mcp-tls
+
+  rules:
+    # TODO: Replace docscout.example.com with your actual hostname.
+    - host: docscout.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: docscout-mcp
+                port:
+                  number: 80
