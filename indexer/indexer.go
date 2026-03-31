@@ -154,6 +154,25 @@ func (ai *AutoIndexer) Run(ctx context.Context, repos []scanner.RepoInfo) {
 		}
 	}
 
+	// Phase 2e: Auto-graph from CODEOWNERS — create team/person entities and owns relations.
+	slog.Info("[indexer] Phase 2e: parsing CODEOWNERS files", "repos", len(repos))
+	for _, repo := range repos {
+		for _, file := range repo.Files {
+			if file.Type != "codeowners" {
+				continue
+			}
+			content, err := ai.sc.GetFileContent(ctx, repo.Name, file.Path)
+			if err != nil {
+				slog.Warn("[indexer] Failed to fetch CODEOWNERS", "repo", repo.Name, "path", file.Path, "error", err)
+				continue
+			}
+			parsed := parser.ParseCodeowners([]byte(content))
+			ai.upsertCodeowners(ctx, parsed, repo.Name)
+			// Only process the first CODEOWNERS found per repo to avoid duplicate relations.
+			break
+		}
+	}
+
 	// Phase 3: Soft-delete stale entities.
 	slog.Info("[indexer] Phase 3: archiving stale entities")
 	ai.archiveStale(ctx, activeRepos)
@@ -421,6 +440,71 @@ func (ai *AutoIndexer) upsertPom(ctx context.Context, parsed parser.ParsedPom, r
 	}
 	if _, err := ai.graph.CreateRelations(rels); err != nil {
 		slog.Error("[indexer] CreateRelations failed", "entity", parsed.EntityName, "error", err)
+	}
+}
+
+// upsertCodeowners creates team/person entities for each unique owner found in CODEOWNERS
+// and adds owns relations from each owner entity to the repository's service entity.
+func (ai *AutoIndexer) upsertCodeowners(ctx context.Context, parsed parser.ParsedCodeowners, repoFullName string) {
+	if len(parsed.UniqueOwners) == 0 {
+		return
+	}
+
+	// Derive the target service name from the repo full name (e.g. "myorg/my-service" → "my-service").
+	repoServiceName := repoFullName
+	if idx := strings.LastIndex(repoFullName, "/"); idx >= 0 {
+		repoServiceName = repoFullName[idx+1:]
+	}
+
+	var ownsRels []memory.Relation
+
+	for _, owner := range parsed.UniqueOwners {
+		autoObs := []string{
+			"_source:CODEOWNERS",
+			"_scan_repo:" + repoFullName,
+			"github_handle:" + owner.Raw,
+		}
+
+		graph, err := ai.graph.SearchNodes(owner.EntityName)
+		if err != nil {
+			slog.Error("[indexer] SearchNodes failed", "entity", owner.EntityName, "error", err)
+			continue
+		}
+
+		entityExists := false
+		for _, e := range graph.Entities {
+			if e.Name == owner.EntityName {
+				entityExists = true
+				break
+			}
+		}
+
+		if !entityExists {
+			if _, err := ai.graph.CreateEntities([]memory.Entity{
+				{Name: owner.EntityName, EntityType: owner.EntityType, Observations: autoObs},
+			}); err != nil {
+				slog.Error("[indexer] CreateEntities failed", "entity", owner.EntityName, "error", err)
+				continue
+			}
+		} else {
+			if _, err := ai.graph.AddObservations([]memory.Observation{
+				{EntityName: owner.EntityName, Contents: autoObs},
+			}); err != nil {
+				slog.Error("[indexer] AddObservations failed", "entity", owner.EntityName, "error", err)
+			}
+		}
+
+		ownsRels = append(ownsRels, memory.Relation{
+			From:         owner.EntityName,
+			To:           repoServiceName,
+			RelationType: "owns",
+		})
+	}
+
+	if len(ownsRels) > 0 {
+		if _, err := ai.graph.CreateRelations(ownsRels); err != nil {
+			slog.Error("[indexer] CreateRelations failed for CODEOWNERS owns", "repo", repoFullName, "error", err)
+		}
 	}
 }
 

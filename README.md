@@ -11,6 +11,7 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 ## Features
 
 - **Automated Org-Wide Scanning**: Recursively searches repositories for documentation files. Target files and directories are fully customizable via environment variables.
+- **Ownership Inference**: Automatically parses `CODEOWNERS` files to create `team` and `person` entities in the knowledge graph, with `owns` relations to the respective repositories — no manual configuration required.
 - **Knowledge Graph Memory**: Built-in persistent memory powered by GORM (SQLite or PostgreSQL). AI agents can create entities, track relations, and add observations — surviving across sessions.
 - **Content Caching**: Opt-in caching for file contents to speed up retrieval and offload GitHub API requests, integrating automatically with the indexing engine.
 - **Flexible Transports & Security**: Supports both **Stdio** (default) and **Streamable HTTP** transports, with optional **Bearer Token Authentication** for HTTP.

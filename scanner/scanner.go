@@ -29,6 +29,10 @@ var DefaultTargetFiles = []string{
 	"go.mod",
 	"package.json",
 	"pom.xml",
+	// CODEOWNERS is checked in three GitHub-supported locations.
+	"CODEOWNERS",
+	".github/CODEOWNERS",
+	"docs/CODEOWNERS",
 }
 
 // DefaultScanDirs defines the default directories to scan recursively for .md files.
@@ -473,6 +477,8 @@ func classifyFile(name string) string {
 		return "packagejson"
 	case "pom.xml":
 		return "pomxml"
+	case "codeowners":
+		return "codeowners"
 	default:
 		return "docs" // Custom markdown files
 	}

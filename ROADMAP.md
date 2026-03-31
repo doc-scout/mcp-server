@@ -4,6 +4,12 @@ This document outlines the current technical debts and the path forward for DocS
 
 ## Completed
 
+### 1. Incremental Ingestion Pipeline (Event-Driven) ✅
+- **Implemented**: GitHub Webhook support via opt-in `GITHUB_WEBHOOK_SECRET` env var (requires `HTTP_ADDR`).
+- `webhook/webhook.go` — validates `X-Hub-Signature-256` HMAC-SHA256, handles `push`, `create`, `delete`, and `repository` events. Ignores irrelevant events (`ping`, `star`, `issues`) with a `200 OK`.
+- `scanner/scanner.go` — `TriggerRepoScan` performs a targeted single-repo scan and invokes the indexer callback, bypassing the full org polling cycle.
+- Bearer token auth middleware explicitly excludes `/webhook` since it carries its own HMAC auth.
+
 ### 3. Rate Limiting, Resilience, and Circuit Breakers ✅
 - **Implemented**: `scanner/retry.go` — `retryGitHub` wraps every GitHub API call site with up to 3 retries and smart wait strategies:
   - Primary rate limit (`*RateLimitError`): waits until `Rate.Reset`, capped at 5 minutes.
@@ -12,12 +18,13 @@ This document outlines the current technical debts and the path forward for DocS
   - Non-retryable errors (4xx, context cancellation): returned immediately.
 - All five GitHub API call sites in the scanner are wrapped: `ListByOrg`, `ListByUser`, `Repositories.Get` (extra repos), `GetContents` (per-file scan and directory scan), and `GetFileContent`.
 
-### 6. Auto-Discovery (AST & Dependencies Parsing) ✅ *(partial)*
+### 6. Auto-Discovery (AST & Dependencies Parsing) ✅
 - **Implemented**: Automatic service entity and dependency graph inference from manifest files, without requiring a Backstage `catalog-info.yaml`.
 - `scanner/parser/gomod.go` — `ParseGoMod` extracts module path, Go version, and direct (non-indirect) dependencies from `go.mod`. `go.mod` added to `DefaultTargetFiles`.
 - `scanner/parser/packagejson.go` — `ParsePackageJSON` extracts name, version, and runtime `dependencies` (excluding `devDependencies`) from `package.json`. Scoped names (`@org/pkg`) are normalized to `pkg`. `package.json` added to `DefaultTargetFiles`.
-- `indexer/indexer.go` — Phase 2b (go.mod) and Phase 2c (package.json) auto-upsert `service` entities with source observations and `depends_on` relations to each direct dependency.
-- **Remaining**: `pom.xml` (Maven/Java) and `CODEOWNERS` (ownership inference) parsers.
+- `scanner/parser/pom.go` — `ParsePom` extracts `groupId`, `artifactId`, `version`, and compile/runtime-scope dependencies from `pom.xml`. `test` and `provided` scopes are excluded. `pom.xml` added to `DefaultTargetFiles`.
+- `scanner/parser/codeowners.go` — `ParseCodeowners` extracts all unique owners from `CODEOWNERS` files. Supports `@org/team` (→ `team` entity), `@username` (→ `person` entity), and `user@email.com` formats. Checks three GitHub-supported locations: `CODEOWNERS`, `.github/CODEOWNERS`, `docs/CODEOWNERS`.
+- `indexer/indexer.go` — Phases 2b–2e auto-upsert entities with source observations and `depends_on` / `owns` relations.
 
 ### 8. Observability and Metrics (Prometheus) ✅ *(partial)*
 - **Implemented**: Per-tool call counters exposed via MCP and HTTP.
@@ -36,9 +43,6 @@ This document outlines the current technical debts and the path forward for DocS
 
 ## Future Work
 
-### 1. Incremental Ingestion Pipeline (Event-Driven)
-- **Current State**: The scanner uses polling (`SCAN_INTERVAL`) to fetch data from GitHub repositories, which can lead to unnecessary API calls and rate-limiting issues on large organizations.
-- **Goal**: Implement GitHub Webhook integrations (Push, Release events) to trigger targeted, real-time scans of only the modified files, saving resources and ensuring the Knowledge Graph is always instantly up to date.
 
 ### 2. Semantic Search and Vector Embeddings (RAG)
 - **Current State**: Content search relies on exact text matching (`LIKE` queries in SQL).
@@ -52,9 +56,6 @@ This document outlines the current technical debts and the path forward for DocS
 - **Current State**: Hardcoded dependency on GitHub API.
 - **Goal**: Build a generic "Provider" interface to support GitLab, Bitbucket, Confluence, Notion, and other internal enterprise wikis out-of-the-box.
 
-### 6. Auto-Discovery — Remaining Parsers
-- **Current State**: `go.mod` and `package.json` are parsed. `pom.xml` and `CODEOWNERS` are not yet handled.
-- **Goal**: Add `pom.xml` (Maven dependency graph for Java services) and `CODEOWNERS` (map file ownership to team entities) parsers following the same pattern.
 
 ### 7. Deployment and Operations
 - **Current State**: Manual deployment via `go run` or raw Docker commands.
