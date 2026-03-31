@@ -256,8 +256,12 @@ func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error
 			log.Printf("[scanner] Invalid EXTRA_REPOS format '%s', skipping\n", er)
 			continue
 		}
-		r, _, err := s.client.Repositories.Get(ctx, parts[0], parts[1])
-		if err != nil {
+		var r *github.Repository
+		if err := retryGitHub(ctx, func() error {
+			var e error
+			r, _, e = s.client.Repositories.Get(ctx, parts[0], parts[1])
+			return e
+		}); err != nil {
 			log.Printf("[scanner] Error fetching extra repo %s: %v\n", er, err)
 			continue
 		}
@@ -273,7 +277,13 @@ func (s *Scanner) listByOrg(ctx context.Context) ([]*github.Repository, error) {
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
-		repos, resp, err := s.client.Repositories.ListByOrg(ctx, s.org, opts)
+		var repos []*github.Repository
+		var resp *github.Response
+		err := retryGitHub(ctx, func() error {
+			var e error
+			repos, resp, e = s.client.Repositories.ListByOrg(ctx, s.org, opts)
+			return e
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -292,7 +302,13 @@ func (s *Scanner) listByUser(ctx context.Context) ([]*github.Repository, error) 
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
-		repos, resp, err := s.client.Repositories.ListByUser(ctx, s.org, opts)
+		var repos []*github.Repository
+		var resp *github.Response
+		err := retryGitHub(ctx, func() error {
+			var e error
+			repos, resp, e = s.client.Repositories.ListByUser(ctx, s.org, opts)
+			return e
+		})
 		if err != nil {
 			return nil, fmt.Errorf("listing user repos page %d: %w", opts.Page, err)
 		}
@@ -311,7 +327,13 @@ func (s *Scanner) scanRepo(ctx context.Context, repoOwner, repoName string) []Fi
 
 	// Check root-level target files.
 	for _, target := range s.targetFiles {
-		fc, _, resp, err := s.client.Repositories.GetContents(ctx, repoOwner, repoName, target, nil)
+		var fc *github.RepositoryContent
+		var resp *github.Response
+		err := retryGitHub(ctx, func() error {
+			var e error
+			fc, _, resp, e = s.client.Repositories.GetContents(ctx, repoOwner, repoName, target, nil)
+			return e
+		})
 		if err != nil {
 			if resp != nil && resp.StatusCode == 404 {
 				continue
@@ -342,7 +364,13 @@ func (s *Scanner) scanRepo(ctx context.Context, repoOwner, repoName string) []Fi
 func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path string) []FileEntry {
 	var entries []FileEntry
 
-	_, dirContents, resp, err := s.client.Repositories.GetContents(ctx, repoOwner, repoName, path, nil)
+	var dirContents []*github.RepositoryContent
+	var resp *github.Response
+	err := retryGitHub(ctx, func() error {
+		var e error
+		_, dirContents, resp, e = s.client.Repositories.GetContents(ctx, repoOwner, repoName, path, nil)
+		return e
+	})
 	if err != nil {
 		if resp != nil && resp.StatusCode == 404 {
 			return nil
@@ -468,7 +496,13 @@ func (s *Scanner) GetFileContent(ctx context.Context, repoName, path string) (st
 		repo = parts[1]
 	}
 
-	fc, _, resp, err := s.client.Repositories.GetContents(ctx, owner, repo, path, nil)
+	var fc *github.RepositoryContent
+	var resp *github.Response
+	err := retryGitHub(ctx, func() error {
+		var e error
+		fc, _, resp, e = s.client.Repositories.GetContents(ctx, owner, repo, path, nil)
+		return e
+	})
 	if err != nil {
 		if resp != nil && resp.StatusCode == 404 {
 			return "", fmt.Errorf("file not found: %s/%s", repoName, path)
