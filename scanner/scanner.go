@@ -28,6 +28,7 @@ var DefaultTargetFiles = []string{
 	"AGENTS.md",
 	"go.mod",
 	"package.json",
+	"pom.xml",
 }
 
 // DefaultScanDirs defines the default directories to scan recursively for .md files.
@@ -427,6 +428,8 @@ func classifyFile(name string) string {
 		return "gomod"
 	case "package.json":
 		return "packagejson"
+	case "pom.xml":
+		return "pomxml"
 	default:
 		return "docs" // Custom markdown files
 	}

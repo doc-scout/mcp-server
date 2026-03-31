@@ -4,7 +4,7 @@ DocScout-MCP can be added to Claude Desktop or used via the `claude` CLI tool us
 
 ## Using the Claude CLI
 
-The easiest way to use DocScout-MCP with the Claude CLI is by using the `mcp add` command to configure a local `stdio` server. 
+The easiest way to use DocScout-MCP with the Claude CLI is by using the `mcp add` command to configure a local `stdio` server.
 
 ### Direct Binary
 
@@ -24,14 +24,14 @@ claude mcp add --transport stdio \
 To run directly from source:
 
 ```bash
-claude mcp add --transport stdio \
-  --env GITHUB_TOKEN=github_pat_... \
-  --env GITHUB_ORG=my-org \
-  docscout-mcp \
+claude mcp add --transport stdio docscout-mcp \
+  --env GITHUB_TOKEN="github_pat_..." \
+  --env GITHUB_ORG="<org/username>" \
+  --env SCAN_INTERVAL="10m" \
   -- go run .
 ```
 
-*Note: The `--` separates the `claude mcp add` arguments from the command that executes the server.*
+_Note: The `--` separates the `claude mcp add` arguments from the command that executes the server._
 
 ---
 
@@ -39,7 +39,7 @@ claude mcp add --transport stdio \
 
 If you prefer configuring Claude Desktop manually, modify your `claude_desktop_config.json` file.
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 Add the following to your `mcpServers` block:
@@ -66,10 +66,16 @@ Add the following to your `mcpServers` block:
   "mcpServers": {
     "docscout": {
       "command": "docker",
-      "args": ["run", "-i", "--rm",
-        "-e", "GITHUB_TOKEN=github_pat_...",
-        "-e", "GITHUB_ORG=my-org",
-        "-e", "SCAN_INTERVAL=30m",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_TOKEN=github_pat_...",
+        "-e",
+        "GITHUB_ORG=my-org",
+        "-e",
+        "SCAN_INTERVAL=30m",
         "ghcr.io/your-username/docscout-mcp:latest"
       ]
     }

@@ -133,6 +133,27 @@ func (ai *AutoIndexer) Run(ctx context.Context, repos []scanner.RepoInfo) {
 		}
 	}
 
+	// Phase 2d: Auto-graph from pom.xml — infer Java/Maven service identity and dependencies.
+	slog.Info("[indexer] Phase 2d: parsing pom.xml files", "repos", len(repos))
+	for _, repo := range repos {
+		for _, file := range repo.Files {
+			if file.Type != "pomxml" {
+				continue
+			}
+			content, err := ai.sc.GetFileContent(ctx, repo.Name, file.Path)
+			if err != nil {
+				slog.Warn("[indexer] Failed to fetch pom.xml", "repo", repo.Name, "error", err)
+				continue
+			}
+			parsed, err := parser.ParsePom([]byte(content))
+			if err != nil {
+				slog.Warn("[indexer] Failed to parse pom.xml", "repo", repo.Name, "error", err)
+				continue
+			}
+			ai.upsertPom(ctx, parsed, repo.Name)
+		}
+	}
+
 	// Phase 3: Soft-delete stale entities.
 	slog.Info("[indexer] Phase 3: archiving stale entities")
 	ai.archiveStale(ctx, activeRepos)
@@ -334,6 +355,67 @@ func (ai *AutoIndexer) upsertPackageJSON(ctx context.Context, parsed parser.Pars
 		rels = append(rels, memory.Relation{
 			From:         parsed.EntityName,
 			To:           depName,
+			RelationType: "depends_on",
+		})
+	}
+	if _, err := ai.graph.CreateRelations(rels); err != nil {
+		slog.Error("[indexer] CreateRelations failed", "entity", parsed.EntityName, "error", err)
+	}
+}
+
+// upsertPom writes pom.xml data to the knowledge graph: a service entity for the Maven
+// artifact and depends_on relations to each compile/runtime-scope dependency.
+func (ai *AutoIndexer) upsertPom(ctx context.Context, parsed parser.ParsedPom, repoFullName string) {
+	autoObs := []string{
+		"_source:pom.xml",
+		"_scan_repo:" + repoFullName,
+		"maven_artifact:" + parsed.GroupID + ":" + parsed.ArtifactID,
+	}
+	if parsed.GroupID != "" {
+		autoObs = append(autoObs, "java_group:"+parsed.GroupID)
+	}
+	if parsed.Version != "" {
+		autoObs = append(autoObs, "version:"+parsed.Version)
+	}
+
+	graph, err := ai.graph.SearchNodes(parsed.EntityName)
+	if err != nil {
+		slog.Error("[indexer] SearchNodes failed", "entity", parsed.EntityName, "error", err)
+		return
+	}
+
+	entityExists := false
+	for _, e := range graph.Entities {
+		if e.Name == parsed.EntityName {
+			entityExists = true
+			break
+		}
+	}
+
+	if !entityExists {
+		if _, err := ai.graph.CreateEntities([]memory.Entity{
+			{Name: parsed.EntityName, EntityType: "service", Observations: autoObs},
+		}); err != nil {
+			slog.Error("[indexer] CreateEntities failed", "entity", parsed.EntityName, "error", err)
+			return
+		}
+	} else {
+		if _, err := ai.graph.AddObservations([]memory.Observation{
+			{EntityName: parsed.EntityName, Contents: autoObs},
+		}); err != nil {
+			slog.Error("[indexer] AddObservations failed", "entity", parsed.EntityName, "error", err)
+		}
+	}
+
+	if len(parsed.DirectDeps) == 0 {
+		return
+	}
+
+	rels := make([]memory.Relation, 0, len(parsed.DirectDeps))
+	for _, dep := range parsed.DirectDeps {
+		rels = append(rels, memory.Relation{
+			From:         parsed.EntityName,
+			To:           dep,
 			RelationType: "depends_on",
 		})
 	}
