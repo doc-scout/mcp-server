@@ -12,26 +12,27 @@
 
 ## File Map
 
-| Action | Path | Responsibility |
-|---|---|---|
-| Modify | `scanner/parser/catalog.go` | Add `isValidEntityName` — reject names with dangerous chars |
-| Modify | `scanner/parser/catalog_test.go` | Tests for invalid entity names |
-| Modify | `memory/content.go` | Escape LIKE wildcards; reject whitespace-only queries |
-| Modify | `memory/content_test.go` | Tests for wildcard and whitespace inputs |
-| Modify | `tools/search_docs.go` | Trim whitespace on query args for `search_docs` |
-| Modify | `tools/search_content.go` | Trim whitespace on query args for `search_content` |
-| Modify | `tools/tools_test.go` | Tests for whitespace-only queries |
-| Modify | `scanner/scanner.go` | Add 30s per-repo context timeout in scan goroutines |
-| Modify | `scanner/scanner_test.go` | Test that scan completes when a repo context is pre-cancelled |
-| Modify | `indexer/indexer.go` | Replace `log.Printf` with `slog`; phase logging; failure summary |
-| Modify | `indexer/indexer_test.go` | Verify no regression |
-| Modify | `main.go` | Constant-time bearer token; OnScanComplete timing; filter/SCAN_CONTENT warnings |
+| Action | Path                             | Responsibility                                                                  |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------- |
+| Modify | `scanner/parser/catalog.go`      | Add `isValidEntityName` — reject names with dangerous chars                     |
+| Modify | `scanner/parser/catalog_test.go` | Tests for invalid entity names                                                  |
+| Modify | `memory/content.go`              | Escape LIKE wildcards; reject whitespace-only queries                           |
+| Modify | `memory/content_test.go`         | Tests for wildcard and whitespace inputs                                        |
+| Modify | `tools/search_docs.go`           | Trim whitespace on query args for `search_docs`                                 |
+| Modify | `tools/search_content.go`        | Trim whitespace on query args for `search_content`                              |
+| Modify | `tools/tools_test.go`            | Tests for whitespace-only queries                                               |
+| Modify | `scanner/scanner.go`             | Add 30s per-repo context timeout in scan goroutines                             |
+| Modify | `scanner/scanner_test.go`        | Test that scan completes when a repo context is pre-cancelled                   |
+| Modify | `indexer/indexer.go`             | Replace `log.Printf` with `slog`; phase logging; failure summary                |
+| Modify | `indexer/indexer_test.go`        | Verify no regression                                                            |
+| Modify | `main.go`                        | Constant-time bearer token; OnScanComplete timing; filter/SCAN_CONTENT warnings |
 
 ---
 
 ## Task 1: Entity Name Validation in Catalog Parser (S3)
 
 **Files:**
+
 - Modify: `scanner/parser/catalog.go`
 - Modify: `scanner/parser/catalog_test.go`
 
@@ -147,6 +148,7 @@ pwsh -Command "git add scanner/parser/catalog.go scanner/parser/catalog_test.go;
 ## Task 2: Search Input Sanitization — Wildcard Escaping + Whitespace (S4 + M3)
 
 **Files:**
+
 - Modify: `memory/content.go`
 - Modify: `memory/content_test.go`
 - Modify: `tools/search_docs.go`
@@ -330,6 +332,7 @@ pwsh -Command "git add memory/content.go memory/content_test.go tools/search_doc
 ## Task 3: Per-Repo Scan Timeout (M1)
 
 **Files:**
+
 - Modify: `scanner/scanner.go`
 - Modify: `scanner/scanner_test.go`
 
@@ -425,6 +428,7 @@ pwsh -Command "git add scanner/scanner.go scanner/scanner_test.go; git commit -m
 ## Task 4: Indexer Observability — slog Migration + Phase Logging + Failure Summary (M2, M4, M5, M6)
 
 **Files:**
+
 - Modify: `indexer/indexer.go`
 - Modify: `indexer/indexer_test.go`
 
@@ -697,9 +701,11 @@ pwsh -Command "git add indexer/indexer.go memory/content.go; git commit -m 'feat
 ## Task 5: HTTP Security + Startup Observability (S1, M7, U1, U3)
 
 **Files:**
+
 - Modify: `main.go`
 
 **Context:** Four small improvements to `main.go`:
+
 1. **(S1)** The bearer token comparison `authHeader != "Bearer "+expectedToken` uses `!=` which short-circuits on length mismatch — a timing oracle. Replace with `crypto/subtle.ConstantTimeCompare`.
 2. **(M7)** The `OnScanComplete` callback runs indexing synchronously with no timing logged — operators can't tell if indexing is fast or slow.
 3. **(U1)** When `REPO_REGEX` or `REPO_TOPICS` are set, repos excluded by the filter will cause their entities to be marked `_status:archived` — this is silent today.
@@ -858,22 +864,23 @@ pwsh -Command "git add main.go; git commit -m 'fix: constant-time bearer token, 
 
 ## Self-Review
 
-| Finding | Task |
-|---|---|
-| S3 — entity name validation | Task 1 |
-| S4 — LIKE wildcard escaping | Task 2 |
-| M3 — whitespace-only queries | Task 2 |
-| M1 — per-repo scan timeout | Task 3 |
-| M2 — indexer failure summary | Task 4 |
-| M4 — slog migration in indexer | Task 4 |
-| M5 — phase logging in indexer | Task 4 |
-| M6 — skipped file debug log | Task 4 |
+| Finding                         | Task   |
+| ------------------------------- | ------ |
+| S3 — entity name validation     | Task 1 |
+| S4 — LIKE wildcard escaping     | Task 2 |
+| M3 — whitespace-only queries    | Task 2 |
+| M1 — per-repo scan timeout      | Task 3 |
+| M2 — indexer failure summary    | Task 4 |
+| M4 — slog migration in indexer  | Task 4 |
+| M5 — phase logging in indexer   | Task 4 |
+| M6 — skipped file debug log     | Task 4 |
 | S1 — constant-time bearer token | Task 5 |
-| M7 — OnScanComplete timing | Task 5 |
-| U1 — filter archival warning | Task 5 |
+| M7 — OnScanComplete timing      | Task 5 |
+| U1 — filter archival warning    | Task 5 |
 | U3 — SCAN_CONTENT error clarity | Task 5 |
 
 Findings intentionally deferred (out of scope for this plan):
+
 - S2 — rate limiting (requires new dependency, operationally complex)
 - S5 — GitHub error token sanitization (speculative, no evidence tokens leak)
 - M8 — race condition documentation only (comment, not testable)

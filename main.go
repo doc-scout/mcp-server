@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"crypto/subtle"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -171,6 +172,9 @@ func main() {
 		slog.Info("Content caching enabled", "maxFileSize", maxContentSize)
 	}
 
+	// --- Tool Metrics ---
+	toolMetrics := tools.NewToolMetrics()
+
 	// --- Auto-Indexer ---
 	ai := indexer.New(sc, memorySrv, contentCache)
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
@@ -178,7 +182,7 @@ func main() {
 		slog.Info("[indexer] Auto-indexing started", "repos", len(repos))
 		ai.Run(context.Background(), repos)
 		slog.Info("[indexer] Auto-indexing complete", "duration", time.Since(start).String())
-		
+
 		// Map concrete pointers to interface accurately to avoid typed-nils
 		var searcher tools.ContentSearcher
 		if contentCache != nil {
@@ -186,7 +190,7 @@ func main() {
 		}
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
-		tools.Register(mcpServer, sc, memorySrv, searcher)
+		tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics)
 		slog.Info("Triggered tools/list_changed notification")
 	})
 
@@ -195,7 +199,7 @@ func main() {
 	if contentCache != nil {
 		searcher = contentCache
 	}
-	tools.Register(mcpServer, sc, memorySrv, searcher)
+	tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics)
 
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)
@@ -209,6 +213,18 @@ func main() {
 			return mcpServer
 		}, nil)
 
+		mux := http.NewServeMux()
+		mux.Handle("/", mcpHandler)
+		mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+			snapshot := toolMetrics.Snapshot()
+			fmt.Fprintf(w, "# HELP docscout_tool_calls_total Total number of MCP tool calls since server start.\n")
+			fmt.Fprintf(w, "# TYPE docscout_tool_calls_total counter\n")
+			for tool, count := range snapshot {
+				fmt.Fprintf(w, "docscout_tool_calls_total{tool=%q} %d\n", tool, count)
+			}
+		})
+
 		// Bearer Token Auth Middleware — uses constant-time comparison to prevent timing attacks.
 		authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedToken := os.Getenv("MCP_HTTP_BEARER_TOKEN")
@@ -220,7 +236,7 @@ func main() {
 					return
 				}
 			}
-			mcpHandler.ServeHTTP(w, r)
+			mux.ServeHTTP(w, r)
 		})
 
 		srv := &http.Server{

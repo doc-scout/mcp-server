@@ -28,35 +28,48 @@ func withRecovery[A, R any](
 	}
 }
 
+// withMetrics wraps a handler to record a call in ToolMetrics before execution.
+func withMetrics[A, R any](
+	name string,
+	m *ToolMetrics,
+	handler func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error),
+) func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args A) (*mcp.CallToolResult, R, error) {
+		m.Record(name)
+		return handler(ctx, req, args)
+	}
+}
+
 // Register adds all DocScout MCP tools to the server.
 // graph and search may be nil — get_scan_status degrades gracefully, search_content is omitted.
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher) {
+// metrics must not be nil.
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, metrics *ToolMetrics) {
 	// --- Scanner Tools ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_repos",
 		Description: "Lists all repositories in the organization that contain documentation files (catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md, docs/*.md).",
-	}, withRecovery("list_repos", listReposHandler(sc)))
+	}, withMetrics("list_repos", metrics, withRecovery("list_repos", listReposHandler(sc))))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_docs",
 		Description: "Searches for documentation files by matching a query term against file paths and repository names.",
-	}, withRecovery("search_docs", searchDocsHandler(sc)))
+	}, withMetrics("search_docs", metrics, withRecovery("search_docs", searchDocsHandler(sc))))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_file_content",
 		Description: "Retrieves the raw content of a specific documentation file from a GitHub repository. Note: For security reasons, this tool will only return files that have been successfully indexed as documentation (i.e. returned by list_repos or search_docs).",
-	}, withRecovery("get_file_content", getFileContentHandler(sc)))
+	}, withMetrics("get_file_content", metrics, withRecovery("get_file_content", getFileContentHandler(sc))))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_scan_status",
 		Description: "Returns the current state of the documentation scanner and knowledge graph index. Call this before searching to confirm the index is populated, especially right after startup.",
-	}, withRecovery("get_scan_status", getScanStatusHandler(sc, graph, search)))
+	}, withMetrics("get_scan_status", metrics, withRecovery("get_scan_status", getScanStatusHandler(sc, graph, search))))
 
 	if search != nil {
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "search_content",
 			Description: "Full-text search across the content of all cached documentation files. Use this to find which service handles a specific responsibility (e.g. 'payment', 'authentication'). Only available when SCAN_CONTENT=true.",
-		}, withRecovery("search_content", searchContentHandler(search)))
+		}, withMetrics("search_content", metrics, withRecovery("search_content", searchContentHandler(search))))
 	}
 
 	// --- Memory / Knowledge Graph Tools ---
@@ -64,46 +77,52 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "create_entities",
 			Description: "Create multiple new entities in the knowledge graph",
-		}, withRecovery("create_entities", createEntitiesHandler(graph)))
+		}, withMetrics("create_entities", metrics, withRecovery("create_entities", createEntitiesHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "create_relations",
 			Description: "Create multiple new relations between entities",
-		}, withRecovery("create_relations", createRelationsHandler(graph)))
+		}, withMetrics("create_relations", metrics, withRecovery("create_relations", createRelationsHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "add_observations",
 			Description: "Add new observations to existing entities",
-		}, withRecovery("add_observations", addObservationsHandler(graph)))
+		}, withMetrics("add_observations", metrics, withRecovery("add_observations", addObservationsHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "delete_entities",
-			Description: "Remove entities and their relations",
-		}, withRecovery("delete_entities", deleteEntitiesHandler(graph)))
+			Description: fmt.Sprintf("Remove entities and their associated relations from the knowledge graph. Deleting more than %d entities in a single call requires confirm=true as a safety guard against accidental graph wipes.", massDeleteThreshold),
+		}, withMetrics("delete_entities", metrics, withRecovery("delete_entities", deleteEntitiesHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "delete_observations",
 			Description: "Remove specific observations from entities",
-		}, withRecovery("delete_observations", deleteObservationsHandler(graph)))
+		}, withMetrics("delete_observations", metrics, withRecovery("delete_observations", deleteObservationsHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "delete_relations",
 			Description: "Remove specific relations from the graph",
-		}, withRecovery("delete_relations", deleteRelationsHandler(graph)))
+		}, withMetrics("delete_relations", metrics, withRecovery("delete_relations", deleteRelationsHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "read_graph",
 			Description: "Read the entire knowledge graph",
-		}, withRecovery("read_graph", readGraphHandler(graph)))
+		}, withMetrics("read_graph", metrics, withRecovery("read_graph", readGraphHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "search_nodes",
 			Description: "Search for nodes based on query",
-		}, withRecovery("search_nodes", searchNodesHandler(graph)))
+		}, withMetrics("search_nodes", metrics, withRecovery("search_nodes", searchNodesHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "open_nodes",
 			Description: "Retrieve specific nodes by name",
-		}, withRecovery("open_nodes", openNodesHandler(graph)))
+		}, withMetrics("open_nodes", metrics, withRecovery("open_nodes", openNodesHandler(graph))))
 	}
+
+	// --- Observability ---
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "get_usage_stats",
+		Description: "Returns how many times each MCP tool has been called since the server started. Use this to identify which documentation areas are most frequently accessed by AI agents, helping teams spot knowledge gaps.",
+	}, withRecovery("get_usage_stats", getUsageStatsHandler(metrics)))
 }
