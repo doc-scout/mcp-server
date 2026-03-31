@@ -90,6 +90,28 @@ func (ai *AutoIndexer) Run(ctx context.Context, repos []scanner.RepoInfo) {
 		slog.Warn("[indexer] Phase 2 completed with errors", "fetch_failures", fetchFailures, "parse_failures", parseFailures)
 	}
 
+	// Phase 2b: Auto-graph from go.mod — infer service identity and direct dependencies
+	// without requiring a Backstage catalog-info.yaml.
+	slog.Info("[indexer] Phase 2b: parsing go.mod files", "repos", len(repos))
+	for _, repo := range repos {
+		for _, file := range repo.Files {
+			if file.Type != "gomod" {
+				continue
+			}
+			content, err := ai.sc.GetFileContent(ctx, repo.Name, file.Path)
+			if err != nil {
+				slog.Warn("[indexer] Failed to fetch go.mod", "repo", repo.Name, "error", err)
+				continue
+			}
+			parsed, err := parser.ParseGoMod([]byte(content))
+			if err != nil {
+				slog.Warn("[indexer] Failed to parse go.mod", "repo", repo.Name, "error", err)
+				continue
+			}
+			ai.upsertGoMod(ctx, parsed, repo.Name)
+		}
+	}
+
 	// Phase 3: Soft-delete stale entities.
 	slog.Info("[indexer] Phase 3: archiving stale entities")
 	ai.archiveStale(ctx, activeRepos)
@@ -178,6 +200,72 @@ func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCa
 			slog.Error("[indexer] CreateRelations failed", "entity", parsed.EntityName, "error", err)
 		}
 	}
+}
+
+// upsertGoMod writes go.mod data to the knowledge graph: a Service entity for the module
+// and depends_on relations to each direct dependency.
+func (ai *AutoIndexer) upsertGoMod(ctx context.Context, parsed parser.ParsedGoMod, repoFullName string) {
+	autoObs := []string{
+		"_source:go.mod",
+		"_scan_repo:" + repoFullName,
+		"go_module:" + parsed.ModulePath,
+	}
+	if parsed.GoVersion != "" {
+		autoObs = append(autoObs, "go_version:"+parsed.GoVersion)
+	}
+
+	graph, err := ai.graph.SearchNodes(parsed.EntityName)
+	if err != nil {
+		slog.Error("[indexer] SearchNodes failed", "entity", parsed.EntityName, "error", err)
+		return
+	}
+
+	entityExists := false
+	for _, e := range graph.Entities {
+		if e.Name == parsed.EntityName {
+			entityExists = true
+			break
+		}
+	}
+
+	if !entityExists {
+		if _, err := ai.graph.CreateEntities([]memory.Entity{
+			{Name: parsed.EntityName, EntityType: "service", Observations: autoObs},
+		}); err != nil {
+			slog.Error("[indexer] CreateEntities failed", "entity", parsed.EntityName, "error", err)
+			return
+		}
+	} else {
+		if _, err := ai.graph.AddObservations([]memory.Observation{
+			{EntityName: parsed.EntityName, Contents: autoObs},
+		}); err != nil {
+			slog.Error("[indexer] AddObservations failed", "entity", parsed.EntityName, "error", err)
+		}
+	}
+
+	if len(parsed.DirectDeps) == 0 {
+		return
+	}
+
+	rels := make([]memory.Relation, 0, len(parsed.DirectDeps))
+	for _, dep := range parsed.DirectDeps {
+		depName := moduleEntityName(dep)
+		rels = append(rels, memory.Relation{
+			From:         parsed.EntityName,
+			To:           depName,
+			RelationType: "depends_on",
+		})
+	}
+	if _, err := ai.graph.CreateRelations(rels); err != nil {
+		slog.Error("[indexer] CreateRelations failed", "entity", parsed.EntityName, "error", err)
+	}
+}
+
+// moduleEntityName extracts the last path segment from a Go module path.
+// Duplicates parser.moduleEntityName to avoid exposing an internal parser helper.
+func moduleEntityName(modulePath string) string {
+	parts := strings.Split(modulePath, "/")
+	return parts[len(parts)-1]
 }
 
 // archiveStale adds _status:archived to entities whose source repo is no longer active.
