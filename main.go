@@ -176,6 +176,7 @@ func main() {
 
 	// --- Tool Metrics ---
 	toolMetrics := tools.NewToolMetrics()
+	docMetrics := tools.NewDocMetrics()
 
 	// --- Auto-Indexer ---
 	ai := indexer.New(sc, memorySrv, contentCache)
@@ -192,7 +193,7 @@ func main() {
 		}
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
-		tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics)
+		tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics, docMetrics)
 		slog.Info("Triggered tools/list_changed notification")
 	})
 
@@ -201,7 +202,7 @@ func main() {
 	if contentCache != nil {
 		searcher = contentCache
 	}
-	tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics)
+	tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics, docMetrics)
 
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)
@@ -219,11 +220,18 @@ func main() {
 		mux.Handle("/", mcpHandler)
 		mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+
 			snapshot := toolMetrics.Snapshot()
 			fmt.Fprintf(w, "# HELP docscout_tool_calls_total Total number of MCP tool calls since server start.\n")
 			fmt.Fprintf(w, "# TYPE docscout_tool_calls_total counter\n")
 			for tool, count := range snapshot {
 				fmt.Fprintf(w, "docscout_tool_calls_total{tool=%q} %d\n", tool, count)
+			}
+
+			fmt.Fprintf(w, "# HELP docscout_document_accesses_total Total number of times a specific document was fetched or returned in content search results since server start.\n")
+			fmt.Fprintf(w, "# TYPE docscout_document_accesses_total counter\n")
+			for _, d := range docMetrics.TopN(0) {
+				fmt.Fprintf(w, "docscout_document_accesses_total{repo=%q,path=%q} %d\n", d.Repo, d.Path, d.Count)
 			}
 		})
 

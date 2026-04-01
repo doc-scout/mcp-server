@@ -19,7 +19,7 @@ type RawContentResult struct {
 	Content string `json:"content" jsonschema:"The raw text content of the file."`
 }
 
-func getFileContentHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.CallToolRequest, args GetFileContentArgs) (*mcp.CallToolResult, RawContentResult, error) {
+func getFileContentHandler(sc DocumentScanner, docMetrics *DocMetrics) func(ctx context.Context, req *mcp.CallToolRequest, args GetFileContentArgs) (*mcp.CallToolResult, RawContentResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args GetFileContentArgs) (*mcp.CallToolResult, RawContentResult, error) {
 		if args.Repo == "" {
 			return nil, RawContentResult{}, fmt.Errorf("parameter 'repo' is required")
@@ -33,6 +33,7 @@ func getFileContentHandler(sc DocumentScanner) func(ctx context.Context, req *mc
 			return nil, RawContentResult{}, fmt.Errorf("error: %v", err)
 		}
 
+		docMetrics.Record(args.Repo, args.Path)
 		return nil, RawContentResult{Content: content}, nil
 	}
 }

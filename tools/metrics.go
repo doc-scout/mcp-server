@@ -4,6 +4,7 @@
 package tools
 
 import (
+	"sort"
 	"sync"
 	"sync/atomic"
 )
@@ -44,4 +45,70 @@ func (m *ToolMetrics) Snapshot() map[string]int64 {
 		result[name] = c.Load()
 	}
 	return result
+}
+
+// DocAccess holds access statistics for a single indexed document.
+type DocAccess struct {
+	Repo  string `json:"repo"`
+	Path  string `json:"path"`
+	Count int64  `json:"count"`
+}
+
+// DocMetrics tracks how many times each indexed document has been fetched or
+// returned in search results, keyed by "repo\tpath".
+type DocMetrics struct {
+	mu     sync.RWMutex
+	counts map[string]*atomic.Int64
+}
+
+// NewDocMetrics returns a new, empty DocMetrics instance.
+func NewDocMetrics() *DocMetrics {
+	return &DocMetrics{counts: make(map[string]*atomic.Int64)}
+}
+
+// Record increments the access counter for a specific repo+path pair.
+func (d *DocMetrics) Record(repo, path string) {
+	key := repo + "\t" + path
+	d.mu.RLock()
+	c, ok := d.counts[key]
+	d.mu.RUnlock()
+	if !ok {
+		d.mu.Lock()
+		if c, ok = d.counts[key]; !ok {
+			c = new(atomic.Int64)
+			d.counts[key] = c
+		}
+		d.mu.Unlock()
+	}
+	c.Add(1)
+}
+
+// TopN returns up to n documents sorted by access count descending.
+// Pass n <= 0 to return all tracked documents.
+func (d *DocMetrics) TopN(n int) []DocAccess {
+	d.mu.RLock()
+	entries := make([]DocAccess, 0, len(d.counts))
+	for key, c := range d.counts {
+		repo, path, _ := splitKey(key)
+		entries = append(entries, DocAccess{Repo: repo, Path: path, Count: c.Load()})
+	}
+	d.mu.RUnlock()
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Count > entries[j].Count
+	})
+	if n > 0 && n < len(entries) {
+		return entries[:n]
+	}
+	return entries
+}
+
+// splitKey splits a "repo\tpath" key back into its components.
+func splitKey(key string) (repo, path string, ok bool) {
+	for i, r := range key {
+		if r == '\t' {
+			return key[:i], key[i+1:], true
+		}
+	}
+	return key, "", false
 }

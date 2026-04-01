@@ -26,13 +26,12 @@ This document outlines the current technical debts and the path forward for DocS
 - `scanner/parser/codeowners.go` — `ParseCodeowners` extracts all unique owners from `CODEOWNERS` files. Supports `@org/team` (→ `team` entity), `@username` (→ `person` entity), and `user@email.com` formats. Checks three GitHub-supported locations: `CODEOWNERS`, `.github/CODEOWNERS`, `docs/CODEOWNERS`.
 - `indexer/indexer.go` — Phases 2b–2e auto-upsert entities with source observations and `depends_on` / `owns` relations.
 
-### 8. Observability and Metrics (Prometheus) ✅ *(partial)*
-- **Implemented**: Per-tool call counters exposed via MCP and HTTP.
-- `tools/metrics.go` — `ToolMetrics`: thread-safe call counter using `sync.RWMutex` + `atomic.Int64`.
-- `tools/tools.go` — `withMetrics` wrapper increments the counter before each tool invocation. All registered tools are instrumented.
-- `tools/get_usage_stats.go` — New `get_usage_stats` MCP tool returns a snapshot of call counts since server start. AI agents can call this to identify the most-accessed documentation.
-- `main.go` — `/metrics` HTTP endpoint (when `HTTP_ADDR` is set) emits Prometheus text format (`docscout_tool_calls_total` counter with `tool` label).
-- **Remaining**: Alerting rules, Grafana dashboards, per-document access tracking.
+### 8. Observability and Metrics (Prometheus) ✅
+- **Implemented**: Per-tool call counters and per-document access tracking, exposed via MCP and HTTP.
+- `tools/metrics.go` — `ToolMetrics` (per-tool counters) and `DocMetrics` (per-document access counters), both thread-safe via `sync.RWMutex` + `atomic.Int64`.
+- `tools/tools.go` — `withMetrics` wrapper instruments all registered tools. `get_file_content` and `search_content` both record document accesses via `DocMetrics`.
+- `tools/get_usage_stats.go` — `get_usage_stats` MCP tool returns tool call counts **and** the top 20 most-fetched documents since server start.
+- `main.go` — `/metrics` HTTP endpoint emits two Prometheus counters: `docscout_tool_calls_total{tool}` and `docscout_document_accesses_total{repo,path}`.
 
 ### 9. Knowledge Graph Protection ✅ *(partial)*
 - **Implemented**: Mass-deletion guard on `delete_entities`.
@@ -67,9 +66,6 @@ This document outlines the current technical debts and the path forward for DocS
 - `deploy/helm/` — full Helm chart v2 with `values.yaml`, `_helpers.tpl`, and templates for all resources (Deployment, Service, ConfigMap, Secret, PVC, Ingress).
 - `deploy/terraform/` — Kubernetes Terraform module (`hashicorp/kubernetes` provider): Namespace, Secret, ConfigMap, PVC, Deployment, Service, optional Ingress. Works with any K8s cluster (EKS, GKE, AKS, local).
 
-### 8. Observability — Remaining
-- **Current State**: Tool call counts are tracked. Per-document access is not yet measured.
-- **Goal**: Track which specific files are fetched most via `get_file_content` and `search_content`. Add Grafana dashboard templates and alerting rules for rate limit exhaustion.
 
 ### 9. Knowledge Graph Protection — Remaining
 - **Current State**: Mass-deletion is guarded. Hallucination detection is not implemented.

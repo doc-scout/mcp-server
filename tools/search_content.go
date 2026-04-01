@@ -21,7 +21,7 @@ type SearchContentResult struct {
 	Matches []memory.ContentMatch `json:"matches" jsonschema:"List of files containing the query term, with a snippet showing the matched context."`
 }
 
-func searchContentHandler(search ContentSearcher) func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
+func searchContentHandler(search ContentSearcher, docMetrics *DocMetrics) func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchContentArgs) (*mcp.CallToolResult, SearchContentResult, error) {
 		if strings.TrimSpace(args.Query) == "" {
 			return nil, SearchContentResult{}, fmt.Errorf("parameter 'query' must not be empty or whitespace-only")
@@ -29,6 +29,9 @@ func searchContentHandler(search ContentSearcher) func(ctx context.Context, req 
 		matches, err := search.Search(args.Query, args.Repo)
 		if err != nil {
 			return nil, SearchContentResult{}, err
+		}
+		for _, m := range matches {
+			docMetrics.Record(m.RepoName, m.Path)
 		}
 		return nil, SearchContentResult{Matches: matches}, nil
 	}

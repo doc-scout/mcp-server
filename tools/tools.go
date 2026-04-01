@@ -42,8 +42,8 @@ func withMetrics[A, R any](
 
 // Register adds all DocScout MCP tools to the server.
 // graph and search may be nil — get_scan_status degrades gracefully, search_content is omitted.
-// metrics must not be nil.
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, metrics *ToolMetrics) {
+// metrics and docMetrics must not be nil.
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, metrics *ToolMetrics, docMetrics *DocMetrics) {
 	// --- Scanner Tools ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_repos",
@@ -58,7 +58,7 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_file_content",
 		Description: "Retrieves the raw content of a specific documentation file from a GitHub repository. Note: For security reasons, this tool will only return files that have been successfully indexed as documentation (i.e. returned by list_repos or search_docs).",
-	}, withMetrics("get_file_content", metrics, withRecovery("get_file_content", getFileContentHandler(sc))))
+	}, withMetrics("get_file_content", metrics, withRecovery("get_file_content", getFileContentHandler(sc, docMetrics))))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_scan_status",
@@ -69,7 +69,7 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "search_content",
 			Description: "Full-text search across the content of all cached documentation files. Use this to find which service handles a specific responsibility (e.g. 'payment', 'authentication'). Only available when SCAN_CONTENT=true.",
-		}, withMetrics("search_content", metrics, withRecovery("search_content", searchContentHandler(search))))
+		}, withMetrics("search_content", metrics, withRecovery("search_content", searchContentHandler(search, docMetrics))))
 	}
 
 	// --- Memory / Knowledge Graph Tools ---
@@ -123,6 +123,6 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 	// --- Observability ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_usage_stats",
-		Description: "Returns how many times each MCP tool has been called since the server started. Use this to identify which documentation areas are most frequently accessed by AI agents, helping teams spot knowledge gaps.",
-	}, withRecovery("get_usage_stats", getUsageStatsHandler(metrics)))
+		Description: "Returns how many times each MCP tool has been called and the top 20 most-fetched documents since server start. Use this to identify which documentation areas are most frequently accessed by AI agents, helping teams spot knowledge gaps.",
+	}, withRecovery("get_usage_stats", getUsageStatsHandler(metrics, docMetrics)))
 }

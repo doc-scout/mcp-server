@@ -118,7 +118,7 @@ func TestGetFileContentHandler(t *testing.T) {
 		},
 	}
 
-	handler := getFileContentHandler(mock)
+	handler := getFileContentHandler(mock, NewDocMetrics())
 
 	// Test successful case
 	req := &mcp.CallToolRequest{}
@@ -220,7 +220,7 @@ func TestSearchContentHandler_Success(t *testing.T) {
 		},
 	}
 
-	handler := searchContentHandler(searcher)
+	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
 	_, result, err := handler(context.Background(), req, SearchContentArgs{Query: "stripe"})
@@ -237,7 +237,7 @@ func TestSearchContentHandler_Success(t *testing.T) {
 
 func TestSearchContentHandler_Disabled(t *testing.T) {
 	searcher := &mockContentSearcher{enabled: false}
-	handler := searchContentHandler(searcher)
+	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
 	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: "anything"})
@@ -248,7 +248,7 @@ func TestSearchContentHandler_Disabled(t *testing.T) {
 
 func TestSearchContentHandler_EmptyQuery(t *testing.T) {
 	searcher := &mockContentSearcher{enabled: true}
-	handler := searchContentHandler(searcher)
+	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
 	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: ""})
@@ -270,7 +270,7 @@ func TestSearchDocsHandler_WhitespaceQuery(t *testing.T) {
 
 func TestSearchContentHandler_WhitespaceQuery(t *testing.T) {
 	searcher := &mockContentSearcher{enabled: true}
-	handler := searchContentHandler(searcher)
+	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
 	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: "\t\n"})
