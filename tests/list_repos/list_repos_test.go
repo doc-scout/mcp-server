@@ -13,9 +13,9 @@ import (
 
 func TestE2E_ListRepos(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_repos"})
 	if err != nil {
 		t.Fatalf("CallTool list_repos: %v", err)

@@ -6,6 +6,7 @@ package indexer
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/leonancarvalho/docscout-mcp/memory"
@@ -219,13 +220,9 @@ func (ai *AutoIndexer) upsertCatalog(ctx context.Context, parsed parser.ParsedCa
 		return
 	}
 
-	entityExists := false
-	for _, e := range graph.Entities {
-		if e.Name == parsed.EntityName {
-			entityExists = true
-			break
-		}
-	}
+	entityExists := slices.ContainsFunc(graph.Entities, func(e memory.Entity) bool {
+		return e.Name == parsed.EntityName
+	})
 
 	if !entityExists {
 		_, err := ai.graph.CreateEntities([]memory.Entity{
@@ -281,13 +278,9 @@ func (ai *AutoIndexer) upsertGoMod(ctx context.Context, parsed parser.ParsedGoMo
 		return
 	}
 
-	entityExists := false
-	for _, e := range graph.Entities {
-		if e.Name == parsed.EntityName {
-			entityExists = true
-			break
-		}
-	}
+	entityExists := slices.ContainsFunc(graph.Entities, func(e memory.Entity) bool {
+		return e.Name == parsed.EntityName
+	})
 
 	if !entityExists {
 		if _, err := ai.graph.CreateEntities([]memory.Entity{
@@ -340,13 +333,9 @@ func (ai *AutoIndexer) upsertPackageJSON(ctx context.Context, parsed parser.Pars
 		return
 	}
 
-	entityExists := false
-	for _, e := range graph.Entities {
-		if e.Name == parsed.EntityName {
-			entityExists = true
-			break
-		}
-	}
+	entityExists := slices.ContainsFunc(graph.Entities, func(e memory.Entity) bool {
+		return e.Name == parsed.EntityName
+	})
 
 	if !entityExists {
 		if _, err := ai.graph.CreateEntities([]memory.Entity{
@@ -403,13 +392,9 @@ func (ai *AutoIndexer) upsertPom(ctx context.Context, parsed parser.ParsedPom, r
 		return
 	}
 
-	entityExists := false
-	for _, e := range graph.Entities {
-		if e.Name == parsed.EntityName {
-			entityExists = true
-			break
-		}
-	}
+	entityExists := slices.ContainsFunc(graph.Entities, func(e memory.Entity) bool {
+		return e.Name == parsed.EntityName
+	})
 
 	if !entityExists {
 		if _, err := ai.graph.CreateEntities([]memory.Entity{
@@ -452,8 +437,8 @@ func (ai *AutoIndexer) upsertCodeowners(ctx context.Context, parsed parser.Parse
 
 	// Derive the target service name from the repo full name (e.g. "myorg/my-service" → "my-service").
 	repoServiceName := repoFullName
-	if idx := strings.LastIndex(repoFullName, "/"); idx >= 0 {
-		repoServiceName = repoFullName[idx+1:]
+	if _, name, ok := strings.Cut(repoFullName, "/"); ok {
+		repoServiceName = name
 	}
 
 	var ownsRels []memory.Relation
@@ -471,13 +456,9 @@ func (ai *AutoIndexer) upsertCodeowners(ctx context.Context, parsed parser.Parse
 			continue
 		}
 
-		entityExists := false
-		for _, e := range graph.Entities {
-			if e.Name == owner.EntityName {
-				entityExists = true
-				break
-			}
-		}
+		entityExists := slices.ContainsFunc(graph.Entities, func(e memory.Entity) bool {
+			return e.Name == owner.EntityName
+		})
 
 		if !entityExists {
 			if _, err := ai.graph.CreateEntities([]memory.Entity{
@@ -526,8 +507,8 @@ func (ai *AutoIndexer) archiveStale(ctx context.Context, activeRepos map[string]
 	for _, entity := range graph.Entities {
 		repoName := ""
 		for _, obs := range entity.Observations {
-			if strings.HasPrefix(obs, "_scan_repo:") {
-				repoName = strings.TrimPrefix(obs, "_scan_repo:")
+			if name, ok := strings.CutPrefix(obs, "_scan_repo:"); ok {
+				repoName = name
 				break
 			}
 		}

@@ -74,7 +74,7 @@ func Handler(serverCtx context.Context, secret []byte, sc RepoScanner) http.Hand
 
 // repoFromEvent extracts the repository owner and name from supported GitHub event types.
 // Returns empty strings for event types that do not carry repository information we act on.
-func repoFromEvent(event interface{}) (owner, repo string) {
+func repoFromEvent(event any) (owner, repo string) {
 	switch e := event.(type) {
 	case *github.PushEvent:
 		return e.GetRepo().GetOwner().GetLogin(), e.GetRepo().GetName()

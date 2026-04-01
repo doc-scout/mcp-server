@@ -13,9 +13,9 @@ import (
 
 func TestE2E_SearchNodes(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Add data
 	_, _ = session.CallTool(ctx, &mcp.CallToolParams{

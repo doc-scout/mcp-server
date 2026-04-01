@@ -12,9 +12,9 @@ import (
 
 func TestE2E_ListTools(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := session.ListTools(ctx, nil)
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)

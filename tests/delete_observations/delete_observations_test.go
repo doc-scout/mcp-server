@@ -13,9 +13,9 @@ import (
 
 func TestE2E_DeleteObservations(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Setup: create entity with observations
 	_, _ = session.CallTool(ctx, &mcp.CallToolParams{

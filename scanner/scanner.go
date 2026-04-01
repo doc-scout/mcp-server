@@ -10,6 +10,7 @@ import (
 	"log"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -265,18 +266,11 @@ func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error
 		}
 		// Filter by Topics
 		if len(s.repoTopics) > 0 {
-			matchTopic := false
-			for _, t := range r.Topics {
-				for _, reqT := range s.repoTopics {
-					if strings.EqualFold(t, reqT) {
-						matchTopic = true
-						break
-					}
-				}
-				if matchTopic {
-					break
-				}
-			}
+			matchTopic := slices.ContainsFunc(r.Topics, func(t string) bool {
+				return slices.ContainsFunc(s.repoTopics, func(req string) bool {
+					return strings.EqualFold(t, req)
+				})
+			})
 			if !matchTopic {
 				continue
 			}

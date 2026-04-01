@@ -4,7 +4,9 @@
 package tools
 
 import (
-	"sort"
+	"cmp"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -94,8 +96,8 @@ func (d *DocMetrics) TopN(n int) []DocAccess {
 	}
 	d.mu.RUnlock()
 
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Count > entries[j].Count
+	slices.SortFunc(entries, func(a, b DocAccess) int {
+		return cmp.Compare(b.Count, a.Count)
 	})
 	if n > 0 && n < len(entries) {
 		return entries[:n]
@@ -105,10 +107,6 @@ func (d *DocMetrics) TopN(n int) []DocAccess {
 
 // splitKey splits a "repo\tpath" key back into its components.
 func splitKey(key string) (repo, path string, ok bool) {
-	for i, r := range key {
-		if r == '\t' {
-			return key[:i], key[i+1:], true
-		}
-	}
-	return key, "", false
+	repo, path, ok = strings.Cut(key, "\t")
+	return
 }

@@ -55,11 +55,9 @@ func parseCSVEnv(raw string) []string {
 	if raw == "" {
 		return nil
 	}
-	parts := strings.Split(raw, ",")
 	var result []string
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
+	for p := range strings.SplitSeq(raw, ",") {
+		if p = strings.TrimSpace(p); p != "" {
 			result = append(result, p)
 		}
 	}

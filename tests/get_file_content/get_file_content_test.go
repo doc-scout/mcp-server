@@ -13,9 +13,9 @@ import (
 
 func TestE2E_GetFileContent(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "get_file_content",
 		Arguments: map[string]any{"repo": "test-repo", "path": "README.md"},

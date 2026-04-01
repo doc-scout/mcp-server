@@ -13,12 +13,12 @@ golangci-lint = "v2.11.4"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:github.com/daixiang0/gci" = "latest"
 "go:github.com/google/addlicense" = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
 pre-commit = "latest"
 
 [tasks.setup]
 description = "Configura o ambiente de desenvolvimento e hooks"
 run = "pre-commit install"
-
 
 [tasks.local]
 run = "go run ."

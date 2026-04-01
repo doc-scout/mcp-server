@@ -26,7 +26,7 @@ func ParseGoMod(data []byte) (ParsedGoMod, error) {
 	var result ParsedGoMod
 	inRequireBlock := false
 
-	for _, rawLine := range strings.Split(string(data), "\n") {
+	for rawLine := range strings.SplitSeq(string(data), "\n") {
 		line := strings.TrimSpace(rawLine)
 
 		switch {

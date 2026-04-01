@@ -13,9 +13,9 @@ import (
 
 func TestE2E_DeleteRelations(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Setup: create entities and relations
 	_, _ = session.CallTool(ctx, &mcp.CallToolParams{

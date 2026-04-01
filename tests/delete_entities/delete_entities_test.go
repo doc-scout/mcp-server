@@ -13,9 +13,9 @@ import (
 
 func TestE2E_DeleteEntities(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Setup: create entity
 	_, _ = session.CallTool(ctx, &mcp.CallToolParams{
@@ -42,9 +42,9 @@ func TestE2E_DeleteEntities(t *testing.T) {
 
 func TestE2E_DeleteEntities_MassDeleteGuard(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Build a list that exceeds the mass-delete threshold (11 entities).
 	names := make([]string, 11)

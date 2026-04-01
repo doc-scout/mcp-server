@@ -13,9 +13,9 @@ import (
 
 func TestE2E_CreateEntities(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	defer session.Close()
+	t.Cleanup(session.Close)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_entities",
 		Arguments: map[string]any{

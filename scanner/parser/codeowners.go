@@ -38,7 +38,7 @@ func ParseCodeowners(data []byte) ParsedCodeowners {
 	seen := make(map[string]struct{})
 	var owners []CodeOwner
 
-	for _, rawLine := range strings.Split(string(data), "\n") {
+	for rawLine := range strings.SplitSeq(string(data), "\n") {
 		line := strings.TrimSpace(rawLine)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -68,18 +68,18 @@ func classifyOwner(raw string) CodeOwner {
 
 	// @org/team handle — use the team slug (last path segment) as entity name.
 	if strings.HasPrefix(lower, "@") && strings.Contains(lower, "/") {
-		slug := lower[strings.LastIndex(lower, "/")+1:]
+		_, slug, _ := strings.Cut(lower, "/")
 		return CodeOwner{Raw: raw, EntityName: slug, EntityType: "team"}
 	}
 
 	// @username handle.
-	if strings.HasPrefix(lower, "@") {
-		return CodeOwner{Raw: raw, EntityName: strings.TrimPrefix(lower, "@"), EntityType: "person"}
+	if username, ok := strings.CutPrefix(lower, "@"); ok {
+		return CodeOwner{Raw: raw, EntityName: username, EntityType: "person"}
 	}
 
 	// E-mail address — use the local part before '@'.
-	if idx := strings.Index(lower, "@"); idx > 0 {
-		return CodeOwner{Raw: raw, EntityName: lower[:idx], EntityType: "person"}
+	if local, _, ok := strings.Cut(lower, "@"); ok {
+		return CodeOwner{Raw: raw, EntityName: local, EntityType: "person"}
 	}
 
 	// Fallback: treat unrecognized tokens as persons using the token itself.
