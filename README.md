@@ -10,7 +10,7 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 
 ## Features
 
-- **Automated Org-Wide Scanning**: Recursively searches repositories for documentation files. Target files and directories are fully customizable via environment variables.
+- **Automated Org-Wide Scanning**: Recursively searches repositories for documentation files, root-level tooling files (`Dockerfile`, `Makefile`, `docker-compose.yml`, `.mise.toml`), and infrastructure directories (`deploy/`, `infra/`, `.github/workflows/`). All targets are fully customizable via environment variables.
 - **Ownership Inference**: Automatically parses `CODEOWNERS` files to create `team` and `person` entities in the knowledge graph, with `owns` relations to the respective repositories — no manual configuration required.
 - **Knowledge Graph Memory**: Built-in persistent memory powered by GORM (SQLite or PostgreSQL). AI agents can create entities, track relations, and add observations — surviving across sessions.
 - **Content Caching**: Opt-in caching for file contents to speed up retrieval and offload GitHub API requests, integrating automatically with the indexing engine.
@@ -67,6 +67,7 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 | `SCAN_INTERVAL`         | ❌       | `30m`                                                                  | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
 | `SCAN_FILES`            | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated filenames to scan at repo root                                                |
 | `SCAN_DIRS`             | ❌       | `docs`                                                                 | Comma-separated directories to scan recursively for `.md` files                               |
+| `SCAN_INFRA_DIRS`       | ❌       | `deploy, infra, .github/workflows`                                     | Comma-separated directories to scan recursively for infra files (`.yaml`, `.tf`, `.hcl`, `.toml`) |
 | `EXTRA_REPOS`           | ❌       | —                                                                      | Comma-separated public/third-party repos to scan (e.g. `owner/repo`)                          |
 | `REPO_TOPICS`           | ❌       | —                                                                      | Filter org repos by GitHub topics (e.g. `frontend, backend`)                                  |
 | `REPO_REGEX`            | ❌       | —                                                                      | Filter org repos by regex matching the repo name (e.g. `^srv-.*`)                             |

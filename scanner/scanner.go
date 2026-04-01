@@ -29,6 +29,13 @@ var DefaultTargetFiles = []string{
 	"go.mod",
 	"package.json",
 	"pom.xml",
+	// Infrastructure / tooling files at repo root.
+	"Dockerfile",
+	"docker-compose.yml",
+	"docker-compose.yaml",
+	"Makefile",
+	".mise.toml",
+	"mise.toml",
 	// CODEOWNERS is checked in three GitHub-supported locations.
 	"CODEOWNERS",
 	".github/CODEOWNERS",
@@ -39,6 +46,23 @@ var DefaultTargetFiles = []string{
 var DefaultScanDirs = []string{
 	"docs",
 	".agents",
+}
+
+// DefaultInfraDirs defines the default directories to scan recursively for
+// infrastructure and deployment files (.yaml, .yml, .tf, .hcl, .toml).
+var DefaultInfraDirs = []string{
+	"deploy",
+	"infra",
+	".github/workflows",
+}
+
+// infraExtensions is the set of file extensions indexed when scanning infra directories.
+var infraExtensions = map[string]bool{
+	".yaml": true,
+	".yml":  true,
+	".tf":   true,
+	".hcl":  true,
+	".toml": true,
 }
 
 // FileEntry represents an indexed documentation file.
@@ -65,6 +89,7 @@ type Scanner struct {
 	scanInterval time.Duration
 	targetFiles  []string       // files to look for at repo root
 	scanDirs     []string       // directories to scan recursively for .md files
+	infraDirs    []string       // directories to scan recursively for infra files (.yaml, .tf, .hcl, .toml)
 	extraRepos   []string       // extra explicit repos formatted as "owner/repo"
 	repoTopics   []string       // filter org repos by topics
 	repoRegex    *regexp.Regexp // filter org repos by name using regex
@@ -79,12 +104,15 @@ type Scanner struct {
 }
 
 // New creates a new Scanner instance.
-func New(client *github.Client, org string, scanInterval time.Duration, targetFiles, scanDirs, extraRepos, repoTopics []string, repoRegex *regexp.Regexp) *Scanner {
+func New(client *github.Client, org string, scanInterval time.Duration, targetFiles, scanDirs, infraDirs, extraRepos, repoTopics []string, repoRegex *regexp.Regexp) *Scanner {
 	if len(targetFiles) == 0 {
 		targetFiles = DefaultTargetFiles
 	}
 	if len(scanDirs) == 0 {
 		scanDirs = DefaultScanDirs
+	}
+	if len(infraDirs) == 0 {
+		infraDirs = DefaultInfraDirs
 	}
 	return &Scanner{
 		client:       client,
@@ -92,6 +120,7 @@ func New(client *github.Client, org string, scanInterval time.Duration, targetFi
 		scanInterval: scanInterval,
 		targetFiles:  targetFiles,
 		scanDirs:     scanDirs,
+		infraDirs:    infraDirs,
 		extraRepos:   extraRepos,
 		repoTopics:   repoTopics,
 		repoRegex:    repoRegex,
@@ -406,6 +435,12 @@ func (s *Scanner) scanRepo(ctx context.Context, repoOwner, repoName string) []Fi
 		entries = append(entries, dirEntries...)
 	}
 
+	// Check infra directories recursively for deployment/infrastructure files.
+	for _, dir := range s.infraDirs {
+		infraEntries := s.scanInfraDir(ctx, repoOwner, repoName, dir)
+		entries = append(entries, infraEntries...)
+	}
+
 	return entries
 }
 
@@ -453,35 +488,121 @@ func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path str
 	return entries
 }
 
-// classifyFile returns a type label for a given filename.
+// scanInfraDir recursively scans a directory for infrastructure and deployment files
+// (.yaml, .yml, .tf, .hcl, .toml). Used for directories like deploy/, infra/, .github/workflows/.
+func (s *Scanner) scanInfraDir(ctx context.Context, repoOwner, repoName, path string) []FileEntry {
+	var entries []FileEntry
+
+	var dirContents []*github.RepositoryContent
+	var resp *github.Response
+	err := retryGitHub(ctx, func() error {
+		var e error
+		_, dirContents, resp, e = s.client.Repositories.GetContents(ctx, repoOwner, repoName, path, nil)
+		return e
+	})
+	if err != nil {
+		if resp != nil && resp.StatusCode == 404 {
+			return nil
+		}
+		log.Printf("[scanner] Error scanning infra dir %s/%s: %v\n", repoName, path, err)
+		return nil
+	}
+
+	for _, item := range dirContents {
+		itemPath := item.GetPath()
+		switch item.GetType() {
+		case "file":
+			ext := strings.ToLower(filepath.Ext(itemPath))
+			if infraExtensions[ext] {
+				entries = append(entries, FileEntry{
+					RepoName: repoName,
+					Path:     itemPath,
+					SHA:      item.GetSHA(),
+					Type:     classifyFile(itemPath),
+				})
+			}
+		case "dir":
+			subEntries := s.scanInfraDir(ctx, repoOwner, repoName, itemPath)
+			entries = append(entries, subEntries...)
+		}
+	}
+
+	return entries
+}
+
+// classifyFile returns a type label for a given file path.
+// It uses the full path for context-sensitive classification (e.g. helm vs k8s YAML)
+// and falls back to the base filename or extension.
 func classifyFile(name string) string {
 	base := filepath.Base(strings.ToLower(name))
+	lowerPath := strings.ToLower(name)
+
 	switch base {
-	case "catalog-info.yaml": // Backstage
+	// Documentation / catalog
+	case "catalog-info.yaml":
 		return "catalog-info"
-	case "mkdocs.yml": // MkDocs
+	case "mkdocs.yml":
 		return "mkdocs"
-	case "openapi.yaml": // OpenAPI
+	case "openapi.yaml":
 		return "openapi"
-	case "swagger.json": // Swagger
+	case "swagger.json":
 		return "swagger"
-	case "readme.md": // README
+	case "readme.md":
 		return "readme"
 	case "skills.md":
 		return "skills"
 	case "agents.md":
 		return "agents"
+	// Dependency manifests
 	case "go.mod":
 		return "gomod"
 	case "package.json":
 		return "packagejson"
 	case "pom.xml":
 		return "pomxml"
+	// Ownership
 	case "codeowners":
 		return "codeowners"
-	default:
-		return "docs" // Custom markdown files
+	// Infrastructure / tooling
+	case "dockerfile":
+		return "dockerfile"
+	case "makefile":
+		return "makefile"
+	case "docker-compose.yml", "docker-compose.yaml":
+		return "compose"
+	case ".mise.toml", "mise.toml":
+		return "mise"
+	// Helm — Chart.yaml is definitive; values.yaml is helm only under a helm/ path.
+	case "chart.yaml":
+		return "helm"
+	case "values.yaml":
+		if strings.Contains(lowerPath, "/helm/") {
+			return "helm"
+		}
+		return "infra"
 	}
+
+	// Extension-based fallback for infra directories.
+	ext := filepath.Ext(base)
+	switch ext {
+	case ".tf", ".hcl":
+		return "terraform"
+	case ".yaml", ".yml":
+		if strings.Contains(lowerPath, "/helm/") {
+			return "helm"
+		}
+		if strings.Contains(lowerPath, "/k8s/") || strings.Contains(lowerPath, "/kubernetes/") {
+			return "k8s"
+		}
+		if strings.Contains(lowerPath, "/workflows/") {
+			return "workflow"
+		}
+		return "infra"
+	case ".toml":
+		return "toml"
+	}
+
+	return "docs"
 }
 
 // --- Public API used by MCP tools ---

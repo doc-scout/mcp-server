@@ -107,7 +107,7 @@ func TestScanner_scanOrg(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
 	scanner.scanOrg(context.Background())
 
 	repos := scanner.ListRepos()
@@ -128,7 +128,7 @@ func TestScanner_GetFileContent(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
 	scanner.scanOrg(context.Background())
 
 	// Test a valid file
@@ -151,7 +151,7 @@ func TestScanner_OnScanComplete(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
 
 	called := false
 	var callbackRepos []RepoInfo
@@ -174,7 +174,7 @@ func TestScanner_SearchDocs(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
 	scanner.scanOrg(context.Background())
 
 	results := scanner.SearchDocs("guide")
@@ -190,7 +190,7 @@ func TestScanner_RepoScanRespectsContext(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil)
+	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
 
 	// Run with a pre-cancelled context — scanOrg should return without blocking.
 	ctx, cancel := context.WithCancel(context.Background())

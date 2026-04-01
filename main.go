@@ -94,6 +94,7 @@ func main() {
 	scanInterval := parseScanInterval(os.Getenv("SCAN_INTERVAL"))
 	targetFiles := parseCSVEnv(os.Getenv("SCAN_FILES"))
 	scanDirs := parseCSVEnv(os.Getenv("SCAN_DIRS"))
+	infraDirs := parseCSVEnv(os.Getenv("SCAN_INFRA_DIRS"))
 	extraRepos := parseCSVEnv(os.Getenv("EXTRA_REPOS"))
 	repoTopics := parseCSVEnv(os.Getenv("REPO_TOPICS"))
 
@@ -141,7 +142,7 @@ func main() {
 	ghClient := github.NewClient(httpClient)
 
 	// --- Scanner ---
-	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, extraRepos, repoTopics, repoRegex)
+	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, infraDirs, extraRepos, repoTopics, repoRegex)
 
 	// Warn operators that active repo filters will cause excluded repos' entities to be archived.
 	if repoRegex != nil || len(repoTopics) > 0 {
