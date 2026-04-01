@@ -54,7 +54,7 @@ func (m *MockScanner) Status() (bool, time.Time, int) {
 
 func SetupTestServer(t *testing.T) *mcp.ClientSession {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "docscout-mcp-test",

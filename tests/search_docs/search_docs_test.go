@@ -4,7 +4,6 @@
 package search_docs_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/leonancarvalho/docscout-mcp/tests/testutils"

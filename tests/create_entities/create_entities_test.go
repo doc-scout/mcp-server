@@ -4,7 +4,6 @@
 package create_entities_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
