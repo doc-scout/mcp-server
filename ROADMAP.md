@@ -39,10 +39,39 @@ This document outlines the current technical debts and the path forward for DocS
 - `tools/graph_guard.go` — `sanitizeObservations` filters observations before any write: rejects empty/whitespace-only, too-short (< 2 chars), too-long (> 500 chars), and deduplicates within the batch. Both `create_entities` and `add_observations` return a `skipped` field listing every rejection with its reason.
 - `tools/audit.go` — `GraphAuditLogger` decorator wraps the entire `GraphStore`. Every mutation (`create_entities`, `add_observations`, `create_relations`, `delete_*`) emits a structured `slog.Info` line with entity names and counts. Read-only operations pass through silently. The logger is applied globally in `main.go`, covering both AI agent calls and the auto-indexer.
 
+### 10. Architecture Discovery & Content Search ✅
+- **Implemented**: Automatic knowledge graph population from `catalog-info.yaml` Backstage manifests and opt-in full-text content search across all indexed documentation.
+- `scanner/parser/catalog.go` — `ParseCatalog` extracts entity name, type (mapped from Backstage `kind`/`spec.type`), lifecycle, description, tags, and all spec relations (`owned_by`, `part_of`, `depends_on`, `provides_api`, `consumes_api`). Entity names are validated against a strict `[a-zA-Z0-9._-]{1,253}` regex, rejecting unsafe values.
+- `memory/content.go` — `ContentCache` persists raw file content in a `doc_contents` GORM table with SHA-based incremental diffing. Files larger than `MAX_CONTENT_SIZE` (default 200 KB) are skipped. Full-text search uses `LIKE`/`ILIKE` with proper `%` and `_` wildcard escaping to prevent injection. Enabled only when `SCAN_CONTENT=true` on a persistent `DATABASE_URL`.
+- `indexer/indexer.go` — Phase 2a upserts catalog entities, observations, and relations; honours a three-tier merge strategy: create-new, update-auto (`_source:catalog-info`), or add-missing-only (manual entities). Phase 1 refreshes the content cache. Phase 3 soft-deletes stale entities with `_status:archived`.
+- `scanner/scanner.go` — `SetOnScanComplete` callback wires the `AutoIndexer` into the scanner lifecycle without coupling the packages.
+- `tools/search_content.go` — new `search_content` MCP tool for full-text search across cached documentation; returns repo name, path, and a ≤300-char context snippet per match (max 20 results). Returns a clear error if content caching is disabled.
+- `tools/get_scan_status.go` — new `get_scan_status` MCP tool exposing scanner state, last scan time, repo count, content cache size, graph entity count, and whether `SCAN_CONTENT` is enabled.
+
+### 7. Deployment and Operations ✅
+- **Implemented**: Full production-ready deployment suite across multiple targets.
+- `Dockerfile` — multi-stage, multi-arch (`linux/amd64`, `linux/arm64`), non-root user, HEALTHCHECK, all env vars declared.
+- `docker-compose.yml` — three profiles: `http` (SQLite, default), `postgres` (PostgreSQL backend), `stdio` (MCP Inspector / Claude Desktop).
+- `Makefile` — `build`, `test`, `lint`, `docker-build`, `docker-build-multiarch`, `compose-up`, `k8s-deploy`, `helm-install`, `release` targets and more.
+- `.mise.toml` — extended with `docker-build`, `compose-up/down`, `helm-lint`, `helm-template`, `clean` tasks.
+- `deploy/k8s/` — raw Kubernetes manifests: Namespace, Secret, ConfigMap, PVC, Deployment (non-root, probes, resource limits), Service, Ingress.
+- `deploy/helm/` — full Helm chart v2 with `values.yaml`, `_helpers.tpl`, and templates for all resources (Deployment, Service, ConfigMap, Secret, PVC, Ingress).
+- `deploy/terraform/` — Kubernetes Terraform module (`hashicorp/kubernetes` provider): Namespace, Secret, ConfigMap, PVC, Deployment, Service, optional Ingress. Works with any K8s cluster (EKS, GKE, AKS, local).
+
+### 11. Infra Asset Scanning ✅
+- **Implemented**: Automatic discovery and indexing of infrastructure and deployment assets beyond documentation files.
+- `scanner/scanner.go` — new `SCAN_INFRA_DIRS` env var (default: `deploy/`, `infra/`, `.github/workflows/`) triggers recursive scanning for `.yaml`, `.yml`, `.tf`, `.hcl`, `.toml` files in those directories. Context-aware `classifyFile` assigns specific types: `helm`, `k8s`, `workflow`, `terraform`, `toml`, `infra`.
+- Root-level tooling files are scanned by default: `Dockerfile` (`dockerfile`), `docker-compose.yml`/`docker-compose.yaml` (`compose`), `Makefile` (`makefile`), `.mise.toml`/`mise.toml` (`mise`).
+- All classified infrastructure files are exposed to AI agents via `list_repos`, `search_docs`, and `get_file_content` — path-traversal protected by the same `IsIndexed()` security model as documentation files.
+
+### 12. Security Input Hardening ✅
+- **Implemented**: Input validation and SQL injection prevention across the catalog parser and content search.
+- `scanner/parser/catalog.go` — `isValidEntityName` validates entity names from `catalog-info.yaml` against `[a-zA-Z0-9._-]{1,253}` (with optional `namespace/` prefix). Invalid names return a parse error rather than being silently stored.
+- `memory/content.go` — SQL LIKE wildcard characters (`%`, `_`, `\`) in search queries are escaped before being interpolated into `LIKE`/`ILIKE` predicates, preventing user-controlled wildcards from scanning the entire table.
+
 ---
 
 ## Future Work
-
 
 ### 2. Semantic Search and Vector Embeddings (RAG)
 - **Current State**: Content search relies on exact text matching (`LIKE` queries in SQL).
@@ -55,16 +84,5 @@ This document outlines the current technical debts and the path forward for DocS
 ### 5. Multi-Cloud and Platform Adapters
 - **Current State**: Hardcoded dependency on GitHub API.
 - **Goal**: Build a generic "Provider" interface to support GitLab, Bitbucket, Confluence, Notion, and other internal enterprise wikis out-of-the-box.
-
-
-### 7. Deployment and Operations ✅
-- **Implemented**: Full production-ready deployment suite across multiple targets.
-- `Dockerfile` — multi-stage, multi-arch (`linux/amd64`, `linux/arm64`), non-root user, HEALTHCHECK, all env vars declared.
-- `docker-compose.yml` — three profiles: `http` (SQLite, default), `postgres` (PostgreSQL backend), `stdio` (MCP Inspector / Claude Desktop).
-- `Makefile` — `build`, `test`, `lint`, `docker-build`, `docker-build-multiarch`, `compose-up`, `k8s-deploy`, `helm-install`, `release` targets and more.
-- `.mise.toml` — extended with `docker-build`, `compose-up/down`, `helm-lint`, `helm-template`, `clean` tasks.
-- `deploy/k8s/` — raw Kubernetes manifests: Namespace, Secret, ConfigMap, PVC, Deployment (non-root, probes, resource limits), Service, Ingress.
-- `deploy/helm/` — full Helm chart v2 with `values.yaml`, `_helpers.tpl`, and templates for all resources (Deployment, Service, ConfigMap, Secret, PVC, Ingress).
-- `deploy/terraform/` — Kubernetes Terraform module (`hashicorp/kubernetes` provider): Namespace, Secret, ConfigMap, PVC, Deployment, Service, optional Ingress. Works with any K8s cluster (EKS, GKE, AKS, local).
 
 
