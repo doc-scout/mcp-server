@@ -16,14 +16,35 @@ type AddObservationsArgs struct {
 
 type AddObservationsResult struct {
 	Observations []memory.Observation `json:"observations"`
+	// Skipped lists observations rejected by quality guards (empty, too short/long, duplicate).
+	// Non-nil only when at least one observation was filtered.
+	Skipped []SkippedObservation `json:"skipped,omitempty"`
 }
 
 func addObservationsHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args AddObservationsArgs) (*mcp.CallToolResult, AddObservationsResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args AddObservationsArgs) (*mcp.CallToolResult, AddObservationsResult, error) {
-		observations, err := graph.AddObservations(args.Observations)
+		var clean []memory.Observation
+		var allSkipped []SkippedObservation
+
+		for _, obs := range args.Observations {
+			valid, skipped := sanitizeObservations(obs.EntityName, obs.Contents)
+			allSkipped = append(allSkipped, skipped...)
+			if len(valid) > 0 {
+				clean = append(clean, memory.Observation{
+					EntityName: obs.EntityName,
+					Contents:   valid,
+				})
+			}
+		}
+
+		if len(clean) == 0 {
+			return nil, AddObservationsResult{Skipped: allSkipped}, nil
+		}
+
+		observations, err := graph.AddObservations(clean)
 		if err != nil {
 			return nil, AddObservationsResult{}, err
 		}
-		return nil, AddObservationsResult{Observations: observations}, nil
+		return nil, AddObservationsResult{Observations: observations, Skipped: allSkipped}, nil
 	}
 }

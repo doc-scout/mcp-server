@@ -167,6 +167,9 @@ func main() {
 	// --- Memory / Knowledge Graph ---
 	memorySrv := memory.NewMemoryService(db)
 
+	// Wrap with audit logger — logs every graph mutation to slog (stderr).
+	auditedGraph := tools.NewGraphAuditLogger(memorySrv)
+
 	// --- Content Cache ---
 	var contentCache *memory.ContentCache
 	if scanContent {
@@ -179,7 +182,7 @@ func main() {
 	docMetrics := tools.NewDocMetrics()
 
 	// --- Auto-Indexer ---
-	ai := indexer.New(sc, memorySrv, contentCache)
+	ai := indexer.New(sc, auditedGraph, contentCache)
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
 		start := time.Now()
 		slog.Info("[indexer] Auto-indexing started", "repos", len(repos))
@@ -193,7 +196,7 @@ func main() {
 		}
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
-		tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics, docMetrics)
+		tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics)
 		slog.Info("Triggered tools/list_changed notification")
 	})
 
@@ -202,7 +205,7 @@ func main() {
 	if contentCache != nil {
 		searcher = contentCache
 	}
-	tools.Register(mcpServer, sc, memorySrv, searcher, toolMetrics, docMetrics)
+	tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics)
 
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)

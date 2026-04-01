@@ -33,10 +33,11 @@ This document outlines the current technical debts and the path forward for DocS
 - `tools/get_usage_stats.go` — `get_usage_stats` MCP tool returns tool call counts **and** the top 20 most-fetched documents since server start.
 - `main.go` — `/metrics` HTTP endpoint emits two Prometheus counters: `docscout_tool_calls_total{tool}` and `docscout_document_accesses_total{repo,path}`.
 
-### 9. Knowledge Graph Protection ✅ *(partial)*
-- **Implemented**: Mass-deletion guard on `delete_entities`.
-- `tools/delete_entities.go` — Requests deleting more than 10 entities in a single call are rejected unless `confirm: true` is explicitly set. The threshold (`massDeleteThreshold = 10`) is a named constant. The tool description surfaces this requirement to AI agents.
-- **Remaining**: Hallucination detection heuristics, moderation for `create_entities` (duplicate/low-quality observation filtering).
+### 9. Knowledge Graph Protection ✅
+- **Implemented**: Mass-deletion guard, observation quality filtering, and full mutation audit log.
+- `tools/delete_entities.go` — Requests deleting more than 10 entities in a single call are rejected unless `confirm: true` is explicitly set.
+- `tools/graph_guard.go` — `sanitizeObservations` filters observations before any write: rejects empty/whitespace-only, too-short (< 2 chars), too-long (> 500 chars), and deduplicates within the batch. Both `create_entities` and `add_observations` return a `skipped` field listing every rejection with its reason.
+- `tools/audit.go` — `GraphAuditLogger` decorator wraps the entire `GraphStore`. Every mutation (`create_entities`, `add_observations`, `create_relations`, `delete_*`) emits a structured `slog.Info` line with entity names and counts. Read-only operations pass through silently. The logger is applied globally in `main.go`, covering both AI agent calls and the auto-indexer.
 
 ---
 
@@ -67,6 +68,3 @@ This document outlines the current technical debts and the path forward for DocS
 - `deploy/terraform/` — Kubernetes Terraform module (`hashicorp/kubernetes` provider): Namespace, Secret, ConfigMap, PVC, Deployment, Service, optional Ingress. Works with any K8s cluster (EKS, GKE, AKS, local).
 
 
-### 9. Knowledge Graph Protection — Remaining
-- **Current State**: Mass-deletion is guarded. Hallucination detection is not implemented.
-- **Goal**: Add heuristics to detect low-quality or duplicate observations on `create_entities` and `add_observations`. Consider an audit log of all graph mutations.
