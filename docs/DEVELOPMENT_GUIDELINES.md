@@ -36,3 +36,36 @@ MCP servers execute code locally on behalf of an LLM. Treat the LLM as an untrus
 
 - Keep unit tests focused on the underlying logic (e.g., GitHub Scanner, Cache updates) rather than the JSON-RPC transport wrapper.
 - Use explicit API mocks for GitHub.
+- Every new parser in `scanner/parser/` must have a corresponding `*_test.go` covering at least: valid input, missing required fields, edge cases (empty deps, all-excluded scopes).
+
+## 7. Go Version
+
+The project targets **Go 1.26+** (declared in `go.mod`). Use modern language features where they improve clarity. Run `govulncheck ./...` to check for known vulnerabilities before submitting.
+
+## 8. Adding New Parsers
+
+Follow the established pattern when adding support for a new manifest format:
+
+1. **Parser** — create `scanner/parser/<format>.go` with a `Parse<Format>(data []byte) (Parsed<Format>, error)` function. Exported type holds the entity name, entity type, and direct dependencies.
+2. **Tests** — create `scanner/parser/<format>_test.go` with table-driven tests.
+3. **Scanner** — add the filename(s) to `scanner.DefaultTargetFiles` and a `case` to `classifyFile`.
+4. **Indexer** — add a Phase `2x` loop in `indexer/indexer.go` and an `upsert<Format>` method.
+5. **Docs** — update `docs/how-it-works.md` and `README.md`.
+
+## 9. Graph Safety Rules
+
+- **Observation filtering**: All user-originated observations pass through `tools.sanitizeObservations` before reaching the store. This rejects empty, too-short (< 2 chars), too-long (> 500 chars), and within-batch duplicate observations.
+- **Audit log**: `tools.GraphAuditLogger` wraps the store in `main.go` and emits a structured slog line for every mutation. Do not bypass this wrapper.
+- **Mass-delete guard**: `delete_entities` rejects batches of more than 10 entities unless `confirm: true` is set. Apply the same pattern to any new bulk-destructive tool.
+
+## 10. Deployment Targets
+
+Deployment assets live under `deploy/`:
+
+| Directory | Target |
+|-----------|--------|
+| `deploy/k8s/` | Raw Kubernetes manifests (apply with `kubectl` or `make k8s-deploy`) |
+| `deploy/helm/` | Helm chart v2 (install with `helm install` or `make helm-install`) |
+| `deploy/terraform/` | Kubernetes Terraform module (`hashicorp/kubernetes` provider) |
+
+The `Makefile` at the project root provides targets for all deployment paths. The `docker-compose.yml` supports three profiles: `http` (SQLite), `postgres`, and `stdio`.

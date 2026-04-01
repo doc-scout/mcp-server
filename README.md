@@ -24,21 +24,26 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 
 ### Scanner Tools
 
-1. `list_repos`: Lists all repositories that contain documentation files.
-2. `search_docs`: Searches documentation files by matching a query against file paths and repo names.
-3. `get_file_content`: Retrieves the raw content of a specific documentation file.
+1. `list_repos`: Lists all repositories that contain indexed files (docs, manifests, infra).
+2. `search_docs`: Searches indexed file paths and repository names by query term.
+3. `get_file_content`: Retrieves the raw content of a specific indexed file (path-traversal protected — only files verified by the scanner are accessible).
+4. `get_scan_status`: Returns current scanner state, last scan time, repo count, and content cache size.
 
 ### Knowledge Graph Tools
 
-4. `create_entities`: Create nodes in the knowledge graph.
-5. `create_relations`: Create directed edges between entities.
-6. `add_observations`: Append facts to existing entities.
-7. `delete_entities`: Remove entities (cascades relations and observations).
-8. `delete_observations`: Remove specific observations from entities.
-9. `delete_relations`: Remove specific relations.
-10. `read_graph`: Read the entire knowledge graph.
-11. `search_nodes`: Search entities by name, type, or observation content.
-12. `open_nodes`: Retrieve specific entities by name with their relations.
+5. `create_entities`: Create nodes in the knowledge graph. Observations are sanitized (empty, too-short, too-long, and within-batch duplicates are rejected) and the response includes a `skipped` field for any filtered items.
+6. `create_relations`: Create directed edges between entities.
+7. `add_observations`: Append facts to existing entities (same quality filtering as `create_entities`).
+8. `delete_entities`: Remove entities (cascades relations and observations). Deleting more than 10 entities at once requires `confirm: true`.
+9. `delete_observations`: Remove specific observations from entities.
+10. `delete_relations`: Remove specific relations.
+11. `read_graph`: Read the entire knowledge graph.
+12. `search_nodes`: Search entities by name, type, or observation content.
+13. `open_nodes`: Retrieve specific entities by name with their relations and observations.
+
+### Observability Tools
+
+14. `get_usage_stats`: Returns per-tool call counts and the top 20 most-fetched documents since server start. Useful for identifying which services or files are most consulted by AI agents.
 
 ## Security & GitHub Tokens 🔒
 

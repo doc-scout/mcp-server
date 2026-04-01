@@ -22,4 +22,14 @@ This MCP server runs via Standard Input/Output (`stdio`). The JSON-RPC messages 
 
 # 5. Idiomatic Go
 - Treat the project like a production backend system: Use Goroutines correctly (sync.WaitGroup, semaphores to cap concurrency), leverage `sync.RWMutex` for caches, and fail gracefully.
-- Support Go 1.22+.
+- Support Go 1.26+. The project's `go.mod` declares `go 1.26.1`.
+
+# 6. Knowledge Graph Integrity
+- All mutations to the graph (via `create_entities`, `add_observations`) pass through `sanitizeObservations` before reaching the store. Never bypass this layer.
+- The `GraphAuditLogger` decorator wraps the store in `main.go` and logs every mutation to slog. Preserve this wiring when adding new graph operations.
+- The `delete_entities` tool enforces a mass-delete guard (`massDeleteThreshold = 10`). Any new bulk-delete tools must implement the same pattern.
+
+# 7. Scanner Extension Points
+- New manifest parsers go in `scanner/parser/` and follow the `Parse*` function signature pattern. Add a corresponding phase (`2x`) in `indexer/indexer.go`.
+- New file types must be registered in `scanner.DefaultTargetFiles` (root-level) or `scanner.DefaultInfraDirs` (directory-based). Add the type string to `classifyFile`.
+- Infra directories (`deploy/`, `.github/workflows/`) are scanned via `scanInfraDir` for extensions in `infraExtensions`. Doc directories use `scanDocsDir` for `.md` files only.

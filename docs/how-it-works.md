@@ -1,76 +1,161 @@
 # How DocScout-MCP Works
 
-DocScout-MCP is designed to bridge the gap between large, distributed software systems and AI agents. It does this by creating a reliable, deterministic model of your architecture and exposing it—alongside raw documentation content—to any LLM via the Model Context Protocol (MCP).
+DocScout-MCP bridges the gap between large, distributed software systems and AI agents. It creates a reliable, deterministic model of your architecture and exposes it — alongside raw documentation content — to any LLM via the Model Context Protocol (MCP).
 
-This document explains the two core mechanisms that make this possible: the **Deterministic Dependency Graph** and the **MCP Interfaces**.
+This document explains the three core mechanisms: **Scanning & Parsing**, the **Deterministic Knowledge Graph**, and the **MCP Interface**.
 
 ---
 
-## 1. The Deterministic Dependency Graph
+## 1. Scanning & Parsing
 
-A common problem with feeding codebases to AI is "hallucination"—the AI guesses how services are connected based on naming conventions or outdated `README.md` files. DocScout-MCP eliminates this by building a **Deterministic Dependency Graph**.
+The scanner (`scanner/scanner.go`) runs on startup and repeats at every `SCAN_INTERVAL`. It discovers three categories of files:
 
-Rather than relying on the AI to infer relationships, the project collects declarative architectural metadata during its repository scanning phase.
+### 1a. Root-Level Target Files
 
-### How `AutoIndexer` Works
+Checked at every repository root via the GitHub Contents API:
 
-1. **Discovery & Parsing**: As the scanner sweeps through attached repositories, it looks for Backstage-compatible `catalog-info.yaml` files. The `scanner/parser` package extracts structured metadata from these files.
-2. **Graph Upsert**: The `AutoIndexer` takes these parsed components (such as a system, component, or API) and maps them into `Entities`, `Relations`, and `Observations`. These are then persisted into the core SQLite Knowledge Graph via `GraphWriter`.
-3. **Soft-Delete Lifecycle**: Because this process is completely deterministic, auto-generated entities receive special tracking annotations (e.g., `_source:catalog-info` and `_scan_repo:<repo_name>`). If a repository is removed from the scan in the future, the indexer adds a `_status:archived` flag to its entities rather than hard-deleting them, preserving historical context.
+| File | Type | What is extracted |
+|------|------|-------------------|
+| `catalog-info.yaml` | `catalog-info` | Backstage entity, relations, owner, lifecycle |
+| `go.mod` | `gomod` | Module path, Go version, direct dependencies |
+| `package.json` | `packagejson` | Package name, version, runtime dependencies |
+| `pom.xml` | `pomxml` | Maven groupId, artifactId, version, compile/runtime deps |
+| `CODEOWNERS` / `.github/CODEOWNERS` / `docs/CODEOWNERS` | `codeowners` | Owners per path pattern (team, person, email) |
+| `Dockerfile` | `dockerfile` | Presence of containerisation |
+| `docker-compose.yml` | `compose` | Multi-service composition |
+| `Makefile` | `makefile` | Build automation presence |
+| `.mise.toml` | `mise` | Tool version management |
+| `README.md`, `mkdocs.yml`, `openapi.yaml`, `swagger.json` | `readme`, `mkdocs`, `openapi`, `swagger` | Documentation surface |
 
-### Example: A Service Definition
+### 1b. Documentation Directories
 
-If a repository contains the following `catalog-info.yaml`:
+Directories listed in `SCAN_DIRS` (default: `docs/`, `.agents/`) are scanned recursively for `.md` files, typed as `docs`.
 
-```yaml
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
-  name: payment-service
-  description: Handles payment
-spec:
-  type: service
-  lifecycle: production
-  owner: team-payments
-  dependsOn:
-    - component:db
+### 1c. Infrastructure Directories
+
+Directories listed in `SCAN_INFRA_DIRS` (default: `deploy/`, `infra/`, `.github/workflows/`) are scanned recursively for infrastructure files:
+
+| Extension | Type assigned |
+|-----------|--------------|
+| `Chart.yaml` or any `.yaml` under `/helm/` | `helm` |
+| Any `.yaml`/`.yml` under `/k8s/` or `/kubernetes/` | `k8s` |
+| Any `.yaml`/`.yml` under `/workflows/` | `workflow` |
+| `*.tf`, `*.hcl` | `terraform` |
+| `*.toml` | `toml` |
+| Other `.yaml`/`.yml` | `infra` |
+
+### 1d. Incremental Scans via Webhooks (optional)
+
+When `GITHUB_WEBHOOK_SECRET` is set, the `/webhook` endpoint is activated. GitHub sends a signed `POST` for `push`, `create`, `delete`, and `repository` events. The server verifies `X-Hub-Signature-256` (HMAC-SHA256) and immediately triggers a targeted single-repo scan, bypassing the full org polling cycle. Unrelated events (`ping`, `star`, `issues`) are acknowledged and ignored.
+
+---
+
+## 2. The Deterministic Knowledge Graph
+
+Rather than letting the AI infer relationships, the **AutoIndexer** (`indexer/indexer.go`) translates parsed manifests into graph entities, relations, and observations stored in SQLite or PostgreSQL.
+
+### Indexer Phases
+
+After each scan completes, the indexer runs sequentially:
+
+| Phase | Source | Graph output |
+|-------|--------|-------------|
+| 1 | All files | Content cache refresh (if `SCAN_CONTENT=true`) |
+| 2 | `catalog-info.yaml` | Entity + type + observations + explicit relations |
+| 2b | `go.mod` | `service` entity, `go_module`, `go_version`, `depends_on` per direct dep |
+| 2c | `package.json` | `service` entity, `npm_package`, `version`, `depends_on` per runtime dep |
+| 2d | `pom.xml` | `service` entity, `maven_artifact`, `java_group`, `version`, `depends_on` per compile/runtime dep |
+| 2e | `CODEOWNERS` | `team`/`person` entities per owner, `owns` relations to the service entity |
+| 3 | All entities | Entities from repos no longer in the scan receive `_status:archived` |
+
+### Graph Safety
+
+Every write operation passes through two layers of protection:
+
+1. **Observation quality filter** (`tools/graph_guard.go`): Rejects observations that are empty, shorter than 2 characters, longer than 500 characters, or duplicate within the same batch. The tool response includes a `skipped` field listing each rejection with its reason.
+
+2. **Audit logger** (`tools/audit.go`): A `GraphAuditLogger` decorator wraps the store and emits a structured `slog.Info` line for every mutation (`create_entities`, `add_observations`, `create_relations`, `delete_*`). Read-only operations pass through silently.
+
+3. **Mass-delete guard** (`tools/delete_entities.go`): Deleting more than 10 entities in a single call is rejected unless `confirm: true` is explicitly set.
+
+### Example: Inferring a Service from `go.mod`
+
+```
+module github.com/myorg/payment-service
+
+go 1.26
+
+require (
+    github.com/myorg/billing-lib v1.2.0
+    github.com/jackc/pgx/v5 v5.9.1
+)
 ```
 
-The indexer deterministic translates this to:
-- **Entity**: `payment-service` (Type: `service`).
-- **Observations**: `_source:catalog-info`, `_scan_repo:org/payment-service`, `description: Handles payment`, `lifecycle: production`, `owner: team-payments`.
-- **Relation**: A `depends_on` edge pointing from `payment-service` to `component:db`.
+The indexer produces:
+- **Entity**: `payment-service` (type: `service`)
+- **Observations**: `_source:go.mod`, `_scan_repo:myorg/payment-service`, `go_module:github.com/myorg/payment-service`, `go_version:1.26`
+- **Relations**: `payment-service → depends_on → billing-lib`, `payment-service → depends_on → pgx`
 
-Now, the architecture is a fact stored in the database, not an assumption.
+### Example: Inferring Ownership from `CODEOWNERS`
+
+```
+# CODEOWNERS
+/services/payment/ @myorg/payments-team
+*.go               @alice
+```
+
+The indexer produces:
+- **Entity**: `payments-team` (type: `team`), observation: `github_handle:@myorg/payments-team`
+- **Entity**: `alice` (type: `person`), observation: `github_handle:@alice`
+- **Relations**: `payments-team → owns → payment-service`, `alice → owns → payment-service`
 
 ---
 
-## 2. Exposing Superpowers via MCP
+## 3. The MCP Interface
 
-If the deterministic graph is the "brain," then the **Model Context Protocol (MCP)** is the "API" that agents use to interact with it.
+The server exposes tools over `stdio` (default) or Streamable HTTP (`HTTP_ADDR`). All tools are instrumented with call-count metrics.
 
-DocScout-MCP registers several tools over `stdio` or HTTP transport, allowing agents (such as Claude Desktop or custom tools) to query the exact state of the universe.
+### Scanner Tools
 
-### Key Agent Tools
+| Tool | Description |
+|------|-------------|
+| `list_repos` | Lists all repos that contain indexed files |
+| `search_docs` | Searches file paths and repo names by query |
+| `get_file_content` | Fetches raw content of an indexed file (path-traversal protected) |
+| `get_scan_status` | Returns scanner state, last scan time, repo count, content cache size |
 
-The server registered tools are defined in the `tools` package and include:
-- `search_nodes`: Allows the agent to search for specific entities or relations in the graph.
-- `open_nodes`: Provide the agent deep-dive observational data about a given entity.
-- `read_graph`: Dumps the underlying graph or subgraph.
-- `search_content` / `get_file_content`: Fetches the raw content of cached files (like `README.md` or API specs) associated with the discovered services.
+### Knowledge Graph Tools
 
-### Practical Example: Answering Architectural Queries
+| Tool | Description |
+|------|-------------|
+| `create_entities` | Create nodes; observations are sanitized before storage |
+| `create_relations` | Create directed edges between entities |
+| `add_observations` | Append facts to existing entities (sanitized, deduplicated) |
+| `delete_entities` | Remove entities (cascades relations/observations; > 10 requires `confirm: true`) |
+| `delete_observations` | Remove specific observations |
+| `delete_relations` | Remove specific relations |
+| `read_graph` | Return the full knowledge graph |
+| `search_nodes` | Search entities by name, type, or observation content |
+| `open_nodes` | Retrieve specific entities by name with their relations |
 
-Imagine you ask an AI Agent a question:
-> *"What happens if I shut down the `component:db`? Which systems will go offline, and who should I notify?"*
+### Observability Tools
 
-Instead of reading all source code simultaneously, the Agent performs a surgical sequence of MCP tool calls:
+| Tool | Description |
+|------|-------------|
+| `get_usage_stats` | Returns per-tool call counts + top 20 most-fetched documents since server start |
 
-1. **Invoke `search_nodes`**: The agent queries `search_nodes` with `"component:db"`.
-2. **Examine Relations**: DocScout-MCP searches the internal SQLite database and responds with a JSON-RPC payload displaying an explicit `depends_on` relation from `payment-service` to `component:db`.
-3. **Expand Context via `open_nodes`**: The agent expands the `payment-service` node and sees the `owner: team-payments` observation.
-4. **Formulate Accurate Answer**: The agent responds confidently:
-   *"If you disable `component:db`, the `payment-service` will go offline because it explicitly depends on it. You should notify `team-payments` before taking any action. Would you like me to fetch their onboarding docs using DocScout's documentation tools?"*
+The `/metrics` HTTP endpoint (when `HTTP_ADDR` is set) emits two Prometheus counters:
+- `docscout_tool_calls_total{tool}` — total calls per tool
+- `docscout_document_accesses_total{repo,path}` — total fetches per document
 
-### Summary
-By pairing a **Deterministic Dependency Graph** mapped from declarative manifests with standard **MCP Tools**, DocScout-MCP provides agents with perfect, non-alucinated context of your entire distributed environment.
+---
+
+## Practical Example: Answering Architectural Queries
+
+> *"What happens if I shut down `component:db`? Which systems will go offline, and who should I notify?"*
+
+1. **`search_nodes("component:db")`** — finds `component:db` and a `depends_on` edge from `payment-service`
+2. **`open_nodes(["payment-service"])`** — reveals observations: `owner: team-payments`, `_source:go.mod`, `go_version:1.26`
+3. **`search_nodes("team-payments")`** — finds the `team` entity with `owns → payment-service` relation and a `github_handle:@myorg/payments-team` observation
+
+The agent responds with verified facts from the graph — not hallucinations based on file naming conventions.
