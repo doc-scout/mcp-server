@@ -85,4 +85,79 @@ This document outlines the current technical debts and the path forward for DocS
 - **Current State**: Hardcoded dependency on GitHub API.
 - **Goal**: Build a generic "Provider" interface to support GitLab, Bitbucket, Confluence, Notion, and other internal enterprise wikis out-of-the-box.
 
+### 13. Custom Parser Extension
+- **Current State**: Adding a new manifest parser requires edits in 4+ locations — `DefaultTargetFiles` and `classifyFile()` in `scanner/scanner.go`, a new phase loop in `indexer/indexer.go`, and a 50-line `upsertX()` method. No extension point exists; every parser is hardcoded into the indexer core. There is no way to support a custom format (e.g. `Pipfile`, `.tool-versions`, `chart.lock`) without forking the repository.
+- **Goal**: Introduce a `FileParser` interface and a `ParserRegistry` so users can plug in custom parsers without touching core code.
+
+**Proposed `FileParser` interface** (`scanner/parser/extension.go`):
+```go
+// ParsedFile is the normalized, graph-ready output every parser must return.
+type ParsedFile struct {
+    EntityName   string
+    EntityType   string           // "service", "team", "api", etc.
+    Observations []string         // e.g. ["version:1.2.3", "lang:python"]
+    Relations    []ParsedRelation // optional semantic edges
+}
+
+type FileParser interface {
+    FileType() string       // classifier key, e.g. "pipfile"
+    Filenames() []string    // root-level filenames to scan for, e.g. ["Pipfile"]
+    Parse([]byte) (ParsedFile, error)
+}
+```
+
+**Registration** (in `main.go`, before the indexer starts):
+```go
+indexer.RegisterParser(myOrg.NewPipfileParser())
+// ↑ automatically wires Filenames() into scanner targets
+//   and FileType() into classifyFile routing
+```
+
+**Implementation scope**:
+- `scanner/parser/extension.go` (new) — `FileParser` interface + `ParsedFile` struct
+- `scanner/parser/registry.go` (new) — thread-safe `ParserRegistry` with `Register` / `Get` / `All`
+- `scanner/scanner.go` — `classifyFile` and `DefaultTargetFiles` populated from registry; backward-compatible
+- `indexer/indexer.go` — `Run()` iterates registry instead of 5 hardcoded phase loops; single `upsertParsedFile()` replaces 5 duplicate methods
+- All 5 built-in parsers (gomod, packagejson, pom, catalog, codeowners) — implement `FileParser`; existing `Parse*` functions remain as package-level helpers for backward compatibility
+- `main.go` — register built-in parsers at startup
+- `AGENTS.md` — update §7 with interface contract, registration guide, and example
+
+### 14. Graph Traversal & Impact Analysis
+- **Current State**: The knowledge graph has three read primitives — `read_graph` (full dump), `search_nodes` (text search), and `open_nodes` (lookup by name). None supports **directed traversal**. An AI agent trying to answer "which services will break if `payment-api` is deprecated?" or "what are the transitive dependencies of `auth-service`?" must call `read_graph` and traverse the entire graph client-side — impractical for organisations with hundreds of entities and thousands of relations.
+- **Goal**: Add a `traverse_graph` MCP tool and a server-side BFS/DFS implementation so AI agents can answer impact and ownership questions with a single focused query.
+
+**Proposed tool interface**:
+```
+Tool: traverse_graph
+
+Input:
+  entity        string   (required) — starting node name
+  relation_type string   (optional) — filter edges by type (e.g. "depends_on", "consumes_api", "owned_by")
+  direction     string   (optional, default "outgoing") — "outgoing" | "incoming" | "both"
+  depth         int      (optional, default 1, max 10) — how many hops to follow
+
+Output:
+  []{ entity, entity_type, observations, distance, path }
+  — entities reachable within `depth` hops, with the relation path that connects them
+```
+
+**Example queries**:
+```
+// Impact: who consumes payment-api?
+traverse_graph(entity="payment-api", relation_type="consumes_api", direction="incoming", depth=1)
+
+// Ownership: who owns checkout-service?
+traverse_graph(entity="checkout-service", relation_type="owned_by", depth=2)
+
+// Transitive deps: full dependency tree of auth-service
+traverse_graph(entity="auth-service", relation_type="depends_on", direction="outgoing", depth=5)
+```
+
+**Implementation scope**:
+- `memory/traverse.go` (new) — BFS over `dbRelation` rows; uses SQL `IN` queries per hop to avoid loading the full graph; respects `direction` (query `from_node` for outgoing, `to_node` for incoming)
+- `memory/memory.go` — expose `TraverseGraph(entity, relationType, direction string, maxDepth int)` on `MemoryService`; add to `GraphStore` interface in `tools/ports.go`
+- `tools/traverse_graph.go` (new) — handler + typed args/result structs
+- `tools/tools.go` — register `traverse_graph` tool
+- `tests/traverse_graph/traverse_graph_test.go` (new) — E2E test: build a small graph, assert traversal returns correct nodes at correct depths
+
 
