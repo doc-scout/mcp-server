@@ -6,7 +6,7 @@ package scanner
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/go-github/v60/github"
@@ -48,7 +48,7 @@ func retryGitHub(ctx context.Context, fn func() error) error {
 			wait = maxRetryWait
 		}
 
-		log.Printf("[scanner] GitHub API retry %d/%d in %s: %v", attempt+1, maxRetries, wait.Round(time.Second), lastErr)
+		slog.Warn("[scanner] GitHub API retry", "attempt", attempt+1, "max", maxRetries, "wait", wait.Round(time.Second), "error", lastErr)
 
 		select {
 		case <-ctx.Done():
@@ -62,8 +62,7 @@ func retryGitHub(ctx context.Context, fn func() error) error {
 // retryDelay returns how long to wait before the next attempt and whether to retry.
 func retryDelay(err error, attempt int) (time.Duration, bool) {
 	// Primary rate limit: wait until the rate limit window resets.
-	var rle *github.RateLimitError
-	if errors.As(err, &rle) {
+	if rle, ok := errors.AsType[*github.RateLimitError](err); ok {
 		wait := time.Until(rle.Rate.Reset.Time)
 		if wait <= 0 {
 			wait = baseBackoff
@@ -72,8 +71,7 @@ func retryDelay(err error, attempt int) (time.Duration, bool) {
 	}
 
 	// Secondary (abuse) rate limit: respect the Retry-After header if present.
-	var arle *github.AbuseRateLimitError
-	if errors.As(err, &arle) {
+	if arle, ok := errors.AsType[*github.AbuseRateLimitError](err); ok {
 		if arle.RetryAfter != nil {
 			return *arle.RetryAfter, true
 		}
@@ -81,8 +79,7 @@ func retryDelay(err error, attempt int) (time.Duration, bool) {
 	}
 
 	// Transient server errors from the GitHub API (5xx or 429).
-	var ghResp *github.ErrorResponse
-	if errors.As(err, &ghResp) && ghResp.Response != nil {
+	if ghResp, ok := errors.AsType[*github.ErrorResponse](err); ok && ghResp.Response != nil {
 		code := ghResp.Response.StatusCode
 		if code == 429 || code >= 500 {
 			return baseBackoff << attempt, true

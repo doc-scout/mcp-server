@@ -61,7 +61,7 @@ func TestListReposHandler(t *testing.T) {
 	req := &mcp.CallToolRequest{}
 
 	// The new SDK generic API signature
-	res, output, err := handler(context.Background(), req, ListReposArgs{})
+	res, output, err := handler(t.Context(), req, ListReposArgs{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestSearchDocsHandler(t *testing.T) {
 	handler := searchDocsHandler(mock)
 	req := &mcp.CallToolRequest{}
 
-	res, output, err := handler(context.Background(), req, SearchDocsArgs{Query: "guide"})
+	res, output, err := handler(t.Context(), req, SearchDocsArgs{Query: "guide"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestGetFileContentHandler(t *testing.T) {
 	// Test successful case
 	req := &mcp.CallToolRequest{}
 
-	res, output, err := handler(context.Background(), req, GetFileContentArgs{Repo: "test-repo", Path: "docs/guide.md"})
+	res, output, err := handler(t.Context(), req, GetFileContentArgs{Repo: "test-repo", Path: "docs/guide.md"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestGetFileContentHandler(t *testing.T) {
 	// Test error case (file not indexed)
 	req2 := &mcp.CallToolRequest{}
 
-	_, _, err2 := handler(context.Background(), req2, GetFileContentArgs{Repo: "test-repo", Path: "docs/secret.txt"})
+	_, _, err2 := handler(t.Context(), req2, GetFileContentArgs{Repo: "test-repo", Path: "docs/secret.txt"})
 
 	// The new behavior returns a standard Go compilation error handled by the wrapper.
 	if err2 == nil {
@@ -194,7 +194,7 @@ func TestGetScanStatusHandler(t *testing.T) {
 	handler := getScanStatusHandler(sc, counter, searcher)
 	req := &mcp.CallToolRequest{}
 
-	_, result, err := handler(context.Background(), req, ScanStatusArgs{})
+	_, result, err := handler(t.Context(), req, ScanStatusArgs{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestSearchContentHandler_Success(t *testing.T) {
 	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
-	_, result, err := handler(context.Background(), req, SearchContentArgs{Query: "stripe"})
+	_, result, err := handler(t.Context(), req, SearchContentArgs{Query: "stripe"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestSearchContentHandler_Disabled(t *testing.T) {
 	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
-	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: "anything"})
+	_, _, err := handler(t.Context(), req, SearchContentArgs{Query: "anything"})
 	if err == nil {
 		t.Error("expected error when content search is disabled")
 	}
@@ -251,7 +251,7 @@ func TestSearchContentHandler_EmptyQuery(t *testing.T) {
 	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
-	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: ""})
+	_, _, err := handler(t.Context(), req, SearchContentArgs{Query: ""})
 	if err == nil {
 		t.Error("expected error for empty query")
 	}
@@ -262,7 +262,7 @@ func TestSearchDocsHandler_WhitespaceQuery(t *testing.T) {
 	handler := searchDocsHandler(sc)
 	req := &mcp.CallToolRequest{}
 
-	_, _, err := handler(context.Background(), req, SearchDocsArgs{Query: "   "})
+	_, _, err := handler(t.Context(), req, SearchDocsArgs{Query: "   "})
 	if err == nil {
 		t.Error("expected error for whitespace-only query in search_docs")
 	}
@@ -273,7 +273,7 @@ func TestSearchContentHandler_WhitespaceQuery(t *testing.T) {
 	handler := searchContentHandler(searcher, NewDocMetrics())
 	req := &mcp.CallToolRequest{}
 
-	_, _, err := handler(context.Background(), req, SearchContentArgs{Query: "\t\n"})
+	_, _, err := handler(t.Context(), req, SearchContentArgs{Query: "\t\n"})
 	if err == nil {
 		t.Error("expected error for whitespace-only query in search_content")
 	}

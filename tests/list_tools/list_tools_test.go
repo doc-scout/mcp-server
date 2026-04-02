@@ -11,7 +11,7 @@ import (
 
 func TestE2E_ListTools(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	t.Cleanup(session.Close)
+	t.Cleanup(func() { _ = session.Close() })
 
 	ctx := t.Context()
 	result, err := session.ListTools(ctx, nil)

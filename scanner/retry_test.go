@@ -20,7 +20,7 @@ func init() {
 
 func TestRetryGitHub_SuccessFirstCall(t *testing.T) {
 	calls := 0
-	err := retryGitHub(context.Background(), func() error {
+	err := retryGitHub(t.Context(), func() error {
 		calls++
 		return nil
 	})
@@ -35,7 +35,7 @@ func TestRetryGitHub_SuccessFirstCall(t *testing.T) {
 func TestRetryGitHub_NonRetryableError(t *testing.T) {
 	calls := 0
 	sentinel := errors.New("not retryable")
-	err := retryGitHub(context.Background(), func() error {
+	err := retryGitHub(t.Context(), func() error {
 		calls++
 		return sentinel
 	})
@@ -50,7 +50,7 @@ func TestRetryGitHub_NonRetryableError(t *testing.T) {
 
 func TestRetryGitHub_TransientServerError_EventuallySucceeds(t *testing.T) {
 	calls := 0
-	err := retryGitHub(context.Background(), func() error {
+	err := retryGitHub(t.Context(), func() error {
 		calls++
 		if calls < 3 {
 			return &github.ErrorResponse{
@@ -72,7 +72,7 @@ func TestRetryGitHub_ExhaustsRetries(t *testing.T) {
 	transient := &github.ErrorResponse{
 		Response: &http.Response{StatusCode: http.StatusBadGateway},
 	}
-	err := retryGitHub(context.Background(), func() error {
+	err := retryGitHub(t.Context(), func() error {
 		calls++
 		return transient
 	})
@@ -85,7 +85,7 @@ func TestRetryGitHub_ExhaustsRetries(t *testing.T) {
 }
 
 func TestRetryGitHub_ContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	calls := 0
 	err := retryGitHub(ctx, func() error {
 		calls++

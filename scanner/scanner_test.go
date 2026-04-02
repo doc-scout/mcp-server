@@ -22,12 +22,12 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 
 	// Mock list org repos: GET /orgs/test-org/repos
 	mux.HandleFunc("/orgs/test-org/repos", func(w http.ResponseWriter, r *http.Request) {
-		repos := []map[string]interface{}{
+		repos := []map[string]any{
 			{
 				"id":        1,
 				"name":      "repo1",
 				"full_name": "test-org/repo1",
-				"owner": map[string]interface{}{
+				"owner": map[string]any{
 					"login": "test-org",
 				},
 			},
@@ -35,7 +35,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 				"id":        2,
 				"name":      "repo2",
 				"full_name": "test-org/repo2",
-				"owner": map[string]interface{}{
+				"owner": map[string]any{
 					"login": "test-org",
 				},
 			},
@@ -48,7 +48,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 		path := strings.TrimPrefix(r.URL.Path, "/repos/test-org/repo1/contents/")
 
 		if path == "README.md" {
-			content := map[string]interface{}{
+			content := map[string]any{
 				"type":     "file",
 				"path":     "README.md",
 				"name":     "README.md",
@@ -61,7 +61,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 
 		if path == "docs" {
 			// dir contents
-			content := []map[string]interface{}{
+			content := []map[string]any{
 				{
 					"type": "file",
 					"path": "docs/guide.md",
@@ -73,7 +73,7 @@ func setupMockGitHub() (*httptest.Server, *github.Client) {
 		}
 
 		if path == "docs/guide.md" {
-			content := map[string]interface{}{
+			content := map[string]any{
 				"type":     "file",
 				"path":     "docs/guide.md",
 				"name":     "guide.md",
@@ -108,7 +108,7 @@ func TestScanner_scanOrg(t *testing.T) {
 	defer ts.Close()
 
 	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
-	scanner.scanOrg(context.Background())
+	scanner.scanOrg(t.Context())
 
 	repos := scanner.ListRepos()
 	if len(repos) != 1 {
@@ -129,10 +129,10 @@ func TestScanner_GetFileContent(t *testing.T) {
 	defer ts.Close()
 
 	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
-	scanner.scanOrg(context.Background())
+	scanner.scanOrg(t.Context())
 
 	// Test a valid file
-	content, err := scanner.GetFileContent(context.Background(), "test-org/repo1", "README.md")
+	content, err := scanner.GetFileContent(t.Context(), "test-org/repo1", "README.md")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestScanner_GetFileContent(t *testing.T) {
 	}
 
 	// Test an unindexed file
-	_, err = scanner.GetFileContent(context.Background(), "test-org/repo1", "secret.txt")
+	_, err = scanner.GetFileContent(t.Context(), "test-org/repo1", "secret.txt")
 	if err == nil {
 		t.Errorf("expected error for unindexed file")
 	}
@@ -160,7 +160,7 @@ func TestScanner_OnScanComplete(t *testing.T) {
 		callbackRepos = repos
 	})
 
-	s.scanOrg(context.Background())
+	s.scanOrg(t.Context())
 
 	if !called {
 		t.Fatal("OnScanComplete callback was not called")
@@ -175,7 +175,7 @@ func TestScanner_SearchDocs(t *testing.T) {
 	defer ts.Close()
 
 	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
-	scanner.scanOrg(context.Background())
+	scanner.scanOrg(t.Context())
 
 	results := scanner.SearchDocs("guide")
 	if len(results) != 1 {
@@ -193,7 +193,7 @@ func TestScanner_RepoScanRespectsContext(t *testing.T) {
 	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
 
 	// Run with a pre-cancelled context — scanOrg should return without blocking.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // Cancel immediately
 
 	done := make(chan struct{})

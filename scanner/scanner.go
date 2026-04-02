@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -141,9 +141,9 @@ func (s *Scanner) SetOnScanComplete(fn func([]RepoInfo)) {
 func (s *Scanner) Start(ctx context.Context) {
 	// Initial scan in a goroutine so it doesn't block server startup.
 	go func() {
-		log.Println("[scanner] Starting initial org scan...")
+		slog.Info("[scanner] Starting initial org scan")
 		s.scanOrg(ctx)
-		log.Printf("[scanner] Initial scan complete. Found %d repos with docs.\n", len(s.repos))
+		slog.Info("[scanner] Initial scan complete", "repos", len(s.repos))
 	}()
 
 	// Periodic re-scan.
@@ -156,9 +156,9 @@ func (s *Scanner) Start(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					log.Println("[scanner] Starting periodic re-scan...")
+					slog.Info("[scanner] Starting periodic re-scan")
 					s.scanOrg(ctx)
-					log.Printf("[scanner] Re-scan complete. Found %d repos with docs.\n", len(s.repos))
+					slog.Info("[scanner] Re-scan complete", "repos", len(s.repos))
 				}
 			}
 		}()
@@ -180,11 +180,11 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 
 	allRepos, err := s.listAllRepos(ctx)
 	if err != nil {
-		log.Printf("[scanner] Error listing repos: %v\n", err)
+		slog.Error("[scanner] Error listing repos", "error", err)
 		return
 	}
 
-	log.Printf("[scanner] Found %d total repos for %s\n", len(allRepos), s.org)
+	slog.Info("[scanner] Found total repos", "count", len(allRepos), "org", s.org)
 
 	// Start concurrent scanning with semaphore
 	const maxConcurrency = 5
@@ -195,15 +195,9 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 	var mu sync.Mutex
 
 	for _, repo := range allRepos {
-		// Filter by regex if set (only for org repos, extra repos via env aren't filtered here)
-		// But in this loop, allRepos includes extraRepos. Let's filter everything consistently,
-		// or maybe filter inside listAllRepos? It's cleaner to filter in listAllRepos.
 		repoName := repo.GetName()
-		wg.Add(1)
 		sem <- struct{}{} // acquire
-
-		go func(repoName string, repo *github.Repository) {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() { <-sem }() // release
 
 			repoOwner := repo.GetOwner().GetLogin()
@@ -225,7 +219,7 @@ func (s *Scanner) scanOrg(ctx context.Context) {
 				newRepos[info.Name] = info
 				mu.Unlock()
 			}
-		}(repoName, repo)
+		})
 	}
 
 	wg.Wait()
@@ -248,9 +242,8 @@ func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error
 	repos, err := s.listByOrg(ctx)
 	if err != nil {
 		// Check if the error is a 404 (owner is a user, not an org).
-		var ghErr *github.ErrorResponse
-		if errors.As(err, &ghErr) && ghErr.Response != nil && ghErr.Response.StatusCode == 404 {
-			log.Printf("[scanner] '%s' is not an org, trying as user account...\n", s.org)
+		if ghErr, ok := errors.AsType[*github.ErrorResponse](err); ok && ghErr.Response != nil && ghErr.Response.StatusCode == 404 {
+			slog.Info("[scanner] Not an org, trying as user account", "owner", s.org)
 			repos, err = s.listByUser(ctx)
 		}
 		if err != nil {
@@ -282,7 +275,7 @@ func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error
 	for _, er := range s.extraRepos {
 		parts := strings.SplitN(er, "/", 2)
 		if len(parts) != 2 {
-			log.Printf("[scanner] Invalid EXTRA_REPOS format '%s', skipping\n", er)
+			slog.Warn("[scanner] Invalid EXTRA_REPOS format, skipping", "entry", er)
 			continue
 		}
 		var r *github.Repository
@@ -291,7 +284,7 @@ func (s *Scanner) listAllRepos(ctx context.Context) ([]*github.Repository, error
 			r, _, e = s.client.Repositories.Get(ctx, parts[0], parts[1])
 			return e
 		}); err != nil {
-			log.Printf("[scanner] Error fetching extra repo %s: %v\n", er, err)
+			slog.Warn("[scanner] Error fetching extra repo", "repo", er, "error", err)
 			continue
 		}
 		filtered = append(filtered, r)
@@ -365,7 +358,7 @@ func (s *Scanner) TriggerRepoScan(ctx context.Context, owner, repoName string) {
 		ghRepo, _, e = s.client.Repositories.Get(repoCtx, owner, repoName)
 		return e
 	}); err != nil {
-		log.Printf("[scanner] TriggerRepoScan: failed to fetch metadata for %s/%s: %v\n", owner, repoName, err)
+		slog.Warn("[scanner] TriggerRepoScan: failed to fetch metadata", "owner", owner, "repo", repoName, "error", err)
 		return
 	}
 
@@ -410,7 +403,7 @@ func (s *Scanner) scanRepo(ctx context.Context, repoOwner, repoName string) []Fi
 			if resp != nil && resp.StatusCode == 404 {
 				continue
 			}
-			log.Printf("[scanner] Error checking %s/%s: %v\n", repoName, target, err)
+			slog.Warn("[scanner] Error checking file", "repo", repoName, "target", target, "error", err)
 			continue
 		}
 		if fc != nil {
@@ -453,7 +446,7 @@ func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path str
 		if resp != nil && resp.StatusCode == 404 {
 			return nil
 		}
-		log.Printf("[scanner] Error scanning docs dir %s/%s: %v\n", repoName, path, err)
+		slog.Warn("[scanner] Error scanning docs dir", "repo", repoName, "path", path, "error", err)
 		return nil
 	}
 
@@ -498,7 +491,7 @@ func (s *Scanner) scanInfraDir(ctx context.Context, repoOwner, repoName, path st
 		if resp != nil && resp.StatusCode == 404 {
 			return nil
 		}
-		log.Printf("[scanner] Error scanning infra dir %s/%s: %v\n", repoName, path, err)
+		slog.Warn("[scanner] Error scanning infra dir", "repo", repoName, "path", path, "error", err)
 		return nil
 	}
 

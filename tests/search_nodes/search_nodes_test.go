@@ -12,7 +12,7 @@ import (
 
 func TestE2E_SearchNodes(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	t.Cleanup(session.Close)
+	t.Cleanup(func() { _ = session.Close() })
 
 	ctx := t.Context()
 

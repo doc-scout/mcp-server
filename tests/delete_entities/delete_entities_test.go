@@ -12,7 +12,7 @@ import (
 
 func TestE2E_DeleteEntities(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	t.Cleanup(session.Close)
+	t.Cleanup(func() { _ = session.Close() })
 
 	ctx := t.Context()
 
@@ -41,7 +41,7 @@ func TestE2E_DeleteEntities(t *testing.T) {
 
 func TestE2E_DeleteEntities_MassDeleteGuard(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	t.Cleanup(session.Close)
+	t.Cleanup(func() { _ = session.Close() })
 
 	ctx := t.Context()
 

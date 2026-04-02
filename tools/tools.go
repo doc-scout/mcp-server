@@ -6,7 +6,7 @@ package tools
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"runtime/debug"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -20,7 +20,7 @@ func withRecovery[A, R any](
 	return func(ctx context.Context, req *mcp.CallToolRequest, args A) (res *mcp.CallToolResult, ret R, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[tools] MCP tool panicked: tool=%s panic=%v\nstack=%s", name, r, string(debug.Stack()))
+				slog.Error("[tools] MCP tool panicked", "tool", name, "panic", r, "stack", string(debug.Stack()))
 				err = fmt.Errorf("internal server error in tool '%s' (panic recovered: %v)", name, r)
 			}
 		}()

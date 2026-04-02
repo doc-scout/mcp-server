@@ -105,7 +105,7 @@ spec:
 	gw := &mockGraphWriter{}
 
 	ai := indexer.New(fg, gw, nil)
-	ai.Run(context.Background(), []scanner.RepoInfo{
+	ai.Run(t.Context(), []scanner.RepoInfo{
 		{
 			Name:     "org/payment-service",
 			FullName: "org/payment-service",
@@ -161,7 +161,7 @@ func TestAutoIndexer_SkipsMalformedCatalog(t *testing.T) {
 	ai := indexer.New(fg, gw, nil)
 
 	// Should not panic or return error; just log and skip
-	ai.Run(context.Background(), []scanner.RepoInfo{
+	ai.Run(t.Context(), []scanner.RepoInfo{
 		{
 			Name: "org/bad-svc",
 			Files: []scanner.FileEntry{
@@ -193,7 +193,7 @@ func TestAutoIndexer_SoftDeletesStaleEntities(t *testing.T) {
 	ai := indexer.New(fg, gw, nil)
 
 	// Run with an empty repo list (org/old-svc is gone)
-	ai.Run(context.Background(), []scanner.RepoInfo{})
+	ai.Run(t.Context(), []scanner.RepoInfo{})
 
 	// old-service should now have _status:archived
 	archivedFound := false
@@ -236,7 +236,7 @@ spec:
 		},
 	}
 	ai := indexer.New(fg, gw, nil)
-	ai.Run(context.Background(), []scanner.RepoInfo{
+	ai.Run(t.Context(), []scanner.RepoInfo{
 		{
 			Name: "org/payment-service",
 			Files: []scanner.FileEntry{

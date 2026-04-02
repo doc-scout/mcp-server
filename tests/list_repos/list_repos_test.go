@@ -12,7 +12,7 @@ import (
 
 func TestE2E_ListRepos(t *testing.T) {
 	session := testutils.SetupTestServer(t)
-	t.Cleanup(session.Close)
+	t.Cleanup(func() { _ = session.Close() })
 
 	ctx := t.Context()
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_repos"})
