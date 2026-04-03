@@ -160,4 +160,48 @@ traverse_graph(entity="auth-service", relation_type="depends_on", direction="out
 - `tools/tools.go` — register `traverse_graph` tool
 - `tests/traverse_graph/traverse_graph_test.go` (new) — E2E test: build a small graph, assert traversal returns correct nodes at correct depths
 
+### 15. Integration Topology Discovery
+- **Current State**: The knowledge graph has `depends_on` edges from package manifests (go.mod, pom.xml), but no understanding of runtime integrations — who publishes to a Kafka topic, who subscribes, which service exposes a gRPC endpoint, which calls an HTTP API. An AI agent must read raw config files across dozens of repos to reconstruct the integration topology, burning tokens and producing unreliable results.
+- **Goal**: Automatically populate the knowledge graph with producer/consumer and API dependency relationships during each scan, and expose a `get_integration_map` tool that returns the complete integration picture of a service in a single call — including a `graph_coverage` field so the AI knows how much to trust the answer.
 
+**Design principle**: one tool call = complete, actionable answer. DocScout pre-computes the topology so the AI never has to iterate over raw files.
+
+**New relation types**:
+| Relation | From | To | Source |
+|---|---|---|---|
+| `publishes_event` | service | event-topic | AsyncAPI, Spring Kafka config |
+| `subscribes_event` | service | event-topic | AsyncAPI, Spring Kafka config |
+| `provides_grpc` | service | grpc-service | .proto files |
+| `depends_on_grpc` | service | grpc-service | .proto imports |
+| `exposes_api` | service | api | OpenAPI/Swagger specs |
+| `calls_service` | service | service | K8s env vars (`*_SERVICE_HOST`) |
+
+**New entity types**: `event-topic`, `grpc-service` (enriching existing `api`).
+
+**New `get_integration_map` tool**:
+```
+Input:  service (required), depth (optional, default 1, max 3)
+Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, graph_coverage }
+        graph_coverage: "full" | "partial" | "inferred" | "none"
+```
+
+**Implementation scope**:
+- `scanner/parser/asyncapi.go` (new) — AsyncAPI channels → `publishes_event` / `subscribes_event`
+- `scanner/parser/springkafka.go` (new) — `application.yml` + `.properties` Kafka config
+- `scanner/parser/openapi.go` (new) — OpenAPI/Swagger `info` + `servers` + path count
+- `scanner/parser/proto.go` (new) — `.proto` service definitions and imports
+- `scanner/parser/k8sintegration.go` (new) — K8s Deployment env vars heuristic
+- `scanner/scanner.go` — add `*.proto` to `DefaultTargetFiles`
+- `memory/integration.go` (new) — `GetIntegrationMap` aggregation queries
+- `memory/memory.go` — expose on `MemoryService`; add to `GraphStore` interface
+- `tools/get_integration_map.go` (new) — handler + typed args/result
+- `tools/ports.go` — add `GetIntegrationMap` to `GraphStore` interface
+- `tools/tools.go` — register tool
+- `main.go` — register 5 new parsers in `parser.Default`
+- `tests/integration_map/integration_map_test.go` (new) — E2E tests
+- `AGENTS.md` — update §7 with new relation types and tool usage
+
+**Requires**: `#13 Custom Parser Extension` (parsers implement `FileParser`).
+**Complements**: `#14 Graph Traversal` (traverse_graph works over the new edges once both are implemented).
+
+**Spec**: `docs/superpowers/specs/2026-04-03-integration-topology-discovery-design.md`
