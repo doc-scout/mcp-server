@@ -28,22 +28,23 @@ DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that sec
 2. `search_docs`: Searches indexed file paths and repository names by query term.
 3. `get_file_content`: Retrieves the raw content of a specific indexed file (path-traversal protected — only files verified by the scanner are accessible).
 4. `get_scan_status`: Returns current scanner state, last scan time, repo count, and content cache size.
+5. `search_content`: Full-text search across all cached documentation content. Only available when `SCAN_CONTENT=true`.
 
 ### Knowledge Graph Tools
 
-5. `create_entities`: Create nodes in the knowledge graph. Observations are sanitized (empty, too-short, too-long, and within-batch duplicates are rejected) and the response includes a `skipped` field for any filtered items.
-6. `create_relations`: Create directed edges between entities.
-7. `add_observations`: Append facts to existing entities (same quality filtering as `create_entities`).
-8. `delete_entities`: Remove entities (cascades relations and observations). Deleting more than 10 entities at once requires `confirm: true`.
-9. `delete_observations`: Remove specific observations from entities.
-10. `delete_relations`: Remove specific relations.
-11. `read_graph`: Read the entire knowledge graph.
-12. `search_nodes`: Search entities by name, type, or observation content.
-13. `open_nodes`: Retrieve specific entities by name with their relations and observations.
+6. `create_entities`: Create nodes in the knowledge graph. Observations are sanitized (empty, too-short, too-long, and within-batch duplicates are rejected) and the response includes a `skipped` field for any filtered items.
+7. `create_relations`: Create directed edges between entities.
+8. `add_observations`: Append facts to existing entities (same quality filtering as `create_entities`).
+9. `delete_entities`: Remove entities (cascades relations and observations). Deleting more than 10 entities at once requires `confirm: true`.
+10. `delete_observations`: Remove specific observations from entities.
+11. `delete_relations`: Remove specific relations.
+12. `read_graph`: Read the entire knowledge graph.
+13. `search_nodes`: Search entities by name, type, or observation content.
+14. `open_nodes`: Retrieve specific entities by name with their relations and observations.
 
 ### Observability Tools
 
-14. `get_usage_stats`: Returns per-tool call counts and the top 20 most-fetched documents since server start. Useful for identifying which services or files are most consulted by AI agents.
+15. `get_usage_stats`: Returns per-tool call counts and the top 20 most-fetched documents since server start. Useful for identifying which services or files are most consulted by AI agents.
 
 ## Security & GitHub Tokens 🔒
 
@@ -70,8 +71,8 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 | `GITHUB_TOKEN`          | ✅       | —                                                                      | GitHub Personal Access Token (Fine-Grained)                                                   |
 | `GITHUB_ORG`            | ✅       | —                                                                      | GitHub Organization or User name                                                              |
 | `SCAN_INTERVAL`         | ❌       | `30m`                                                                  | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
-| `SCAN_FILES`            | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md` | Comma-separated filenames to scan at repo root                                                |
-| `SCAN_DIRS`             | ❌       | `docs`                                                                 | Comma-separated directories to scan recursively for `.md` files                               |
+| `SCAN_FILES`            | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md, AGENTS.md, SKILLS.md, go.mod, package.json, pom.xml, Dockerfile, docker-compose.yml, Makefile, .mise.toml, CODEOWNERS` | Comma-separated filenames to scan at repo root                                                |
+| `SCAN_DIRS`             | ❌       | `docs, .agents`                                                        | Comma-separated directories to scan recursively for `.md` files                               |
 | `SCAN_INFRA_DIRS`       | ❌       | `deploy, infra, .github/workflows`                                     | Comma-separated directories to scan recursively for infra files (`.yaml`, `.tf`, `.hcl`, `.toml`) |
 | `EXTRA_REPOS`           | ❌       | —                                                                      | Comma-separated public/third-party repos to scan (e.g. `owner/repo`)                          |
 | `REPO_TOPICS`           | ❌       | —                                                                      | Filter org repos by GitHub topics (e.g. `frontend, backend`)                                  |
@@ -85,7 +86,7 @@ To run this server, you need a GitHub Personal Access Token (PAT).
 
 ### 1. Running with Go (Stdio)
 
-Requires Go 1.22+
+Requires Go 1.26+
 
 ```bash
 export GITHUB_TOKEN="github_pat_11A..."

@@ -22,9 +22,11 @@ Checked at every repository root via the GitHub Contents API:
 | `pom.xml` | `pomxml` | Maven groupId, artifactId, version, compile/runtime deps |
 | `CODEOWNERS` / `.github/CODEOWNERS` / `docs/CODEOWNERS` | `codeowners` | Owners per path pattern (team, person, email) |
 | `Dockerfile` | `dockerfile` | Presence of containerisation |
-| `docker-compose.yml` | `compose` | Multi-service composition |
+| `docker-compose.yml` / `docker-compose.yaml` | `compose` | Multi-service composition |
 | `Makefile` | `makefile` | Build automation presence |
-| `.mise.toml` | `mise` | Tool version management |
+| `.mise.toml` / `mise.toml` | `mise` | Tool version management |
+| `AGENTS.md` | `agents` | AI agent instructions surface |
+| `SKILLS.md` | `skills` | AI agent skills surface |
 | `README.md`, `mkdocs.yml`, `openapi.yaml`, `swagger.json` | `readme`, `mkdocs`, `openapi`, `swagger` | Documentation surface |
 
 ### 1b. Documentation Directories
@@ -123,6 +125,7 @@ The server exposes tools over `stdio` (default) or Streamable HTTP (`HTTP_ADDR`)
 | `search_docs` | Searches file paths and repo names by query |
 | `get_file_content` | Fetches raw content of an indexed file (path-traversal protected) |
 | `get_scan_status` | Returns scanner state, last scan time, repo count, content cache size |
+| `search_content` | Full-text search across cached documentation content (available when `SCAN_CONTENT=true`) |
 
 ### Knowledge Graph Tools
 
