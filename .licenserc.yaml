@@ -1,0 +1,21 @@
+header:
+  license:
+    spdx-id: AGPL-3.0-only
+    copyright-owner: Leonan Carvalho
+    software-name: DocScout-MCP
+  paths-ignore:
+    - .nojekyll
+    - LICENSE
+    - go.sum
+    - "**/*.md"
+    - "**/*.txt"
+    - "**/*.sum"
+    - "**/*.png"
+    - "**/*.jpg"
+    - "**/*.svg"
+    - "**/*.json"
+    - "**/*.lock"
+    - ".github/copilot-mcp.json"
+    - "deploy/**"
+    - "site/**"
+    - ".claude/**"
