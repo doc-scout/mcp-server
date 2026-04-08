@@ -351,6 +351,14 @@ func (srv *MemoryService) OpenNodes(names []string) (KnowledgeGraph, error) {
 	return srv.s.openNodes(names)
 }
 
+// TraverseGraph performs a BFS from entity, following edges up to maxDepth hops.
+// direction must be "outgoing", "incoming", or "both".
+// relationType filters by edge type; empty string matches all types.
+// The start entity is not included in the results.
+func (srv *MemoryService) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]TraverseNode, error) {
+	return srv.s.traverseGraph(entity, relationType, direction, maxDepth)
+}
+
 // EntityCount returns the total number of entities in the knowledge graph.
 func (srv *MemoryService) EntityCount() (int64, error) {
 	var count int64

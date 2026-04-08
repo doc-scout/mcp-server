@@ -107,6 +107,10 @@ func (a *GraphAuditLogger) EntityCount() (int64, error) {
 	return a.inner.EntityCount()
 }
 
+func (a *GraphAuditLogger) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) {
+	return a.inner.TraverseGraph(entity, relationType, direction, maxDepth)
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func entityNames(entities []memory.Entity) []string {

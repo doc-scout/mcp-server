@@ -180,6 +180,7 @@ func (m *mockGraphStore) DeleteRelations(relations []memory.Relation) error { re
 func (m *mockGraphStore) ReadGraph() (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) SearchNodes(query string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) { return nil, nil }
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{

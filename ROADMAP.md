@@ -69,6 +69,14 @@ This document outlines the current technical debts and the path forward for DocS
 - `scanner/parser/catalog.go` — `isValidEntityName` validates entity names from `catalog-info.yaml` against `[a-zA-Z0-9._-]{1,253}` (with optional `namespace/` prefix). Invalid names return a parse error rather than being silently stored.
 - `memory/content.go` — SQL LIKE wildcard characters (`%`, `_`, `\`) in search queries are escaped before being interpolated into `LIKE`/`ILIKE` predicates, preventing user-controlled wildcards from scanning the entire table.
 
+### 14. Graph Traversal & Impact Analysis ✅
+- **Implemented**: Server-side BFS traversal so AI agents can answer impact and ownership questions without loading the full graph.
+- `memory/traverse.go` — `traverseGraph` performs BFS using SQL `IN` queries per hop (never loads the full graph). Supports `outgoing`, `incoming`, and `both` directions with optional edge-type filtering. Cycle-safe via `visited` map. Observations batch-loaded at the end.
+- `memory/memory.go` — `TraverseGraph` exposed on `MemoryService`.
+- `tools/ports.go` — `TraverseGraph` added to `GraphStore` interface; `tools/audit.go` — read-only pass-through.
+- `tools/traverse_graph.go` — `traverse_graph` MCP tool: `entity` (required), `relation_type` (optional filter), `direction` (outgoing/incoming/both, default outgoing), `depth` (1–10, default 1, clamped). Returns `TraverseGraphResult` with nodes, distances, and paths.
+- `tests/traverse_graph/` — 8 E2E scenarios: outgoing depth 1/2, incoming, relation filter, unknown entity, cycle safety, and input validation errors.
+
 ---
 
 ## Future Work
@@ -121,44 +129,6 @@ indexer.RegisterParser(myOrg.NewPipfileParser())
 - All 5 built-in parsers (gomod, packagejson, pom, catalog, codeowners) — implement `FileParser`; existing `Parse*` functions remain as package-level helpers for backward compatibility
 - `main.go` — register built-in parsers at startup
 - `AGENTS.md` — update §7 with interface contract, registration guide, and example
-
-### 14. Graph Traversal & Impact Analysis
-- **Current State**: The knowledge graph has three read primitives — `read_graph` (full dump), `search_nodes` (text search), and `open_nodes` (lookup by name). None supports **directed traversal**. An AI agent trying to answer "which services will break if `payment-api` is deprecated?" or "what are the transitive dependencies of `auth-service`?" must call `read_graph` and traverse the entire graph client-side — impractical for organisations with hundreds of entities and thousands of relations.
-- **Goal**: Add a `traverse_graph` MCP tool and a server-side BFS/DFS implementation so AI agents can answer impact and ownership questions with a single focused query.
-
-**Proposed tool interface**:
-```
-Tool: traverse_graph
-
-Input:
-  entity        string   (required) — starting node name
-  relation_type string   (optional) — filter edges by type (e.g. "depends_on", "consumes_api", "owned_by")
-  direction     string   (optional, default "outgoing") — "outgoing" | "incoming" | "both"
-  depth         int      (optional, default 1, max 10) — how many hops to follow
-
-Output:
-  []{ entity, entity_type, observations, distance, path }
-  — entities reachable within `depth` hops, with the relation path that connects them
-```
-
-**Example queries**:
-```
-// Impact: who consumes payment-api?
-traverse_graph(entity="payment-api", relation_type="consumes_api", direction="incoming", depth=1)
-
-// Ownership: who owns checkout-service?
-traverse_graph(entity="checkout-service", relation_type="owned_by", depth=2)
-
-// Transitive deps: full dependency tree of auth-service
-traverse_graph(entity="auth-service", relation_type="depends_on", direction="outgoing", depth=5)
-```
-
-**Implementation scope**:
-- `memory/traverse.go` (new) — BFS over `dbRelation` rows; uses SQL `IN` queries per hop to avoid loading the full graph; respects `direction` (query `from_node` for outgoing, `to_node` for incoming)
-- `memory/memory.go` — expose `TraverseGraph(entity, relationType, direction string, maxDepth int)` on `MemoryService`; add to `GraphStore` interface in `tools/ports.go`
-- `tools/traverse_graph.go` (new) — handler + typed args/result structs
-- `tools/tools.go` — register `traverse_graph` tool
-- `tests/traverse_graph/traverse_graph_test.go` (new) — E2E test: build a small graph, assert traversal returns correct nodes at correct depths
 
 ### 15. Integration Topology Discovery
 - **Current State**: The knowledge graph has `depends_on` edges from package manifests (go.mod, pom.xml), but no understanding of runtime integrations — who publishes to a Kafka topic, who subscribes, which service exposes a gRPC endpoint, which calls an HTTP API. An AI agent must read raw config files across dozens of repos to reconstruct the integration topology, burning tokens and producing unreliable results.

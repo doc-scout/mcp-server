@@ -118,6 +118,16 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 			Name:        "open_nodes",
 			Description: "Retrieve specific nodes by name",
 		}, withMetrics("open_nodes", metrics, withRecovery("open_nodes", openNodesHandler(graph))))
+
+		mcp.AddTool(s, &mcp.Tool{
+			Name: "traverse_graph",
+			Description: `Traverses the knowledge graph from a starting entity, following directed edges up to a given depth.
+Use this instead of read_graph when you need to answer focused questions about a specific service — it returns only the relevant subgraph without loading every entity.
+Examples:
+  direction=outgoing, relation_type=depends_on  → transitive dependency tree of a service
+  direction=incoming, relation_type=consumes_api → all services that consume a given API
+  direction=both, depth=2                        → full two-hop neighbourhood of a service`,
+		}, withMetrics("traverse_graph", metrics, withRecovery("traverse_graph", traverseGraphHandler(graph))))
 	}
 
 	// --- Observability ---

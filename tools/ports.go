@@ -31,6 +31,7 @@ type GraphStore interface {
 	SearchNodes(query string) (memory.KnowledgeGraph, error)
 	OpenNodes(names []string) (memory.KnowledgeGraph, error)
 	EntityCount() (int64, error)
+	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error)
 }
 
 // ContentSearcher provides full-text search over cached documentation content.

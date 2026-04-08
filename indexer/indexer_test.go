@@ -215,6 +215,53 @@ func TestAutoIndexer_SoftDeletesStaleEntities(t *testing.T) {
 	}
 }
 
+// TestAutoIndexer_ArchivesStaleNonCatalogEntities is a regression test for the bug where
+// archiveStale only searched for "_source:catalog-info" entities, leaving go.mod,
+// package.json, pom.xml, and CODEOWNERS entities as permanent orphans when their repos
+// were removed. The fix searches for "_scan_repo:" which all auto-indexed sources share.
+func TestAutoIndexer_ArchivesStaleNonCatalogEntities(t *testing.T) {
+	gw := &mockGraphWriter{
+		entities: []memory.Entity{
+			{
+				Name:       "my-go-service",
+				EntityType: "service",
+				Observations: []string{
+					"_source:go.mod",
+					"_scan_repo:org/removed-repo",
+				},
+			},
+			{
+				Name:       "my-node-service",
+				EntityType: "service",
+				Observations: []string{
+					"_source:package.json",
+					"_scan_repo:org/removed-repo",
+				},
+			},
+			{
+				Name:       "my-java-service",
+				EntityType: "service",
+				Observations: []string{
+					"_source:pom.xml",
+					"_scan_repo:org/removed-repo",
+				},
+			},
+		},
+	}
+	fg := &mockFileGetter{files: map[string]string{}}
+	ai := indexer.New(fg, gw, nil)
+
+	// Run with an empty repo list — org/removed-repo is gone
+	ai.Run(t.Context(), []scanner.RepoInfo{})
+
+	for _, e := range gw.entities {
+		if !containsStr(e.Observations, "_status:archived") {
+			t.Errorf("entity %q (%s source) should have _status:archived but doesn't; obs: %v",
+				e.Name, e.Observations[0], e.Observations)
+		}
+	}
+}
+
 func TestAutoIndexer_PreservesManualEntities(t *testing.T) {
 	// A manually-created entity (no _source:catalog-info) should not be overwritten
 	gw := &mockGraphWriter{

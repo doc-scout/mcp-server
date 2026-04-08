@@ -19,10 +19,10 @@ func TestE2E_ListTools(t *testing.T) {
 		t.Fatalf("ListTools: %v", err)
 	}
 
-	// 3 scanner tools + 9 memory tools + 1 get_scan_status = 13
+	// 3 scanner tools + 9 memory tools + 1 get_scan_status + 1 traverse_graph + 1 get_usage_stats = 15
 	// search_content is not registered because cache is nil
-	if len(result.Tools) < 13 {
-		t.Fatalf("expected at least 13 tools, got %d", len(result.Tools))
+	if len(result.Tools) < 15 {
+		t.Fatalf("expected at least 15 tools, got %d", len(result.Tools))
 	}
 
 	toolNames := make(map[string]bool)
@@ -35,6 +35,7 @@ func TestE2E_ListTools(t *testing.T) {
 		"create_entities", "create_relations", "add_observations",
 		"delete_entities", "delete_observations", "delete_relations",
 		"read_graph", "search_nodes", "open_nodes",
+		"traverse_graph", "get_usage_stats",
 	}
 	for _, name := range expected {
 		if !toolNames[name] {
