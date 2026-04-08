@@ -1,0 +1,97 @@
+site_name: DocScout-MCP
+site_url: https://leonancarvalho.github.io/docscout-mcp/
+site_description: Give your AI assistant a reliable map of your entire GitHub organization.
+site_author: Leonan Carvalho
+repo_url: https://github.com/leonancarvalho/docscout-mcp
+repo_name: leonancarvalho/docscout-mcp
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+  logo: images/doc-scout-mcp-server.png
+  favicon: images/doc-scout-mcp-server.png
+
+nav:
+  - Home: index.md
+  - How It Works: how-it-works.md
+  - Client Integrations:
+    - Overview: README.md
+    - Claude Desktop & CLI: claude.md
+    - VS Code: vscode.md
+    - GitHub Copilot: copilot.md
+    - ChatGPT Desktop: chatgpt.md
+    - Google Gemini CLI: gemini.md
+    - Antigravity: antigravity.md
+  - MCP Tools Reference: tools-reference.md
+  - Development:
+    - Contributing: contributing.md
+    - Development Guidelines: DEVELOPMENT_GUIDELINES.md
+    - Roadmap: roadmap.md
+    - Security: security.md
+
+plugins:
+  - search:
+      lang: en
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/leonancarvalho/docscout-mcp
+  generator: false
+
+copyright: Copyright &copy; 2026 Leonan Carvalho — AGPL-3.0

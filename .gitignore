@@ -56,3 +56,6 @@ deploy/terraform/override.tf.json
 
 # Build output dir
 bin/
+
+# MkDocs generated site
+site/

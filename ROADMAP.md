@@ -69,6 +69,18 @@ This document outlines the current technical debts and the path forward for DocS
 - `scanner/parser/catalog.go` — `isValidEntityName` validates entity names from `catalog-info.yaml` against `[a-zA-Z0-9._-]{1,253}` (with optional `namespace/` prefix). Invalid names return a parse error rather than being silently stored.
 - `memory/content.go` — SQL LIKE wildcard characters (`%`, `_`, `\`) in search queries are escaped before being interpolated into `LIKE`/`ILIKE` predicates, preventing user-controlled wildcards from scanning the entire table.
 
+### 16. Documentation Site (GitHub Pages) ✅
+- **Implemented**: MkDocs Material site auto-deployed to GitHub Pages on every push to `main` that touches `docs/` or `mkdocs.yml`.
+- `mkdocs.yml` — Material theme with dark/light mode, tabs, search, Mermaid diagrams, and code copy.
+- `docs/index.md` — Landing page with tabbed quick-start, Mermaid architecture diagram, and Material admonitions.
+- `docs/tools-reference.md` — Complete reference for all 16 MCP tools with parameters and examples.
+- `docs/contributing.md` — Full contributing guide: setup, project structure, testing, PR checklist.
+- `docs/roadmap.md` — Public-facing roadmap with completed features and upcoming work.
+- `docs/security.md` — Security model and responsible disclosure policy.
+- `CONTRIBUTING.md` — Root-level shortcut for GitHub UI, links to full docs.
+- `.github/workflows/docs.yml` — Triggers on changes to `docs/**` or `mkdocs.yml`; uses `mkdocs gh-deploy`.
+- `docs/requirements.txt` — Pinned `mkdocs-material` version for reproducible builds.
+
 ### 14. Graph Traversal & Impact Analysis ✅
 - **Implemented**: Server-side BFS traversal so AI agents can answer impact and ownership questions without loading the full graph.
 - `memory/traverse.go` — `traverseGraph` performs BFS using SQL `IN` queries per hop (never loads the full graph). Supports `outgoing`, `incoming`, and `both` directions with optional edge-type filtering. Cycle-safe via `visited` map. Observations batch-loaded at the end.
