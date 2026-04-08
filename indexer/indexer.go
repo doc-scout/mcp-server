@@ -497,8 +497,10 @@ func moduleEntityName(modulePath string) string {
 }
 
 // archiveStale adds _status:archived to entities whose source repo is no longer active.
+// It searches by "_scan_repo:" to cover all auto-indexed sources (catalog-info, go.mod,
+// package.json, pom.xml, CODEOWNERS) — not just catalog-info.
 func (ai *AutoIndexer) archiveStale(ctx context.Context, activeRepos map[string]bool) {
-	graph, err := ai.graph.SearchNodes("_source:catalog-info")
+	graph, err := ai.graph.SearchNodes("_scan_repo:")
 	if err != nil {
 		slog.Error("[indexer] SearchNodes for stale check failed", "error", err)
 		return

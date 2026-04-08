@@ -6,6 +6,7 @@ package indexer_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/leonancarvalho/docscout-mcp/indexer"
@@ -58,8 +59,13 @@ func (m *mockGraphWriter) AddObservations(obs []memory.Observation) ([]memory.Ob
 func (m *mockGraphWriter) SearchNodes(query string) (memory.KnowledgeGraph, error) {
 	var matched []memory.Entity
 	for _, e := range m.entities {
+		// Mirror the real DB behaviour: LIKE %query% on name, type, and observation content.
+		if strings.Contains(e.Name, query) || strings.Contains(e.EntityType, query) {
+			matched = append(matched, e)
+			continue
+		}
 		for _, obs := range e.Observations {
-			if obs == query || containsStr(e.Observations, query) {
+			if strings.Contains(obs, query) {
 				matched = append(matched, e)
 				break
 			}

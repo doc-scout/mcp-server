@@ -263,8 +263,11 @@ func main() {
 		})
 
 		srv := &http.Server{
-			Addr:    httpAddr,
-			Handler: authHandler,
+			Addr:         httpAddr,
+			Handler:      authHandler,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 60 * time.Second,
+			IdleTimeout:  120 * time.Second,
 		}
 
 		go func() {
