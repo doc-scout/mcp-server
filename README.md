@@ -4,226 +4,211 @@
 
 ![DocScout-MCP](docs/images/doc-scout-mcp-server.png)
 
-DocScout-MCP is a **Model Context Protocol (MCP)** server written in Go that securely connects to your GitHub Organization, scans all repositories for documentation files, and provides intelligent context to AI Assistants (like Claude, Cursor, Antigravity, and others).
+**Give your AI assistant a reliable map of your entire GitHub organization.**
+
+An [MCP](https://modelcontextprotocol.io) server written in Go that continuously scans your GitHub org, builds a persistent knowledge graph from manifests and docs, and exposes it to Claude, Cursor, Copilot, Gemini CLI, and any other MCP-compatible AI — with zero hallucinations.
+
+[![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet)](https://modelcontextprotocol.io)
 
 </div>
 
-## Features
+---
 
-- **Automated Org-Wide Scanning**: Recursively searches repositories for documentation files, root-level tooling files (`Dockerfile`, `Makefile`, `docker-compose.yml`, `.mise.toml`), and infrastructure directories (`deploy/`, `infra/`, `.github/workflows/`). All targets are fully customizable via environment variables.
-- **Ownership Inference**: Automatically parses `CODEOWNERS` files to create `team` and `person` entities in the knowledge graph, with `owns` relations to the respective repositories — no manual configuration required.
-- **Knowledge Graph Memory**: Built-in persistent memory powered by GORM (SQLite or PostgreSQL). AI agents can create entities, track relations, and add observations — surviving across sessions.
-- **Content Caching**: Opt-in caching for file contents to speed up retrieval and offload GitHub API requests, integrating automatically with the indexing engine.
-- **Flexible Transports & Security**: Supports both **Stdio** (default) and **Streamable HTTP** transports, with optional **Bearer Token Authentication** for HTTP.
-- **Multi-Database Support**: Stores the knowledge graph in SQLite (file or in-memory) or PostgreSQL via `DATABASE_URL`.
-- **Security First**: Defends against LLM hallucination and Path Traversal by _only_ allowing the AI to read files that were securely indexed as valid documentation.
-- **Lightweight & Fast**: Built in Go with goroutines and semaphores for high-performance concurrent scanning.
-- **Works with Orgs & Users**: Automatically detects whether the configured owner is an Organization or a personal account.
+## The Problem
 
-## Tools Exposed
+Your AI assistant knows nothing about your internal services. Every time you ask *"which teams own the payment service?"* or *"what breaks if I take down the DB?"*, it either **hallucinates** or **burns tokens** scanning dozens of repos.
 
-### Scanner Tools
+DocScout-MCP solves this by pre-computing the answer graph and serving it deterministically over MCP.
 
-1. `list_repos`: Lists all repositories that contain indexed files (docs, manifests, infra).
-2. `search_docs`: Searches indexed file paths and repository names by query term.
-3. `get_file_content`: Retrieves the raw content of a specific indexed file (path-traversal protected — only files verified by the scanner are accessible).
-4. `get_scan_status`: Returns current scanner state, last scan time, repo count, and content cache size.
-5. `search_content`: Full-text search across all cached documentation content. Only available when `SCAN_CONTENT=true`.
+---
 
-### Knowledge Graph Tools
+## How It Works
 
-6. `create_entities`: Create nodes in the knowledge graph. Observations are sanitized (empty, too-short, too-long, and within-batch duplicates are rejected) and the response includes a `skipped` field for any filtered items.
-7. `create_relations`: Create directed edges between entities.
-8. `add_observations`: Append facts to existing entities (same quality filtering as `create_entities`).
-9. `delete_entities`: Remove entities (cascades relations and observations). Deleting more than 10 entities at once requires `confirm: true`.
-10. `delete_observations`: Remove specific observations from entities.
-11. `delete_relations`: Remove specific relations.
-12. `read_graph`: Read the entire knowledge graph.
-13. `search_nodes`: Search entities by name, type, or observation content.
-14. `open_nodes`: Retrieve specific entities by name with their relations and observations.
+```mermaid
+graph LR
+    GH["GitHub Org\n(repos, manifests, docs)"]
+    S["Scanner\n(concurrent, retry-safe)"]
+    P["Parsers\ngo.mod · pom.xml · package.json\nCODEOWNERS · catalog-info.yaml\nDockerfile · Helm · Terraform · OpenAPI"]
+    G["Knowledge Graph\nSQLite · PostgreSQL"]
+    AI["AI Clients\nClaude · Cursor · Copilot · Gemini"]
 
-### Observability Tools
-
-15. `get_usage_stats`: Returns per-tool call counts and the top 20 most-fetched documents since server start. Useful for identifying which services or files are most consulted by AI agents.
-
-## Security & GitHub Tokens 🔒
-
-To run this server, you need a GitHub Personal Access Token (PAT).
-**DO NOT use a Classic Token with broad scopes!**
-
-### How to Create a Secure Token:
-
-1. Go to GitHub -> Settings -> Developer Settings -> [Personal access tokens (Fine-grained)](https://github.com/settings/tokens?type=beta).
-2. Click **Generate new token**.
-3. Under **Resource owner**, select your target Organization.
-4. Under **Repository access**, select "All repositories" (or specific ones).
-5. Under **Repository permissions**, grant **Read-only** access to:
-   - `Contents`
-   - `Metadata`
-6. Generate the token and use it for the `GITHUB_TOKEN` environment variable.
-
-## Usage
-
-### Environment Variables
-
-| Variable                | Required | Default                                                                | Description                                                                                   |
-| ----------------------- | -------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `GITHUB_TOKEN`          | ✅       | —                                                                      | GitHub Personal Access Token (Fine-Grained)                                                   |
-| `GITHUB_ORG`            | ✅       | —                                                                      | GitHub Organization or User name                                                              |
-| `SCAN_INTERVAL`         | ❌       | `30m`                                                                  | Re-scan interval. Supports Go duration format (`10s`, `5m`, `1h`) or plain integers (minutes) |
-| `SCAN_FILES`            | ❌       | `catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md, AGENTS.md, SKILLS.md, go.mod, package.json, pom.xml, Dockerfile, docker-compose.yml, Makefile, .mise.toml, CODEOWNERS` | Comma-separated filenames to scan at repo root                                                |
-| `SCAN_DIRS`             | ❌       | `docs, .agents`                                                        | Comma-separated directories to scan recursively for `.md` files                               |
-| `SCAN_INFRA_DIRS`       | ❌       | `deploy, infra, .github/workflows`                                     | Comma-separated directories to scan recursively for infra files (`.yaml`, `.tf`, `.hcl`, `.toml`) |
-| `EXTRA_REPOS`           | ❌       | —                                                                      | Comma-separated public/third-party repos to scan (e.g. `owner/repo`)                          |
-| `REPO_TOPICS`           | ❌       | —                                                                      | Filter org repos by GitHub topics (e.g. `frontend, backend`)                                  |
-| `REPO_REGEX`            | ❌       | —                                                                      | Filter org repos by regex matching the repo name (e.g. `^srv-.*`)                             |
-| `DATABASE_URL`          | ❌       | In-memory SQLite                                                       | Knowledge graph storage. Accepts `sqlite://path.db` or `postgres://user:pass@host/db`         |
-| `HTTP_ADDR`             | ❌       | —                                                                      | If set, starts Streamable HTTP transport at this address (e.g. `:8080`) instead of stdio      |
-| `MCP_HTTP_BEARER_TOKEN` | ❌       | —                                                                      | Basic Bearer Token for HTTP Authentication (when `HTTP_ADDR` is used)                         |
-| `SCAN_CONTENT`          | ❌       | `false`                                                                | Enables content caching to offload GitHub API requests (requires persistent `DATABASE_URL`)   |
-| `MAX_CONTENT_SIZE`      | ❌       | `204800` (200 KB)                                                      | Maximum content size in bytes to cache per file                                               |
-| `GITHUB_WEBHOOK_SECRET` | ❌       | —                                                                      | Enables the `/webhook` endpoint for incremental scans on GitHub events (requires `HTTP_ADDR`) |
-
-### 1. Running with Go (Stdio)
-
-Requires Go 1.26+
-
-```bash
-export GITHUB_TOKEN="github_pat_11A..."
-export GITHUB_ORG="my-awesome-org"
-export SCAN_INTERVAL="1h"
-
-go run .
+    GH -->|"GitHub API + Webhooks"| S
+    S --> P
+    P -->|"entities + relations"| G
+    G -->|"15 MCP tools"| AI
 ```
 
-### 2. Running with HTTP Transport
+1. **Scan** — Crawls every repo in your org: docs, manifests, infra files, and root tooling files. Repeats on a configurable interval and reacts to GitHub webhooks for instant updates.
+2. **Parse** — Extracts services, owners, dependencies, and relations from `go.mod`, `pom.xml`, `package.json`, `CODEOWNERS`, `catalog-info.yaml`, and more.
+3. **Graph** — Persists everything as entities and relations in SQLite or PostgreSQL, surviving restarts.
+4. **Answer** — AI clients query the graph via 15 MCP tools. No file-reading loops, no token waste, no guessing.
 
-```bash
-export GITHUB_TOKEN="github_pat_11A..."
-export GITHUB_ORG="my-awesome-org"
-export HTTP_ADDR=":8080"
-export DATABASE_URL="sqlite://docscout.db"
+---
 
-go run .
-# Server listening on http://localhost:8080
+## See It In Action
+
+> *"What happens if I shut down `component:db`? Which systems go offline, and who do I notify?"*
+
+```
+→ search_nodes("component:db")
+  Found: component:db — incoming edge: payment-service depends_on
+
+→ open_nodes(["payment-service"])
+  Entity: payment-service (service)
+  Observations: _source:go.mod, go_version:1.26, _scan_repo:myorg/payment-service
+
+→ search_nodes("payments-team")
+  Entity: payments-team (team)
+  Observations: github_handle:@myorg/payments-team
+  Relations: payments-team → owns → payment-service
+
+Claude: "Shutting down component:db will impact payment-service.
+         Notify @myorg/payments-team. No other services have a direct dependency."
 ```
 
-### 3. Running with Docker
+The AI answers from **verified graph facts** — not file naming conventions or guesses.
 
+---
+
+## Quick Start
+
+### 1. Get a Fine-Grained GitHub PAT
+
+Go to **GitHub → Settings → Developer Settings → Fine-grained tokens**.
+Grant **Read-only** access to `Contents` and `Metadata` for your org's repositories.
+
+### 2. Add to Your AI Client
+
+**Claude CLI (recommended):**
 ```bash
-# Stdio mode (default)
+claude mcp add --transport stdio \
+  --env GITHUB_TOKEN=github_pat_... \
+  --env GITHUB_ORG=my-org \
+  docscout-mcp -- go run github.com/your-username/docscout-mcp@latest
+```
+
+**Or build and run locally:**
+```bash
+git clone https://github.com/your-username/docscout-mcp
+cd docscout-mcp
+
+GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run .
+```
+
+**Docker:**
+```bash
 docker run -i \
-  -e GITHUB_TOKEN="github_pat_11A..." \
-  -e GITHUB_ORG="my-awesome-org" \
-  ghcr.io/your-username/docscout-mcp:latest
-
-# HTTP mode with persistent SQLite
-docker run -p 8080:8080 \
-  -e GITHUB_TOKEN="github_pat_11A..." \
-  -e GITHUB_ORG="my-awesome-org" \
-  -e HTTP_ADDR=":8080" \
-  -e DATABASE_URL="sqlite:///data/kb.db" \
-  -v docscout-data:/data \
-  ghcr.io/your-username/docscout-mcp:latest
-
-# HTTP mode with PostgreSQL
-docker run -p 8080:8080 \
-  -e GITHUB_TOKEN="github_pat_11A..." \
-  -e GITHUB_ORG="my-awesome-org" \
-  -e HTTP_ADDR=":8080" \
-  -e DATABASE_URL="postgres://user:pass@db-host:5432/docscout" \
+  -e GITHUB_TOKEN="github_pat_..." \
+  -e GITHUB_ORG="my-org" \
   ghcr.io/your-username/docscout-mcp:latest
 ```
 
-## GitHub Webhooks (Incremental Scanning)
+### 3. Ask Away
 
-By default, DocScout-MCP performs a full org scan on startup and repeats it at every `SCAN_INTERVAL`. **Webhooks are an optional enhancement** that trigger an immediate, targeted scan of a single repository the moment a relevant event is pushed — without waiting for the next full cycle.
+> *"Which services depend on the billing library?"*
+> *"Who owns the checkout service?"*
+> *"List all repos with a Helm chart."*
+> *"What Go services have direct dependencies on pgx?"*
 
-### How It Works
+---
 
-When `GITHUB_WEBHOOK_SECRET` is set, DocScout-MCP registers a `/webhook` endpoint (requires `HTTP_ADDR`). GitHub sends a signed `POST` request to this endpoint whenever a configured event fires. The server validates the `X-Hub-Signature-256` HMAC-SHA256 signature and, if valid, triggers a background scan of only the affected repository.
+## MCP Tools (15)
 
-Supported event types:
+| Category | Tool | What it does |
+|---|---|---|
+| **Scanner** | `list_repos` | All repos with indexed files |
+| | `search_docs` | Search file paths and repo names |
+| | `get_file_content` | Raw content of any indexed file (path-traversal protected) |
+| | `get_scan_status` | Scanner state, last scan time, cache size |
+| | `search_content` | Full-text search across cached docs (`SCAN_CONTENT=true`) |
+| **Knowledge Graph** | `create_entities` | Add nodes to the graph |
+| | `create_relations` | Add directed edges between nodes |
+| | `add_observations` | Append facts to existing entities |
+| | `read_graph` | Return the full graph |
+| | `search_nodes` | Search by name, type, or observation |
+| | `open_nodes` | Retrieve entities with their relations |
+| | `traverse_graph` | BFS traversal: impact analysis, dependency chains |
+| | `delete_entities` | Remove entities (> 10 requires `confirm: true`) |
+| | `delete_observations` | Remove specific facts |
+| | `delete_relations` | Remove specific edges |
+| **Observability** | `get_usage_stats` | Per-tool call counts + top 20 most-fetched docs |
 
-| GitHub Event | Trigger |
-| ------------ | ------- |
-| `push` | A commit was pushed to a branch |
-| `create` | A branch or tag was created |
-| `delete` | A branch or tag was deleted |
-| `repository` | Repository was renamed, archived, or visibility changed |
+---
 
-All other event types (e.g. `ping`, `star`, `issues`) are acknowledged with `200 OK` and ignored.
+## What Gets Scanned
 
-### Setup
+**Root-level manifests** (extracted into the knowledge graph):
 
-1. **Start the server in HTTP mode** with the webhook secret:
+| File | Extracts |
+|---|---|
+| `catalog-info.yaml` | Backstage entity, lifecycle, owner, relations |
+| `go.mod` | Module path, Go version, direct dependencies |
+| `package.json` | Package name, version, runtime dependencies |
+| `pom.xml` | Maven artifact, version, compile/runtime deps |
+| `CODEOWNERS` | Team and person ownership per repo |
+| `Dockerfile`, `Makefile`, `docker-compose.yml`, `.mise.toml` | Tooling presence |
+| `README.md`, `openapi.yaml`, `swagger.json` | Documentation surface |
 
-```bash
-export GITHUB_TOKEN="github_pat_11A..."
-export GITHUB_ORG="my-awesome-org"
-export HTTP_ADDR=":8080"
-export DATABASE_URL="sqlite://docscout.db"
-export GITHUB_WEBHOOK_SECRET="a-strong-random-secret"
+**Recursive directories**: `docs/` and `.agents/` (`.md` files) · `deploy/`, `infra/`, `.github/workflows/` (Helm, Terraform, K8s, workflows)
 
-go run .
-```
+---
 
-2. **Configure the webhook on GitHub**:
-   - Go to your Organization → **Settings** → **Webhooks** → **Add webhook**
-   - Set **Payload URL** to `https://your-host:8080/webhook`
-   - Set **Content type** to `application/json`
-   - Set **Secret** to the same value as `GITHUB_WEBHOOK_SECRET`
-   - Under **Which events?**, select at minimum: `Pushes`, `Branch or tag creation`, `Branch or tag deletion`, `Repositories`
-   - Click **Add webhook**
+## Key Configuration
 
-> **Note:** The `/webhook` path uses its own HMAC-SHA256 authentication and is excluded from Bearer Token auth (`MCP_HTTP_BEARER_TOKEN`). You do **not** need to pass a bearer token when GitHub calls this endpoint.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GITHUB_TOKEN` | ✅ | — | Fine-grained PAT (read-only `Contents` + `Metadata`) |
+| `GITHUB_ORG` | ✅ | — | GitHub org or username |
+| `SCAN_INTERVAL` | ❌ | `30m` | Re-scan interval (`10s`, `5m`, `1h`) |
+| `DATABASE_URL` | ❌ | in-memory SQLite | `sqlite://path.db` or `postgres://...` |
+| `HTTP_ADDR` | ❌ | — | Enable HTTP transport at this address (e.g. `:8080`) |
+| `SCAN_CONTENT` | ❌ | `false` | Cache file contents for full-text search |
+| `GITHUB_WEBHOOK_SECRET` | ❌ | — | Enable incremental scans on push events |
 
-### Security
+> See [full environment variable reference](docs/README.md) for all options including `SCAN_FILES`, `SCAN_DIRS`, `REPO_TOPICS`, `REPO_REGEX`, `EXTRA_REPOS`, and more.
 
-- Signatures are verified using `github.ValidatePayload` (constant-time HMAC comparison).
-- Scans are dispatched asynchronously; the HTTP `200 OK` response is returned immediately to GitHub.
-- Background scans are tied to the server's lifecycle context and are cancelled on graceful shutdown.
+---
 
-## Testing with MCP Inspector
+## AI Client Setup
 
-The official [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) is the recommended tool for testing and debugging this server interactively. 
+| Client | Guide |
+|---|---|
+| Claude Desktop / CLI | [docs/claude.md](docs/claude.md) |
+| VS Code (Copilot Chat) | [docs/vscode.md](docs/vscode.md) |
+| GitHub Copilot | [docs/copilot.md](docs/copilot.md) |
+| Antigravity (Google) | [docs/antigravity.md](docs/antigravity.md) |
+| Gemini CLI | [docs/gemini.md](docs/gemini.md) |
+| ChatGPT Desktop | [docs/chatgpt.md](docs/chatgpt.md) |
 
-### Walkthrough
+---
 
-1. Ensure you have Node.js and `npx` installed.
-2. Make sure you have built the project (`go build -o docscout-mcp .`) or have your go environment ready.
-3. Run the Inspector using `npx`, passing your server execution command as an argument.
+## Architecture & Security
 
-**Testing Stdio Transport (Default)**
+- **Path-traversal protection**: Only files verified by the scanner are accessible. The AI cannot read arbitrary files.
+- **STDIO safety**: No text is ever written to `stdout`. All logs go to `stderr`. Corruption of the JSON-RPC stream is impossible by design.
+- **Rate limit resilience**: Every GitHub API call uses exponential backoff with smart `Retry-After` handling.
+- **Graph integrity**: Observations are sanitized before storage. Mass deletions (> 10 entities) require explicit confirmation.
+- **Audit log**: Every graph mutation emits a structured `slog` line to stderr.
 
-```bash
-# Using go run
-GITHUB_TOKEN="github_pat_11A..." GITHUB_ORG="my-awesome-org" \
-  npx @modelcontextprotocol/inspector go run .
+For a deep dive, see [How It Works](docs/how-it-works.md).
 
-# Or using the compiled binary
-GITHUB_TOKEN="github_pat_11A..." GITHUB_ORG="my-awesome-org" \
-  npx @modelcontextprotocol/inspector ./docscout-mcp
-```
+---
 
-When the Inspector launches, it will securely start your DocScout-MCP server and display a local URL (e.g., `http://localhost:5173`). Open this URL in your browser to access the interactive GUI. There you can verify connections, list the available Prompts, Resources, and Tools (like `list_repos`, `search_docs`, etc.), and test them out by filling their payload forms.
+## Roadmap
 
-## Client Configuration
+See [ROADMAP.md](ROADMAP.md) for completed features and upcoming work, including:
 
-See the [`docs/`](docs/) folder for detailed setup guides for each AI client:
+- **Semantic Search & RAG** — vector embeddings via `pgvector`
+- **Custom Parser Extensions** — plug in new manifest formats without forking
+- **Integration Topology Discovery** — Kafka, gRPC, HTTP call graph from config files
+- **Multi-Cloud Adapters** — GitLab, Bitbucket, Confluence
+- **Documentation Wiki (gh-pages)** — move the detailed guides to a dedicated GitHub Pages site
 
-- [VS Code (Copilot Chat)](docs/vscode.md)
-- [GitHub Copilot](docs/copilot.md)
-- [Antigravity (Google)](docs/antigravity.md)
-- [Gemini CLI](docs/gemini.md)
-- [ChatGPT Desktop](docs/chatgpt.md)
+---
 
-## Development
-
-We welcome contributions! Please make sure to review the official Development Guidelines before submitting any code:
-
-- **[Development Guidelines for Humans](docs/DEVELOPMENT_GUIDELINES.md)**
-- **AI Assistants:** This repository includes an `AGENTS.md` file that configures AI agents (like Cursor, Copilot, or Antigravity) with the exact constraints needed for the official MCP Go SDK.
+## Contributing
 
 ```bash
 # Install dependencies
@@ -235,6 +220,10 @@ go build -o docscout-mcp .
 # Test (unit + E2E integration)
 go test ./...
 ```
+
+Review the [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md) and `AGENTS.md` before submitting a PR.
+
+---
 
 ## License
 

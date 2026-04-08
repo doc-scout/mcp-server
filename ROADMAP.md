@@ -81,6 +81,11 @@ This document outlines the current technical debts and the path forward for DocS
 
 ## Future Work
 
+### 16. Documentation Wiki (GitHub Pages)
+- **Current State**: All guides (client setup, environment reference, how-it-works, dev guidelines) live in the `docs/` directory as plain Markdown files. They are readable but not easily searchable, versioned, or navigable from the outside.
+- **Goal**: Publish the `docs/` directory as a dedicated GitHub Pages site (e.g. using [MkDocs](https://www.mkdocs.org/) or [Docusaurus](https://docusaurus.io/)), keeping the README lean and impact-focused while giving the detailed documentation a proper home.
+- **Implementation scope**: Configure a GitHub Actions workflow that builds and deploys the site on every push to `main`. The `README.md` references the live site rather than individual `docs/` files.
+
 ### 2. Semantic Search and Vector Embeddings (RAG)
 - **Current State**: Content search relies on exact text matching (`LIKE` queries in SQL).
 - **Goal**: Integrate vector embeddings (e.g., using `pgvector` for PostgreSQL or `sqlite-vss`) to allow AI Assistants to perform true semantic searches. This will drastically improve the relevance of the retrieved context.
