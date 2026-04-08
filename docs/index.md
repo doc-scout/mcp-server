@@ -91,7 +91,7 @@ Grant **Read-only** access to `Contents` and `Metadata` for your org's repositor
       ghcr.io/leonancarvalho/docscout-mcp:latest
     ```
 
-See [Client Integrations](README.md) for setup guides for VS Code, GitHub Copilot, ChatGPT, and Gemini.
+See [Client Integrations](integrations.md) for setup guides for VS Code, GitHub Copilot, ChatGPT, and Gemini.
 
 ---
 

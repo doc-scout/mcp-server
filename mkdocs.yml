@@ -43,7 +43,7 @@ nav:
   - Home: index.md
   - How It Works: how-it-works.md
   - Client Integrations:
-    - Overview: README.md
+    - Overview: integrations.md
     - Claude Desktop & CLI: claude.md
     - VS Code: vscode.md
     - GitHub Copilot: copilot.md
@@ -56,6 +56,9 @@ nav:
     - Development Guidelines: DEVELOPMENT_GUIDELINES.md
     - Roadmap: roadmap.md
     - Security: security.md
+
+not_in_nav: |
+  superpowers/
 
 plugins:
   - search:
