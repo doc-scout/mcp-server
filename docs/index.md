@@ -8,7 +8,7 @@ hide:
 
 # DocScout-MCP
 
-![DocScout-MCP](images/doc-scout-mcp-server.png){ width="180" }
+![DocScout-MCP](images/doc-scout-mcp-server.png){ width="640" }
 
 **Give your AI assistant a reliable map of your entire GitHub organization.**
 
@@ -18,8 +18,8 @@ An [MCP](https://modelcontextprotocol.io) server written in Go that continuously
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://github.com/leonancarvalho/docscout-mcp/blob/main/LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet)](https://modelcontextprotocol.io)
 
-[Get Started](#quick-start){ .md-button .md-button--primary }
-[How It Works](how-it-works.md){ .md-button }
+[Get Started](https://leonancarvalho.github.io/docscout-mcp/#quick-start){ .md-button .md-button--primary }
+[How It Works](https://leonancarvalho.github.io/docscout-mcp/#how-it-works){ .md-button }
 
 </div>
 
@@ -27,7 +27,7 @@ An [MCP](https://modelcontextprotocol.io) server written in Go that continuously
 
 ## The Problem
 
-Your AI assistant knows nothing about your internal services. Every time you ask *"which team owns the payment service?"* or *"what breaks if I take down the DB?"*, it either **hallucinates** or **burns tokens** scanning dozens of repos.
+Your AI assistant knows nothing about your internal services. Every time you ask _"which team owns the payment service?"_ or _"what breaks if I take down the DB?"_, it either **hallucinates** or **burns tokens** scanning dozens of repos.
 
 DocScout-MCP solves this by pre-computing the answer graph and serving it deterministically over MCP.
 
@@ -97,7 +97,7 @@ See [Client Integrations](integrations.md) for setup guides for VS Code, GitHub 
 
 ## See It In Action
 
-> *"What happens if I shut down `component:db`? Which systems go offline, and who do I notify?"*
+> _"What happens if I shut down `component:db`? Which systems go offline, and who do I notify?"_
 
 ```
 → traverse_graph(entity="component:db", direction="incoming", relation_type="depends_on")
@@ -118,27 +118,27 @@ The AI answers from **verified graph facts** — not file naming conventions or 
 
 ## Key Configuration
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `GITHUB_TOKEN` | ✅ | — | Fine-grained PAT (read-only `Contents` + `Metadata`) |
-| `GITHUB_ORG` | ✅ | — | GitHub org or username |
-| `SCAN_INTERVAL` | | `30m` | Re-scan interval (`10s`, `5m`, `1h`) |
-| `DATABASE_URL` | | in-memory SQLite | `sqlite://path.db` or `postgres://...` |
-| `HTTP_ADDR` | | — | Enable HTTP transport (e.g. `:8080`) |
-| `SCAN_CONTENT` | | `false` | Cache file contents for full-text search |
-| `GITHUB_WEBHOOK_SECRET` | | — | Enable incremental scans on push events |
+| Variable                | Required | Default          | Description                                          |
+| ----------------------- | -------- | ---------------- | ---------------------------------------------------- |
+| `GITHUB_TOKEN`          | ✅       | —                | Fine-grained PAT (read-only `Contents` + `Metadata`) |
+| `GITHUB_ORG`            | ✅       | —                | GitHub org or username                               |
+| `SCAN_INTERVAL`         |          | `30m`            | Re-scan interval (`10s`, `5m`, `1h`)                 |
+| `DATABASE_URL`          |          | in-memory SQLite | `sqlite://path.db` or `postgres://...`               |
+| `HTTP_ADDR`             |          | —                | Enable HTTP transport (e.g. `:8080`)                 |
+| `SCAN_CONTENT`          |          | `false`          | Cache file contents for full-text search             |
+| `GITHUB_WEBHOOK_SECRET` |          | —                | Enable incremental scans on push events              |
 
 ---
 
 ## Architecture & Security
 
 !!! tip "Path-traversal protection"
-    Only files verified by the scanner are accessible via `get_file_content`. The AI cannot read arbitrary paths outside the indexed set.
+Only files verified by the scanner are accessible via `get_file_content`. The AI cannot read arbitrary paths outside the indexed set.
 
 !!! info "STDIO safety"
-    No text is ever written to `stdout`. All logs go to `stderr`. Corruption of the JSON-RPC stream is impossible by design.
+No text is ever written to `stdout`. All logs go to `stderr`. Corruption of the JSON-RPC stream is impossible by design.
 
 !!! note "Graph integrity"
-    Observations are sanitized before storage. Mass deletions (> 10 entities) require explicit confirmation. Every mutation emits a structured audit log line.
+Observations are sanitized before storage. Mass deletions (> 10 entities) require explicit confirmation. Every mutation emits a structured audit log line.
 
 For a full technical deep-dive, see [How It Works](how-it-works.md).
