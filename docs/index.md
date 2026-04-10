@@ -19,7 +19,7 @@ An [MCP](https://modelcontextprotocol.io) server written in Go that continuously
 [![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet)](https://modelcontextprotocol.io)
 
 [Get Started](https://leonancarvalho.github.io/docscout-mcp/#quick-start){ .md-button .md-button--primary }
-[How It Works](https://leonancarvalho.github.io/docscout-mcp/#how-it-works){ .md-button }
+[How It Works](how-it-works.md){ .md-button }
 
 </div>
 
