@@ -30,6 +30,51 @@ This MCP server runs via Standard Input/Output (`stdio`). The JSON-RPC messages 
 - The `delete_entities` tool enforces a mass-delete guard (`massDeleteThreshold = 10`). Any new bulk-delete tools must implement the same pattern.
 
 # 7. Scanner Extension Points
-- New manifest parsers go in `scanner/parser/` and follow the `Parse*` function signature pattern. Add a corresponding phase (`2x`) in `indexer/indexer.go`.
-- New file types must be registered in `scanner.DefaultTargetFiles` (root-level) or `scanner.DefaultInfraDirs` (directory-based). Add the type string to `classifyFile`.
-- Infra directories (`deploy/`, `.github/workflows/`) are scanned via `scanInfraDir` for extensions in `infraExtensions`. Doc directories use `scanDocsDir` for `.md` files only.
+
+New manifest parsers implement the `FileParser` interface in `scanner/parser/extension.go` and register with the global `parser.Default` registry via `parser.Register()` in `main.go`.
+
+## FileParser Interface
+
+```go
+// FileParser is the extension point for manifest parsers.
+type FileParser interface {
+    FileType() string        // unique classifier key (e.g. "pipfile")
+    Filenames() []string     // root-level filenames (e.g. ["Pipfile"]) or suffix sentinels (e.g. [".proto"])
+    Parse(data []byte) (ParsedFile, error)
+}
+```
+
+## ParsedFile
+
+```go
+type ParsedFile struct {
+    EntityName   string           // primary entity name; empty if only AuxEntities
+    EntityType   string           // defaults to "service" if blank
+    Observations []string         // parser-specific observations (e.g. "version:1.2.3")
+    Relations    []ParsedRelation // directed edges; To="" → filled with repo service name
+    MergeMode    MergeMode        // MergeModeUpsert (default) or MergeModeCatalog
+    AuxEntities  []AuxEntity      // additional entities (used by codeowners-style parsers)
+}
+```
+
+## Registration Pattern
+
+```go
+// In main.go — register at startup before scanner/indexer construction:
+parser.Register(parser.GoModParser())
+parser.Register(myorg.NewPipfileParser())
+
+// Custom parser in mypkg/pipfile/parser.go:
+type Parser struct{}
+func (p *Parser) FileType()  string   { return "pipfile" }
+func (p *Parser) Filenames() []string { return []string{"Pipfile"} }
+func (p *Parser) Parse(data []byte) (parser.ParsedFile, error) { ... }
+```
+
+## Conventions
+
+- `Register()` panics on duplicate `FileType()` or filename — caught at startup, not runtime.
+- `Parse()` returning an error causes the file to be **skipped** with a warning log (scan continues).
+- Auto-observations `_source:<FileType>` and `_scan_repo:<repo.FullName>` are added by the indexer; parsers must not duplicate them.
+- For suffix-based discovery (e.g. `*.proto`), include a sentinel like `".proto"` in `Filenames()` — the scanner matches files whose name ends with that suffix.
+- Infra directories (`deploy/`, `.github/workflows/`) are scanned by `scanInfraDir`; root-level filenames are scanned by `scanRepo`. New parsers targeting root-level files only need to add their filenames via `Filenames()`.
