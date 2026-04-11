@@ -19,13 +19,6 @@ type ParsedCatalog struct {
 	Relations    []ParsedRelation
 }
 
-// ParsedRelation is a directed edge extracted from catalog-info.yaml.
-type ParsedRelation struct {
-	From         string
-	To           string
-	RelationType string
-}
-
 type backstageCatalog struct {
 	Kind     string `yaml:"kind"`
 	Metadata struct {
