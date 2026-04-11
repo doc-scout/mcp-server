@@ -12,7 +12,19 @@ import (
 	"github.com/leonancarvalho/docscout-mcp/indexer"
 	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/leonancarvalho/docscout-mcp/scanner"
+	"github.com/leonancarvalho/docscout-mcp/scanner/parser"
 )
+
+// testRegistry builds an isolated registry with all built-in parsers for use in tests.
+func testRegistry() *parser.ParserRegistry {
+	reg := parser.NewRegistry()
+	reg.Register(parser.GoModParser())
+	reg.Register(parser.PackageJSONParser())
+	reg.Register(parser.PomParser())
+	reg.Register(parser.CodeownersParser())
+	reg.Register(parser.CatalogParser())
+	return reg
+}
 
 // --- Mock FileGetter ---
 
@@ -110,7 +122,7 @@ spec:
 	}
 	gw := &mockGraphWriter{}
 
-	ai := indexer.New(fg, gw, nil)
+	ai := indexer.New(fg, gw, nil, testRegistry())
 	ai.Run(t.Context(), []scanner.RepoInfo{
 		{
 			Name:     "org/payment-service",
@@ -164,7 +176,7 @@ func TestAutoIndexer_SkipsMalformedCatalog(t *testing.T) {
 		},
 	}
 	gw := &mockGraphWriter{}
-	ai := indexer.New(fg, gw, nil)
+	ai := indexer.New(fg, gw, nil, testRegistry())
 
 	// Should not panic or return error; just log and skip
 	ai.Run(t.Context(), []scanner.RepoInfo{
@@ -196,7 +208,7 @@ func TestAutoIndexer_SoftDeletesStaleEntities(t *testing.T) {
 		},
 	}
 	fg := &mockFileGetter{files: map[string]string{}}
-	ai := indexer.New(fg, gw, nil)
+	ai := indexer.New(fg, gw, nil, testRegistry())
 
 	// Run with an empty repo list (org/old-svc is gone)
 	ai.Run(t.Context(), []scanner.RepoInfo{})
@@ -249,7 +261,7 @@ func TestAutoIndexer_ArchivesStaleNonCatalogEntities(t *testing.T) {
 		},
 	}
 	fg := &mockFileGetter{files: map[string]string{}}
-	ai := indexer.New(fg, gw, nil)
+	ai := indexer.New(fg, gw, nil, testRegistry())
 
 	// Run with an empty repo list — org/removed-repo is gone
 	ai.Run(t.Context(), []scanner.RepoInfo{})
@@ -288,7 +300,7 @@ spec:
 			"org/payment-service/catalog-info.yaml": catalogYAML,
 		},
 	}
-	ai := indexer.New(fg, gw, nil)
+	ai := indexer.New(fg, gw, nil, testRegistry())
 	ai.Run(t.Context(), []scanner.RepoInfo{
 		{
 			Name: "org/payment-service",
