@@ -128,3 +128,25 @@ func ParseCatalog(data []byte) (ParsedCatalog, error) {
 		Relations:    rels,
 	}, nil
 }
+
+// catalogParser implements FileParser for catalog-info.yaml files.
+type catalogParser struct{}
+
+func (*catalogParser) FileType() string    { return "catalog-info" }
+func (*catalogParser) Filenames() []string { return []string{"catalog-info.yaml"} }
+func (p *catalogParser) Parse(data []byte) (ParsedFile, error) {
+	parsed, err := ParseCatalog(data)
+	if err != nil {
+		return ParsedFile{}, err
+	}
+	return ParsedFile{
+		EntityName:   parsed.EntityName,
+		EntityType:   parsed.EntityType,
+		Observations: parsed.Observations,
+		Relations:    parsed.Relations,
+		MergeMode:    MergeModeCatalog,
+	}, nil
+}
+
+// CatalogParser returns the FileParser for catalog-info.yaml files.
+func CatalogParser() FileParser { return &catalogParser{} }

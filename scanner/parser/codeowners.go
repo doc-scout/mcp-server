@@ -61,6 +61,48 @@ func ParseCodeowners(data []byte) ParsedCodeowners {
 	return ParsedCodeowners{UniqueOwners: owners}
 }
 
+// codeownersParser implements FileParser for CODEOWNERS files.
+type codeownersParser struct{}
+
+func (*codeownersParser) FileType() string { return "codeowners" }
+func (*codeownersParser) Filenames() []string {
+	return []string{"CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"}
+}
+func (p *codeownersParser) Parse(data []byte) (ParsedFile, error) {
+	parsed := ParseCodeowners(data)
+	if len(parsed.UniqueOwners) == 0 {
+		return ParsedFile{}, nil
+	}
+
+	aux := make([]AuxEntity, 0, len(parsed.UniqueOwners))
+	rels := make([]ParsedRelation, 0, len(parsed.UniqueOwners))
+
+	for _, owner := range parsed.UniqueOwners {
+		aux = append(aux, AuxEntity{
+			Name:       owner.EntityName,
+			EntityType: owner.EntityType,
+			Observations: []string{
+				"github_handle:" + owner.Raw,
+			},
+		})
+		// To is intentionally empty: the indexer replaces "" with the derived
+		// repo service name (last segment of repo.FullName).
+		rels = append(rels, ParsedRelation{
+			From:         owner.EntityName,
+			To:           "",
+			RelationType: "owns",
+		})
+	}
+
+	return ParsedFile{
+		AuxEntities: aux,
+		Relations:   rels,
+	}, nil
+}
+
+// CodeownersParser returns the FileParser for CODEOWNERS files.
+func CodeownersParser() FileParser { return &codeownersParser{} }
+
 // classifyOwner normalises a raw CODEOWNERS token into a CodeOwner with a stable
 // EntityName and EntityType suitable for the knowledge graph.
 func classifyOwner(raw string) CodeOwner {

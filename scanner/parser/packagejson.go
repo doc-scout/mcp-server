@@ -71,3 +71,39 @@ func PackageEntityName(name string) string {
 	}
 	return name
 }
+
+// packageJSONParser implements FileParser for package.json files.
+type packageJSONParser struct{}
+
+func (*packageJSONParser) FileType() string    { return "packagejson" }
+func (*packageJSONParser) Filenames() []string { return []string{"package.json"} }
+func (p *packageJSONParser) Parse(data []byte) (ParsedFile, error) {
+	parsed, err := ParsePackageJSON(data)
+	if err != nil {
+		return ParsedFile{}, err
+	}
+
+	obs := []string{"npm_package:" + parsed.Name}
+	if parsed.Version != "" {
+		obs = append(obs, "version:"+parsed.Version)
+	}
+
+	rels := make([]ParsedRelation, 0, len(parsed.DirectDeps))
+	for _, dep := range parsed.DirectDeps {
+		rels = append(rels, ParsedRelation{
+			From:         parsed.EntityName,
+			To:           PackageEntityName(dep),
+			RelationType: "depends_on",
+		})
+	}
+
+	return ParsedFile{
+		EntityName:   parsed.EntityName,
+		EntityType:   "service",
+		Observations: obs,
+		Relations:    rels,
+	}, nil
+}
+
+// PackageJSONParser returns the FileParser for package.json files.
+func PackageJSONParser() FileParser { return &packageJSONParser{} }
