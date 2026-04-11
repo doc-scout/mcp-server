@@ -37,6 +37,8 @@ const (
 // EntityType defaults to "service" if blank.
 // Observations and Relations may be nil or empty.
 // MergeMode defaults to MergeModeUpsert if zero.
+// Relations with From == "" have their From field filled with the derived repo service name.
+// Relations with To == "" have their To field filled with the derived repo service name.
 type ParsedFile struct {
 	EntityName   string
 	EntityType   string

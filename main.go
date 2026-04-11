@@ -146,6 +146,12 @@ func main() {
 	parser.Register(parser.PomParser())
 	parser.Register(parser.CodeownersParser())
 	parser.Register(parser.CatalogParser())
+	// Integration topology parsers (#15)
+	parser.Register(parser.AsyncAPIParser())
+	parser.Register(parser.SpringKafkaParser())
+	parser.Register(parser.OpenAPIParser())
+	parser.Register(parser.ProtoParser())
+	parser.Register(parser.K8sServiceParser())
 
 	// --- Scanner ---
 	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, infraDirs, extraRepos, repoTopics, repoRegex, parser.Default)
