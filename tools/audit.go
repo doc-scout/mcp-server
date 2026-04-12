@@ -100,6 +100,10 @@ func (a *GraphAuditLogger) ListEntities(entityType string) (memory.KnowledgeGrap
 	return a.inner.ListEntities(entityType)
 }
 
+func (a *GraphAuditLogger) ListRelations(relationType, fromEntity string) ([]memory.Relation, error) {
+	return a.inner.ListRelations(relationType, fromEntity)
+}
+
 func (a *GraphAuditLogger) ReadGraph() (memory.KnowledgeGraph, error) {
 	return a.inner.ReadGraph()
 }

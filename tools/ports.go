@@ -40,6 +40,9 @@ type GraphStore interface {
 	// ListEntities returns all entities matching entityType (case-insensitive).
 	// When entityType is empty, all entities are returned.
 	ListEntities(entityType string) (memory.KnowledgeGraph, error)
+	// ListRelations returns all relations, optionally filtered by relationType and/or fromEntity.
+	// Empty string parameters act as wildcards (match all).
+	ListRelations(relationType, fromEntity string) ([]memory.Relation, error)
 }
 
 // ContentSearcher provides full-text search over cached documentation content.

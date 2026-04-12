@@ -200,6 +200,25 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 		mcp.AddTool(s, &mcp.Tool{
 
+			Name: "list_relations",
+
+			Description: "Returns relations from the knowledge graph, filtered by relation_type and/or from_entity. " +
+
+				"Examples: " +
+
+				"relation_type='depends_on' → all dependency edges; " +
+
+				"relation_type='publishes_event' → all event producers; " +
+
+				"relation_type='subscribes_event' → all event consumers; " +
+
+				"from_entity='payment-svc' → all outgoing edges from payment-svc. " +
+
+				"Both filters can be combined. Leave both empty to return all relations.",
+		}, withMetrics("list_relations", metrics, withRecovery("list_relations", listRelationsHandler(graph))))
+
+		mcp.AddTool(s, &mcp.Tool{
+
 			Name: "search_nodes",
 
 			Description: "Search for nodes based on query",
