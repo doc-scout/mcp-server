@@ -85,3 +85,41 @@ func moduleEntityName(modulePath string) string {
 	parts := strings.Split(modulePath, "/")
 	return parts[len(parts)-1]
 }
+
+// goModParser implements FileParser for go.mod files.
+type goModParser struct{}
+
+func (*goModParser) FileType() string    { return "gomod" }
+func (*goModParser) Filenames() []string { return []string{"go.mod"} }
+func (p *goModParser) Parse(data []byte) (ParsedFile, error) {
+	parsed, err := ParseGoMod(data)
+	if err != nil {
+		return ParsedFile{}, err
+	}
+
+	obs := []string{
+		"go_module:" + parsed.ModulePath,
+	}
+	if parsed.GoVersion != "" {
+		obs = append(obs, "go_version:"+parsed.GoVersion)
+	}
+
+	rels := make([]ParsedRelation, 0, len(parsed.DirectDeps))
+	for _, dep := range parsed.DirectDeps {
+		rels = append(rels, ParsedRelation{
+			From:         parsed.EntityName,
+			To:           moduleEntityName(dep),
+			RelationType: "depends_on",
+		})
+	}
+
+	return ParsedFile{
+		EntityName:   parsed.EntityName,
+		EntityType:   "service",
+		Observations: obs,
+		Relations:    rels,
+	}, nil
+}
+
+// GoModParser returns the FileParser for go.mod files.
+func GoModParser() FileParser { return &goModParser{} }

@@ -15,7 +15,19 @@ import (
 	"time"
 
 	"github.com/google/go-github/v60/github"
+	"github.com/leonancarvalho/docscout-mcp/scanner/parser"
 )
+
+// testRegistry builds an isolated registry for scanner tests.
+func testRegistry() *parser.ParserRegistry {
+	reg := parser.NewRegistry()
+	reg.Register(parser.GoModParser())
+	reg.Register(parser.PackageJSONParser())
+	reg.Register(parser.PomParser())
+	reg.Register(parser.CodeownersParser())
+	reg.Register(parser.CatalogParser())
+	return reg
+}
 
 func setupMockGitHub() (*httptest.Server, *github.Client) {
 	mux := http.NewServeMux()
@@ -107,7 +119,7 @@ func TestScanner_scanOrg(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
+	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil, testRegistry())
 	scanner.scanOrg(t.Context())
 
 	repos := scanner.ListRepos()
@@ -128,7 +140,7 @@ func TestScanner_GetFileContent(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
+	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil, testRegistry())
 	scanner.scanOrg(t.Context())
 
 	// Test a valid file
@@ -151,7 +163,7 @@ func TestScanner_OnScanComplete(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
+	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil, testRegistry())
 
 	called := false
 	var callbackRepos []RepoInfo
@@ -174,7 +186,7 @@ func TestScanner_SearchDocs(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
+	scanner := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil, testRegistry())
 	scanner.scanOrg(t.Context())
 
 	results := scanner.SearchDocs("guide")
@@ -190,7 +202,7 @@ func TestScanner_RepoScanRespectsContext(t *testing.T) {
 	ts, client := setupMockGitHub()
 	defer ts.Close()
 
-	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil)
+	s := New(client, "test-org", 0, []string{"README.md"}, []string{"docs"}, nil, nil, nil, nil, testRegistry())
 
 	// Run with a pre-cancelled context — scanOrg should return without blocking.
 	ctx, cancel := context.WithCancel(t.Context())

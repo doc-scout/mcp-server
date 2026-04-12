@@ -7,6 +7,7 @@
 package tools
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/leonancarvalho/docscout-mcp/memory"
@@ -90,6 +91,10 @@ func (a *GraphAuditLogger) DeleteRelations(relations []memory.Relation) error {
 }
 
 // ── Read-only pass-throughs ───────────────────────────────────────────────────
+
+func (a *GraphAuditLogger) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) {
+	return a.inner.GetIntegrationMap(ctx, service, depth)
+}
 
 func (a *GraphAuditLogger) ReadGraph() (memory.KnowledgeGraph, error) {
 	return a.inner.ReadGraph()

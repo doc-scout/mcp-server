@@ -25,6 +25,7 @@ import (
 	"github.com/leonancarvalho/docscout-mcp/indexer"
 	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/leonancarvalho/docscout-mcp/scanner"
+	"github.com/leonancarvalho/docscout-mcp/scanner/parser"
 	"github.com/leonancarvalho/docscout-mcp/tools"
 	"github.com/leonancarvalho/docscout-mcp/webhook"
 )
@@ -139,8 +140,21 @@ func main() {
 	httpClient := oauth2.NewClient(ctx, ts)
 	ghClient := github.NewClient(httpClient)
 
+	// --- Parser Registry ---
+	parser.Register(parser.GoModParser())
+	parser.Register(parser.PackageJSONParser())
+	parser.Register(parser.PomParser())
+	parser.Register(parser.CodeownersParser())
+	parser.Register(parser.CatalogParser())
+	// Integration topology parsers (#15)
+	parser.Register(parser.AsyncAPIParser())
+	parser.Register(parser.SpringKafkaParser())
+	parser.Register(parser.OpenAPIParser())
+	parser.Register(parser.ProtoParser())
+	parser.Register(parser.K8sServiceParser())
+
 	// --- Scanner ---
-	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, infraDirs, extraRepos, repoTopics, repoRegex)
+	sc := scanner.New(ghClient, org, scanInterval, targetFiles, scanDirs, infraDirs, extraRepos, repoTopics, repoRegex, parser.Default)
 
 	// Warn operators that active repo filters will cause excluded repos' entities to be archived.
 	if repoRegex != nil || len(repoTopics) > 0 {
@@ -180,7 +194,7 @@ func main() {
 	docMetrics := tools.NewDocMetrics()
 
 	// --- Auto-Indexer ---
-	ai := indexer.New(sc, auditedGraph, contentCache)
+	ai := indexer.New(sc, auditedGraph, contentCache, parser.Default)
 	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
 		start := time.Now()
 		slog.Info("[indexer] Auto-indexing started", "repos", len(repos))

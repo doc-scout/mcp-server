@@ -16,20 +16,23 @@ import (
 	"time"
 
 	"github.com/google/go-github/v60/github"
+	"github.com/leonancarvalho/docscout-mcp/scanner/parser"
 )
 
-// DefaultTargetFiles defines the default filenames to look for at the repo root.
-var DefaultTargetFiles = []string{
-	"catalog-info.yaml",
+// DefaultTargetFiles is kept for backward compatibility but is no longer used by New().
+// Target files are now computed from the ParserRegistry at construction time.
+// Deprecated: pass a ParserRegistry to New() instead.
+var DefaultTargetFiles = []string{}
+
+// staticTargetFiles are files indexed as documentation or infra assets that have no
+// registered FileParser (they don't produce graph entities).
+var staticTargetFiles = []string{
+	"README.md",
 	"mkdocs.yml",
 	"openapi.yaml",
 	"swagger.json",
-	"README.md",
 	"SKILLS.md",
 	"AGENTS.md",
-	"go.mod",
-	"package.json",
-	"pom.xml",
 	// Infrastructure / tooling files at repo root.
 	"Dockerfile",
 	"docker-compose.yml",
@@ -37,10 +40,6 @@ var DefaultTargetFiles = []string{
 	"Makefile",
 	".mise.toml",
 	"mise.toml",
-	// CODEOWNERS is checked in three GitHub-supported locations.
-	"CODEOWNERS",
-	".github/CODEOWNERS",
-	"docs/CODEOWNERS",
 }
 
 // DefaultScanDirs defines the default directories to scan recursively for .md files.
@@ -59,11 +58,12 @@ var DefaultInfraDirs = []string{
 
 // infraExtensions is the set of file extensions indexed when scanning infra directories.
 var infraExtensions = map[string]bool{
-	".yaml": true,
-	".yml":  true,
-	".tf":   true,
-	".hcl":  true,
-	".toml": true,
+	".yaml":  true,
+	".yml":   true,
+	".tf":    true,
+	".hcl":   true,
+	".toml":  true,
+	".proto": true,
 }
 
 // FileEntry represents an indexed documentation file.
@@ -94,6 +94,7 @@ type Scanner struct {
 	extraRepos   []string       // extra explicit repos formatted as "owner/repo"
 	repoTopics   []string       // filter org repos by topics
 	repoRegex    *regexp.Regexp // filter org repos by name using regex
+	registry     *parser.ParserRegistry
 
 	mu    sync.RWMutex
 	repos map[string]*RepoInfo // keyed by repo name
@@ -104,11 +105,35 @@ type Scanner struct {
 	onScanComplete func([]RepoInfo) // called after each full scan completes
 }
 
-// New creates a new Scanner instance.
-func New(client *github.Client, org string, scanInterval time.Duration, targetFiles, scanDirs, infraDirs, extraRepos, repoTopics []string, repoRegex *regexp.Regexp) *Scanner {
-	if len(targetFiles) == 0 {
-		targetFiles = DefaultTargetFiles
+// New creates a new Scanner instance. registry must be non-nil.
+// targetFiles are computed from the registry (parser filenames) plus staticTargetFiles.
+// Pass non-nil targetFilesOverride to add extra root-level files beyond the defaults.
+func New(client *github.Client, org string, scanInterval time.Duration, targetFilesOverride, scanDirs, infraDirs, extraRepos, repoTopics []string, repoRegex *regexp.Regexp, registry *parser.ParserRegistry) *Scanner {
+	// Compute default target files from registry + static set.
+	seen := make(map[string]bool)
+	var targetFiles []string
+	for _, fn := range registry.TargetFilenames() {
+		if !seen[fn] {
+			seen[fn] = true
+			targetFiles = append(targetFiles, fn)
+		}
 	}
+	for _, fn := range staticTargetFiles {
+		if !seen[fn] {
+			seen[fn] = true
+			targetFiles = append(targetFiles, fn)
+		}
+	}
+	// Apply user override if supplied.
+	if len(targetFilesOverride) > 0 {
+		for _, fn := range targetFilesOverride {
+			if !seen[fn] {
+				seen[fn] = true
+				targetFiles = append(targetFiles, fn)
+			}
+		}
+	}
+
 	if len(scanDirs) == 0 {
 		scanDirs = DefaultScanDirs
 	}
@@ -125,6 +150,7 @@ func New(client *github.Client, org string, scanInterval time.Duration, targetFi
 		extraRepos:   extraRepos,
 		repoTopics:   repoTopics,
 		repoRegex:    repoRegex,
+		registry:     registry,
 		repos:        make(map[string]*RepoInfo),
 	}
 }
@@ -411,7 +437,7 @@ func (s *Scanner) scanRepo(ctx context.Context, repoOwner, repoName string) []Fi
 				RepoName: repoName,
 				Path:     target,
 				SHA:      fc.GetSHA(),
-				Type:     classifyFile(target),
+				Type:     s.classifyFile(target),
 			})
 		}
 	}
@@ -505,7 +531,7 @@ func (s *Scanner) scanInfraDir(ctx context.Context, repoOwner, repoName, path st
 					RepoName: repoName,
 					Path:     itemPath,
 					SHA:      item.GetSHA(),
-					Type:     classifyFile(itemPath),
+					Type:     s.classifyFile(itemPath),
 				})
 			}
 		case "dir":
@@ -518,16 +544,27 @@ func (s *Scanner) scanInfraDir(ctx context.Context, repoOwner, repoName, path st
 }
 
 // classifyFile returns a type label for a given file path.
-// It uses the full path for context-sensitive classification (e.g. helm vs k8s YAML)
-// and falls back to the base filename or extension.
-func classifyFile(name string) string {
+// It checks the scanner's parser registry first, then falls back to hardcoded rules
+// for infra/docs types that have no associated FileParser.
+func (s *Scanner) classifyFile(name string) string {
 	base := filepath.Base(strings.ToLower(name))
-	lowerPath := strings.ToLower(name)
 
+	// Registry-based classification (exact filename match).
+	for _, p := range s.registry.All() {
+		for _, fn := range p.Filenames() {
+			if strings.HasPrefix(fn, ".") && strings.HasSuffix(base, fn) {
+				// Suffix match for extension-based parsers (e.g. ".proto").
+				return p.FileType()
+			}
+			if base == strings.ToLower(fn) {
+				return p.FileType()
+			}
+		}
+	}
+
+	lowerPath := strings.ToLower(name)
 	switch base {
-	// Documentation / catalog
-	case "catalog-info.yaml":
-		return "catalog-info"
+	// Documentation / catalog types not backed by a FileParser.
 	case "mkdocs.yml":
 		return "mkdocs"
 	case "openapi.yaml":
@@ -540,16 +577,6 @@ func classifyFile(name string) string {
 		return "skills"
 	case "agents.md":
 		return "agents"
-	// Dependency manifests
-	case "go.mod":
-		return "gomod"
-	case "package.json":
-		return "packagejson"
-	case "pom.xml":
-		return "pomxml"
-	// Ownership
-	case "codeowners":
-		return "codeowners"
 	// Infrastructure / tooling
 	case "dockerfile":
 		return "dockerfile"
@@ -559,7 +586,7 @@ func classifyFile(name string) string {
 		return "compose"
 	case ".mise.toml", "mise.toml":
 		return "mise"
-	// Helm — Chart.yaml is definitive; values.yaml is helm only under a helm/ path.
+	// Helm
 	case "chart.yaml":
 		return "helm"
 	case "values.yaml":
@@ -569,7 +596,6 @@ func classifyFile(name string) string {
 		return "infra"
 	}
 
-	// Extension-based fallback for infra directories.
 	ext := filepath.Ext(base)
 	switch ext {
 	case ".tf", ".hcl":

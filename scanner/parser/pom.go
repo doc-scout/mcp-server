@@ -72,3 +72,44 @@ func ParsePom(data []byte) (ParsedPom, error) {
 		DirectDeps: deps,
 	}, nil
 }
+
+// pomParser implements FileParser for pom.xml files.
+type pomParser struct{}
+
+func (*pomParser) FileType() string    { return "pomxml" }
+func (*pomParser) Filenames() []string { return []string{"pom.xml"} }
+func (p *pomParser) Parse(data []byte) (ParsedFile, error) {
+	parsed, err := ParsePom(data)
+	if err != nil {
+		return ParsedFile{}, err
+	}
+
+	obs := []string{
+		"maven_artifact:" + parsed.GroupID + ":" + parsed.ArtifactID,
+	}
+	if parsed.GroupID != "" {
+		obs = append(obs, "java_group:"+parsed.GroupID)
+	}
+	if parsed.Version != "" {
+		obs = append(obs, "version:"+parsed.Version)
+	}
+
+	rels := make([]ParsedRelation, 0, len(parsed.DirectDeps))
+	for _, dep := range parsed.DirectDeps {
+		rels = append(rels, ParsedRelation{
+			From:         parsed.EntityName,
+			To:           dep,
+			RelationType: "depends_on",
+		})
+	}
+
+	return ParsedFile{
+		EntityName:   parsed.EntityName,
+		EntityType:   "service",
+		Observations: obs,
+		Relations:    rels,
+	}, nil
+}
+
+// PomParser returns the FileParser for pom.xml files.
+func PomParser() FileParser { return &pomParser{} }

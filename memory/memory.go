@@ -4,6 +4,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -364,6 +365,12 @@ func (srv *MemoryService) EntityCount() (int64, error) {
 	var count int64
 	err := srv.s.db.Model(&dbEntity{}).Count(&count).Error
 	return count, err
+}
+
+// GetIntegrationMap returns all integration edges for service up to depth hops.
+// depth is clamped to [1, 3].
+func (srv *MemoryService) GetIntegrationMap(ctx context.Context, service string, depth int) (IntegrationMap, error) {
+	return srv.s.getIntegrationMap(ctx, service, depth)
 }
 
 // OpenDB opens the database connection and runs auto-migration for all models.
