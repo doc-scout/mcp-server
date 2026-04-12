@@ -164,6 +164,10 @@ func (m *mockContentSearcher) Count() (int64, error) {
 	return m.count, nil
 }
 
+func (m *mockContentSearcher) SearchMode() string {
+	return "like"
+}
+
 type mockGraphStore struct {
 	count int64
 }
