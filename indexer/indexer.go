@@ -243,7 +243,7 @@ func (ai *AutoIndexer) refreshContent(ctx context.Context, repos []scanner.RepoI
 				slog.Warn("[indexer] Content fetch failed", "repo", repo.Name, "path", file.Path, "error", err)
 				continue
 			}
-			if err := ai.cache.Upsert(repo.Name, file.Path, file.SHA, content); err != nil {
+			if err := ai.cache.Upsert(repo.Name, file.Path, file.SHA, content, file.Type); err != nil {
 				slog.Warn("[indexer] Content store failed", "repo", repo.Name, "path", file.Path, "error", err)
 			}
 		}

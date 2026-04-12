@@ -153,7 +153,7 @@ type mockContentSearcher struct {
 	enabled bool
 }
 
-func (m *mockContentSearcher) Search(query, repo string) ([]memory.ContentMatch, error) {
+func (m *mockContentSearcher) Search(query, repo, fileType string) ([]memory.ContentMatch, error) {
 	if !m.enabled {
 		return nil, fmt.Errorf("content search is disabled")
 	}

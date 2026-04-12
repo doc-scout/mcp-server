@@ -19,6 +19,7 @@ type dbDocContent struct {
 	RepoName  string    `gorm:"index;uniqueIndex:idx_repo_path"`
 	Path      string    `gorm:"uniqueIndex:idx_repo_path"`
 	SHA       string
+	FileType  string    `gorm:"index"` // e.g. "readme", "docs", "openapi", "catalog"
 	Content   string    `gorm:"type:text"`
 	IndexedAt time.Time
 }
@@ -27,6 +28,7 @@ type dbDocContent struct {
 type ContentMatch struct {
 	RepoName string `json:"repo_name"`
 	Path     string `json:"path"`
+	FileType string `json:"file_type,omitempty"`
 	Snippet  string `json:"snippet"`
 }
 
@@ -96,7 +98,7 @@ func (cc *ContentCache) initFTS5() error {
 
 // NeedsUpdate returns true if the file is not cached or its SHA has changed.
 // Always returns false when the cache is disabled.
-func (cc *ContentCache) NeedsUpdate(repoName, path, sha string) bool {
+func (cc *ContentCache) NeedsUpdate(repoName, path, sha string) bool { //nolint:unparam
 	if !cc.enabled {
 		return false
 	}
@@ -109,9 +111,10 @@ func (cc *ContentCache) NeedsUpdate(repoName, path, sha string) bool {
 }
 
 // Upsert stores or updates the content for a file.
+// fileType is the classification key (e.g. "readme", "openapi") — stored for filtering.
 // Files exceeding maxSize are silently skipped.
 // No-ops when the cache is disabled.
-func (cc *ContentCache) Upsert(repoName, path, sha, content string) error {
+func (cc *ContentCache) Upsert(repoName, path, sha, content, fileType string) error {
 	if !cc.enabled {
 		return nil
 	}
@@ -123,22 +126,23 @@ func (cc *ContentCache) Upsert(repoName, path, sha, content string) error {
 		RepoName:  repoName,
 		Path:      path,
 		SHA:       sha,
+		FileType:  fileType,
 		Content:   content,
 		IndexedAt: time.Now(),
 	}
 	return cc.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "repo_name"}, {Name: "path"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sha", "content", "indexed_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sha", "file_type", "content", "indexed_at"}),
 	}).Create(&row).Error
 }
 
 // Search performs a full-text search across cached content.
 // On SQLite: uses FTS5 with BM25 ranking and Porter stemming.
 // On PostgreSQL: uses escaped LIKE (case-insensitive).
-// Optionally filter by repoName (pass "" for no filter).
+// Pass "" for repoName or fileType to skip those filters.
 // Returns up to 20 results with a snippet of context around the first match.
 // Returns an error if the cache is disabled.
-func (cc *ContentCache) Search(query, repoName string) ([]ContentMatch, error) {
+func (cc *ContentCache) Search(query, repoName, fileType string) ([]ContentMatch, error) {
 	if !cc.enabled {
 		return nil, fmt.Errorf("content search is disabled: set SCAN_CONTENT=true and restart with a persistent DATABASE_URL to enable it")
 	}
@@ -147,9 +151,9 @@ func (cc *ContentCache) Search(query, repoName string) ([]ContentMatch, error) {
 	}
 
 	if cc.useFTS5 {
-		return cc.searchFTS5(query, repoName)
+		return cc.searchFTS5(query, repoName, fileType)
 	}
-	return cc.searchLIKE(query, repoName)
+	return cc.searchLIKE(query, repoName, fileType)
 }
 
 // sanitizeFTS5Query converts a free-text query into a safe FTS5 MATCH expression.
@@ -168,11 +172,11 @@ func sanitizeFTS5Query(query string) string {
 }
 
 // searchFTS5 performs a ranked FTS5 full-text search (SQLite only).
-func (cc *ContentCache) searchFTS5(query, repoName string) ([]ContentMatch, error) {
+func (cc *ContentCache) searchFTS5(query, repoName, fileType string) ([]ContentMatch, error) {
 	// FTS5 snippet(): args are (table, column_index, match_start, match_end, ellipsis, tokens_per_fragment)
 	// column_index 1 = content column.
 	sql := `
-		SELECT dc.repo_name, dc.path,
+		SELECT dc.repo_name, dc.path, dc.file_type,
 		       snippet(doc_contents_fts, 1, '', '', '...', 48) AS snippet
 		FROM doc_contents_fts
 		JOIN db_doc_contents dc ON dc.id = doc_contents_fts.rowid
@@ -183,11 +187,16 @@ func (cc *ContentCache) searchFTS5(query, repoName string) ([]ContentMatch, erro
 		sql += " AND dc.repo_name = ?"
 		args = append(args, repoName) //nolint:makezero
 	}
+	if fileType != "" {
+		sql += " AND dc.file_type = ?"
+		args = append(args, fileType) //nolint:makezero
+	}
 	sql += " ORDER BY rank LIMIT 20"
 
 	type row struct {
 		RepoName string
 		Path     string
+		FileType string
 		Snippet  string
 	}
 	var rows []row
@@ -201,6 +210,7 @@ func (cc *ContentCache) searchFTS5(query, repoName string) ([]ContentMatch, erro
 		matches = append(matches, ContentMatch{
 			RepoName: r.RepoName,
 			Path:     r.Path,
+			FileType: r.FileType,
 			Snippet:  r.Snippet,
 		})
 	}
@@ -208,7 +218,7 @@ func (cc *ContentCache) searchFTS5(query, repoName string) ([]ContentMatch, erro
 }
 
 // searchLIKE performs a case-insensitive LIKE search (PostgreSQL fallback).
-func (cc *ContentCache) searchLIKE(query, repoName string) ([]ContentMatch, error) {
+func (cc *ContentCache) searchLIKE(query, repoName, fileType string) ([]ContentMatch, error) {
 	// Escape SQL LIKE special characters so the query is treated as a literal string.
 	escaped := strings.ReplaceAll(query, `\`, `\\`)
 	escaped = strings.ReplaceAll(escaped, "%", `\%`)
@@ -219,6 +229,9 @@ func (cc *ContentCache) searchLIKE(query, repoName string) ([]ContentMatch, erro
 	if repoName != "" {
 		q = q.Where("repo_name = ?", repoName)
 	}
+	if fileType != "" {
+		q = q.Where("file_type = ?", fileType)
+	}
 	if err := q.Limit(20).Find(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -228,6 +241,7 @@ func (cc *ContentCache) searchLIKE(query, repoName string) ([]ContentMatch, erro
 		matches = append(matches, ContentMatch{
 			RepoName: row.RepoName,
 			Path:     row.Path,
+			FileType: row.FileType,
 			Snippet:  extractSnippet(row.Content, query, 300),
 		})
 	}
