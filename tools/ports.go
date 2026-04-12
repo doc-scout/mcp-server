@@ -37,7 +37,8 @@ type GraphStore interface {
 
 // ContentSearcher provides full-text search over cached documentation content.
 type ContentSearcher interface {
-	Search(query, repo string) ([]memory.ContentMatch, error)
+	// Search performs full-text search. Pass "" for repo or fileType to skip those filters.
+	Search(query, repo, fileType string) ([]memory.ContentMatch, error)
 	Count() (int64, error)
 	// SearchMode returns the active search backend: "fts5" (SQLite FTS5) or "like" (LIKE fallback).
 	SearchMode() string
