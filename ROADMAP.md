@@ -89,18 +89,32 @@ This document outlines the current technical debts and the path forward for DocS
 - `tools/traverse_graph.go` — `traverse_graph` MCP tool: `entity` (required), `relation_type` (optional filter), `direction` (outgoing/incoming/both, default outgoing), `depth` (1–10, default 1, clamped). Returns `TraverseGraphResult` with nodes, distances, and paths.
 - `tests/traverse_graph/` — 8 E2E scenarios: outgoing depth 1/2, incoming, relation filter, unknown entity, cycle safety, and input validation errors.
 
+### 13. Custom Parser Extension ✅
+- **Implemented**: `FileParser` interface and `ParserRegistry` allow custom parsers to be plugged in without forking.
+- `scanner/parser/extension.go` — `FileParser` interface, `ParsedFile` struct, `ParsedRelation`, `AuxEntity`, `MergeMode`.
+- `scanner/parser/registry.go` — thread-safe `ParserRegistry` with `Register` / `Get` / `All`; panics on duplicate `FileType()`.
+- `scanner/scanner.go` — `classifyFile` and `DefaultTargetFiles` driven by registry; backward-compatible.
+- `indexer/indexer.go` — single `upsertParsedFile()` replaces 5 duplicate phase methods; iterates registry.
+- All built-in parsers implement `FileParser` (gomod, packagejson, pom, catalog, codeowners).
+- Integration parsers registered in `main.go`: AsyncAPI, SpringKafka, OpenAPI, Proto.
+
+### 15. Integration Topology Discovery ✅
+- **Implemented**: Five new parsers automatically populate producer/consumer and API dependency edges. `get_integration_map` tool returns the complete integration picture of a service in one call.
+- `scanner/parser/asyncapi.go` — AsyncAPI 2.x: extracts `publishes_event` / `subscribes_event` edges.
+- `scanner/parser/spring_kafka.go` — Spring Kafka `@KafkaListener` / `KafkaTemplate` heuristics.
+- `scanner/parser/openapi.go` — OpenAPI/Swagger: `exposes_api` edges.
+- `scanner/parser/proto.go` — Protobuf: `provides_grpc` and `depends_on_grpc` edges.
+- `memory/integration.go` — `GetIntegrationMap` query with `graph_coverage` (full/partial/inferred/none).
+- `tools/get_integration_map.go` — `get_integration_map` MCP tool.
+- `tests/integration_map/` — 3 E2E scenarios.
+
 ---
 
 ## Future Work
 
-### 16. Documentation Wiki (GitHub Pages)
-- **Current State**: All guides (client setup, environment reference, how-it-works, dev guidelines) live in the `docs/` directory as plain Markdown files. They are readable but not easily searchable, versioned, or navigable from the outside.
-- **Goal**: Publish the `docs/` directory as a dedicated GitHub Pages site (e.g. using [MkDocs](https://www.mkdocs.org/) or [Docusaurus](https://docusaurus.io/)), keeping the README lean and impact-focused while giving the detailed documentation a proper home.
-- **Implementation scope**: Configure a GitHub Actions workflow that builds and deploys the site on every push to `main`. The `README.md` references the live site rather than individual `docs/` files.
-
 ### 2. Semantic Search and Vector Embeddings (RAG)
-- **Current State**: Content search relies on exact text matching (`LIKE` queries in SQL).
-- **Goal**: Integrate vector embeddings (e.g., using `pgvector` for PostgreSQL or `sqlite-vss`) to allow AI Assistants to perform true semantic searches. This will drastically improve the relevance of the retrieved context.
+- **Phase 1 ✅ (2026-04-11)**: Replaced SQL `LIKE` with SQLite FTS5 full-text search — BM25 relevance ranking, Porter stemmer (`authenticate` → `authentication`), multi-word AND queries, special-char-safe query sanitization. Zero new dependencies.
+- **Phase 2**: Integrate vector embeddings (`pgvector` for PostgreSQL or `sqlite-vss`) for true semantic search across documentation. This will allow AI agents to find relevant docs without exact keyword matches.
 
 ### 4. Graph Knowledge Access Control (RBAC)
 - **Current State**: Any LLM client connected to the MCP server can read any file and entity that was indexed.
@@ -109,49 +123,6 @@ This document outlines the current technical debts and the path forward for DocS
 ### 5. Multi-Cloud and Platform Adapters
 - **Current State**: Hardcoded dependency on GitHub API.
 - **Goal**: Build a generic "Provider" interface to support GitLab, Bitbucket, Confluence, Notion, and other internal enterprise wikis out-of-the-box.
-
-### 13. Custom Parser Extension
-- **Current State**: Adding a new manifest parser requires edits in 4+ locations — `DefaultTargetFiles` and `classifyFile()` in `scanner/scanner.go`, a new phase loop in `indexer/indexer.go`, and a 50-line `upsertX()` method. No extension point exists; every parser is hardcoded into the indexer core. There is no way to support a custom format (e.g. `Pipfile`, `.tool-versions`, `chart.lock`) without forking the repository.
-- **Goal**: Introduce a `FileParser` interface and a `ParserRegistry` so users can plug in custom parsers without touching core code.
-
-**Proposed `FileParser` interface** (`scanner/parser/extension.go`):
-```go
-// ParsedFile is the normalized, graph-ready output every parser must return.
-type ParsedFile struct {
-    EntityName   string
-    EntityType   string           // "service", "team", "api", etc.
-    Observations []string         // e.g. ["version:1.2.3", "lang:python"]
-    Relations    []ParsedRelation // optional semantic edges
-}
-
-type FileParser interface {
-    FileType() string       // classifier key, e.g. "pipfile"
-    Filenames() []string    // root-level filenames to scan for, e.g. ["Pipfile"]
-    Parse([]byte) (ParsedFile, error)
-}
-```
-
-**Registration** (in `main.go`, before the indexer starts):
-```go
-indexer.RegisterParser(myOrg.NewPipfileParser())
-// ↑ automatically wires Filenames() into scanner targets
-//   and FileType() into classifyFile routing
-```
-
-**Implementation scope**:
-- `scanner/parser/extension.go` (new) — `FileParser` interface + `ParsedFile` struct
-- `scanner/parser/registry.go` (new) — thread-safe `ParserRegistry` with `Register` / `Get` / `All`
-- `scanner/scanner.go` — `classifyFile` and `DefaultTargetFiles` populated from registry; backward-compatible
-- `indexer/indexer.go` — `Run()` iterates registry instead of 5 hardcoded phase loops; single `upsertParsedFile()` replaces 5 duplicate methods
-- All 5 built-in parsers (gomod, packagejson, pom, catalog, codeowners) — implement `FileParser`; existing `Parse*` functions remain as package-level helpers for backward compatibility
-- `main.go` — register built-in parsers at startup
-- `AGENTS.md` — update §7 with interface contract, registration guide, and example
-
-### 15. Integration Topology Discovery
-- **Current State**: The knowledge graph has `depends_on` edges from package manifests (go.mod, pom.xml), but no understanding of runtime integrations — who publishes to a Kafka topic, who subscribes, which service exposes a gRPC endpoint, which calls an HTTP API. An AI agent must read raw config files across dozens of repos to reconstruct the integration topology, burning tokens and producing unreliable results.
-- **Goal**: Automatically populate the knowledge graph with producer/consumer and API dependency relationships during each scan, and expose a `get_integration_map` tool that returns the complete integration picture of a service in a single call — including a `graph_coverage` field so the AI knows how much to trust the answer.
-
-**Design principle**: one tool call = complete, actionable answer. DocScout pre-computes the topology so the AI never has to iterate over raw files.
 
 **New relation types**:
 | Relation | From | To | Source |
