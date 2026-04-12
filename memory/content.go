@@ -35,13 +35,63 @@ type ContentCache struct {
 	db      *gorm.DB
 	enabled bool
 	maxSize int
+	useFTS5 bool // true when the underlying DB is SQLite and FTS5 was initialised
 }
 
 // NewContentCache creates a ContentCache.
 // enabled=false disables all writes and returns errors on Search.
 // maxSize is the maximum byte size of content to store (files larger are skipped).
+// FTS5 full-text search is automatically enabled when db is a SQLite connection.
 func NewContentCache(db *gorm.DB, enabled bool, maxSize int) *ContentCache {
-	return &ContentCache{db: db, enabled: enabled, maxSize: maxSize}
+	cc := &ContentCache{db: db, enabled: enabled, maxSize: maxSize}
+	if enabled && db.Dialector.Name() == "sqlite" {
+		if err := cc.initFTS5(); err != nil {
+			slog.Warn("[content] FTS5 setup failed, falling back to LIKE search", "error", err)
+		} else {
+			cc.useFTS5 = true
+			slog.Info("[content] FTS5 full-text search enabled")
+		}
+	}
+	return cc
+}
+
+// initFTS5 creates the FTS5 virtual table and the three sync triggers on db_doc_contents.
+// Safe to call multiple times — all statements use IF NOT EXISTS.
+func (cc *ContentCache) initFTS5() error {
+	stmts := []string{
+		// FTS5 virtual table: repo_name stored but not tokenised (UNINDEXED),
+		// content tokenised with Porter stemmer + ASCII case-folding.
+		`CREATE VIRTUAL TABLE IF NOT EXISTS doc_contents_fts USING fts5(
+			repo_name UNINDEXED,
+			content,
+			tokenize = 'porter ascii'
+		)`,
+
+		// Keep FTS index in sync with the main table.
+		`CREATE TRIGGER IF NOT EXISTS doc_contents_fts_insert
+		 AFTER INSERT ON db_doc_contents BEGIN
+		   INSERT INTO doc_contents_fts(rowid, repo_name, content)
+		   VALUES (new.id, new.repo_name, new.content);
+		 END`,
+
+		`CREATE TRIGGER IF NOT EXISTS doc_contents_fts_update
+		 AFTER UPDATE ON db_doc_contents BEGIN
+		   DELETE FROM doc_contents_fts WHERE rowid = old.id;
+		   INSERT INTO doc_contents_fts(rowid, repo_name, content)
+		   VALUES (new.id, new.repo_name, new.content);
+		 END`,
+
+		`CREATE TRIGGER IF NOT EXISTS doc_contents_fts_delete
+		 AFTER DELETE ON db_doc_contents BEGIN
+		   DELETE FROM doc_contents_fts WHERE rowid = old.id;
+		 END`,
+	}
+	for _, stmt := range stmts {
+		if err := cc.db.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("initFTS5: %w", err)
+		}
+	}
+	return nil
 }
 
 // NeedsUpdate returns true if the file is not cached or its SHA has changed.
@@ -82,9 +132,11 @@ func (cc *ContentCache) Upsert(repoName, path, sha, content string) error {
 	}).Create(&row).Error
 }
 
-// Search performs a case-insensitive full-text search across cached content.
+// Search performs a full-text search across cached content.
+// On SQLite: uses FTS5 with BM25 ranking and Porter stemming.
+// On PostgreSQL: uses escaped LIKE (case-insensitive).
 // Optionally filter by repoName (pass "" for no filter).
-// Returns up to 20 results with a snippet of ~300 chars around the first match.
+// Returns up to 20 results with a snippet of context around the first match.
 // Returns an error if the cache is disabled.
 func (cc *ContentCache) Search(query, repoName string) ([]ContentMatch, error) {
 	if !cc.enabled {
@@ -94,6 +146,69 @@ func (cc *ContentCache) Search(query, repoName string) ([]ContentMatch, error) {
 		return nil, fmt.Errorf("query must not be empty or whitespace-only")
 	}
 
+	if cc.useFTS5 {
+		return cc.searchFTS5(query, repoName)
+	}
+	return cc.searchLIKE(query, repoName)
+}
+
+// sanitizeFTS5Query converts a free-text query into a safe FTS5 MATCH expression.
+// Each whitespace-delimited term is wrapped in double-quotes (FTS5 phrase syntax),
+// which prevents MATCH syntax errors from special characters (%, *, " etc.).
+// Terms are joined with spaces — FTS5 implicit AND — so all terms must be present.
+func sanitizeFTS5Query(query string) string {
+	terms := strings.Fields(query)
+	quoted := make([]string, 0, len(terms))
+	for _, t := range terms {
+		// Escape any embedded double-quote by doubling it.
+		t = strings.ReplaceAll(t, `"`, `""`)
+		quoted = append(quoted, `"`+t+`"`)
+	}
+	return strings.Join(quoted, " ")
+}
+
+// searchFTS5 performs a ranked FTS5 full-text search (SQLite only).
+func (cc *ContentCache) searchFTS5(query, repoName string) ([]ContentMatch, error) {
+	// FTS5 snippet(): args are (table, column_index, match_start, match_end, ellipsis, tokens_per_fragment)
+	// column_index 1 = content column.
+	sql := `
+		SELECT dc.repo_name, dc.path,
+		       snippet(doc_contents_fts, 1, '', '', '...', 48) AS snippet
+		FROM doc_contents_fts
+		JOIN db_doc_contents dc ON dc.id = doc_contents_fts.rowid
+		WHERE doc_contents_fts MATCH ?`
+	args := []any{sanitizeFTS5Query(query)}
+
+	if repoName != "" {
+		sql += " AND dc.repo_name = ?"
+		args = append(args, repoName) //nolint:makezero
+	}
+	sql += " ORDER BY rank LIMIT 20"
+
+	type row struct {
+		RepoName string
+		Path     string
+		Snippet  string
+	}
+	var rows []row
+	if err := cc.db.Raw(sql, args...).Scan(&rows).Error; err != nil {
+		// FTS5 MATCH syntax errors surface here — return a clear message.
+		return nil, fmt.Errorf("FTS5 search failed: %w", err)
+	}
+
+	matches := make([]ContentMatch, 0, len(rows))
+	for _, r := range rows {
+		matches = append(matches, ContentMatch{
+			RepoName: r.RepoName,
+			Path:     r.Path,
+			Snippet:  r.Snippet,
+		})
+	}
+	return matches, nil
+}
+
+// searchLIKE performs a case-insensitive LIKE search (PostgreSQL fallback).
+func (cc *ContentCache) searchLIKE(query, repoName string) ([]ContentMatch, error) {
 	// Escape SQL LIKE special characters so the query is treated as a literal string.
 	escaped := strings.ReplaceAll(query, `\`, `\\`)
 	escaped = strings.ReplaceAll(escaped, "%", `\%`)
