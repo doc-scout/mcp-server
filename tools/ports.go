@@ -32,6 +32,7 @@ type GraphStore interface {
 	OpenNodes(names []string) (memory.KnowledgeGraph, error)
 	EntityCount() (int64, error)
 	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error)
+	GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error)
 }
 
 // ContentSearcher provides full-text search over cached documentation content.
