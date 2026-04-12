@@ -190,3 +190,81 @@ func TestContentCache_Search_WhitespaceOnlyQuery(t *testing.T) {
 		t.Error("expected error for whitespace-only query")
 	}
 }
+
+func TestContentCache_FTS5_MultiWordQuery(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+
+	cache.Upsert("org/svc-a", "README.md", "sha1", "The payment service handles Stripe transactions and refunds.")
+	cache.Upsert("org/svc-b", "README.md", "sha2", "Auth service manages JWT tokens.")
+	cache.Upsert("org/svc-c", "README.md", "sha3", "Stripe integration for subscription billing.")
+
+	// Multi-word query: both words must appear somewhere in the content.
+	matches, err := cache.Search("stripe payment", "")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("expected at least one match for 'stripe payment'")
+	}
+	// svc-a has both "stripe" and "payment" — must be in the results.
+	found := false
+	for _, m := range matches {
+		if m.RepoName == "org/svc-a" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("org/svc-a should match 'stripe payment', got: %v", matches)
+	}
+}
+
+func TestContentCache_FTS5_Stemming(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+
+	cache.Upsert("org/svc", "README.md", "sha1", "The authentication service manages tokens.")
+
+	// "authenticate" should match "authentication" via Porter stemmer (both stem to "authent").
+	matches, err := cache.Search("authenticate", "")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Errorf("expected stemmed match for 'authenticate' → 'authentication', got none")
+	}
+}
+
+func TestContentCache_FTS5_RankedResults(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+
+	// svc-a mentions "authentication" once; svc-b is entirely about authentication.
+	cache.Upsert("org/svc-a", "README.md", "sha1", "This service handles payments. Authentication is handled elsewhere.")
+	cache.Upsert("org/svc-b", "README.md", "sha2", "Authentication service. Manages authentication tokens. Provides authentication middleware.")
+
+	matches, err := cache.Search("authentication", "")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(matches) < 2 {
+		t.Fatalf("expected 2 matches, got %d", len(matches))
+	}
+	// svc-b mentions authentication 3× — BM25 should rank it first.
+	if matches[0].RepoName != "org/svc-b" {
+		t.Errorf("expected org/svc-b (higher frequency) ranked first, got %s", matches[0].RepoName)
+	}
+}
+
+func TestContentCache_FTS5_SnippetNotEmpty(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+	cache.Upsert("org/svc", "README.md", "sha1", "The fraud detection service analyses transaction patterns to identify suspicious activity.")
+
+	matches, err := cache.Search("fraud", "")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("expected match")
+	}
+	if matches[0].Snippet == "" {
+		t.Error("snippet should not be empty")
+	}
+}
