@@ -96,6 +96,10 @@ func (a *GraphAuditLogger) GetIntegrationMap(ctx context.Context, service string
 	return a.inner.GetIntegrationMap(ctx, service, depth)
 }
 
+func (a *GraphAuditLogger) ListEntities(entityType string) (memory.KnowledgeGraph, error) {
+	return a.inner.ListEntities(entityType)
+}
+
 func (a *GraphAuditLogger) ReadGraph() (memory.KnowledgeGraph, error) {
 	return a.inner.ReadGraph()
 }

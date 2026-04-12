@@ -7,12 +7,17 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
+
+// inMemoryCounter is used to generate unique in-memory SQLite database names,
+// ensuring each call to OpenDB("") creates an isolated database.
+var inMemoryCounter atomic.Int64
 
 // --- API Structs (JSON + MCP Schema) ---
 
@@ -235,6 +240,18 @@ func (s store) searchNodes(query string) (KnowledgeGraph, error) {
 	return s.buildSubGraph(matchingEntities)
 }
 
+func (s store) listEntities(entityType string) (KnowledgeGraph, error) {
+	var entities []dbEntity
+	query := s.db.Model(&dbEntity{})
+	if entityType != "" {
+		query = query.Where("LOWER(entity_type) = LOWER(?)", entityType)
+	}
+	if err := query.Find(&entities).Error; err != nil {
+		return KnowledgeGraph{}, err
+	}
+	return s.buildSubGraph(entities)
+}
+
 func (s store) openNodes(names []string) (KnowledgeGraph, error) {
 	if len(names) == 0 {
 		return KnowledgeGraph{}, nil
@@ -360,6 +377,13 @@ func (srv *MemoryService) TraverseGraph(entity, relationType, direction string, 
 	return srv.s.traverseGraph(entity, relationType, direction, maxDepth)
 }
 
+// ListEntities returns all entities whose entity_type matches entityType (case-insensitive).
+// When entityType is empty, all entities are returned (equivalent to ReadGraph but without
+// loading relations — use ReadGraph if you need edges too).
+func (srv *MemoryService) ListEntities(entityType string) (KnowledgeGraph, error) {
+	return srv.s.listEntities(entityType)
+}
+
 // EntityCount returns the total number of entities in the knowledge graph.
 func (srv *MemoryService) EntityCount() (int64, error) {
 	var count int64
@@ -390,7 +414,9 @@ func OpenDB(dbURL string) (*gorm.DB, error) {
 		path := strings.TrimPrefix(dbURL, "sqlite://")
 		db, err = gorm.Open(sqlite.Open(path), cfg)
 	case dbURL == "":
-		db, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), cfg)
+		// Each call gets a unique named in-memory database so tests never share state.
+		name := fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", inMemoryCounter.Add(1))
+		db, err = gorm.Open(sqlite.Open(name), cfg)
 	default:
 		db, err = gorm.Open(sqlite.Open(dbURL), cfg)
 	}

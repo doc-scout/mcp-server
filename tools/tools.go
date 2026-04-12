@@ -110,6 +110,18 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 		}, withMetrics("read_graph", metrics, withRecovery("read_graph", readGraphHandler(graph))))
 
 		mcp.AddTool(s, &mcp.Tool{
+			Name: "list_entities",
+			Description: "Returns all knowledge graph entities, optionally filtered by entity type. " +
+				"Use this to enumerate all instances of a category: " +
+				"entity_type='service' → all services, " +
+				"entity_type='event-topic' → all Kafka/event topics, " +
+				"entity_type='grpc-service' → all gRPC service contracts, " +
+				"entity_type='team' → all teams, " +
+				"entity_type='api' → all API entities. " +
+				"Leave entity_type empty to list all entities (equivalent to read_graph entities only).",
+		}, withMetrics("list_entities", metrics, withRecovery("list_entities", listEntitiesHandler(graph))))
+
+		mcp.AddTool(s, &mcp.Tool{
 			Name:        "search_nodes",
 			Description: "Search for nodes based on query",
 		}, withMetrics("search_nodes", metrics, withRecovery("search_nodes", searchNodesHandler(graph))))
