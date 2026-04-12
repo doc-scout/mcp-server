@@ -22,9 +22,10 @@ type ScanStatusResult struct {
 	ContentEnabled bool      `json:"content_enabled"`
 	// SearchMode is "fts5" when SQLite FTS5 full-text search is active, "like" for LIKE fallback, "" when disabled.
 	SearchMode string `json:"search_mode,omitempty"`
+	ReadOnly   bool   `json:"read_only"`
 }
 
-func getScanStatusHandler(sc DocumentScanner, graph GraphStore, search ContentSearcher) func(ctx context.Context, req *mcp.CallToolRequest, args ScanStatusArgs) (*mcp.CallToolResult, ScanStatusResult, error) {
+func getScanStatusHandler(sc DocumentScanner, graph GraphStore, search ContentSearcher, readOnly bool) func(ctx context.Context, req *mcp.CallToolRequest, args ScanStatusArgs) (*mcp.CallToolResult, ScanStatusResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args ScanStatusArgs) (*mcp.CallToolResult, ScanStatusResult, error) {
 		scanning, lastScan, repoCount := sc.Status()
 
@@ -56,7 +57,11 @@ func getScanStatusHandler(sc DocumentScanner, graph GraphStore, search ContentSe
 			ContentIndexed: contentIndexed,
 			GraphEntities:  graphEntities,
 			ContentEnabled: contentEnabled,
+<<<<<<< HEAD
 			SearchMode:     searchMode,
+=======
+			ReadOnly:       readOnly,
+>>>>>>> e0b7dbf (feat(tools): add GRAPH_READ_ONLY mode to disable mutation tools)
 		}, nil
 	}
 }
