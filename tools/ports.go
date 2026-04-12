@@ -39,4 +39,6 @@ type GraphStore interface {
 type ContentSearcher interface {
 	Search(query, repo string) ([]memory.ContentMatch, error)
 	Count() (int64, error)
+	// SearchMode returns the active search backend: "fts5" (SQLite FTS5) or "like" (LIKE fallback).
+	SearchMode() string
 }

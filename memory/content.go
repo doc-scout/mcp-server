@@ -234,6 +234,14 @@ func (cc *ContentCache) searchLIKE(query, repoName string) ([]ContentMatch, erro
 	return matches, nil
 }
 
+// SearchMode returns "fts5" when SQLite FTS5 is active, "like" otherwise.
+func (cc *ContentCache) SearchMode() string {
+	if cc.useFTS5 {
+		return "fts5"
+	}
+	return "like"
+}
+
 // Count returns the number of files currently in the content cache.
 func (cc *ContentCache) Count() (int64, error) {
 	var count int64
