@@ -104,8 +104,16 @@ func (a *GraphAuditLogger) SearchNodes(query string) (memory.KnowledgeGraph, err
 	return a.inner.SearchNodes(query)
 }
 
+func (a *GraphAuditLogger) SearchNodesFiltered(query string, includeArchived bool) (memory.KnowledgeGraph, error) {
+	return a.inner.SearchNodesFiltered(query, includeArchived)
+}
+
 func (a *GraphAuditLogger) OpenNodes(names []string) (memory.KnowledgeGraph, error) {
 	return a.inner.OpenNodes(names)
+}
+
+func (a *GraphAuditLogger) OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error) {
+	return a.inner.OpenNodesFiltered(names, includeArchived)
 }
 
 func (a *GraphAuditLogger) EntityCount() (int64, error) {

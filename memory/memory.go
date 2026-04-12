@@ -221,14 +221,33 @@ func (s store) deleteRelations(relations []Relation) error {
 }
 
 func (s store) searchNodes(query string) (KnowledgeGraph, error) {
+	return s.searchNodesFiltered(query, false)
+}
+
+// searchNodesFiltered searches entities matching query.
+// When includeArchived is false (default), entities with _status:archived are excluded.
+func (s store) searchNodesFiltered(query string, includeArchived bool) (KnowledgeGraph, error) {
 	queryPattern := "%" + strings.ToLower(query) + "%"
 
 	var matchingEntities []dbEntity
-	if err := s.db.Raw(`
-		SELECT DISTINCT e.* FROM db_entities e
-		LEFT JOIN db_observations o ON e.name = o.entity_name
-		WHERE LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?
-	`, queryPattern, queryPattern, queryPattern).Scan(&matchingEntities).Error; err != nil {
+	var err error
+	if includeArchived {
+		err = s.db.Raw(`
+			SELECT DISTINCT e.* FROM db_entities e
+			LEFT JOIN db_observations o ON e.name = o.entity_name
+			WHERE LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?
+		`, queryPattern, queryPattern, queryPattern).Scan(&matchingEntities).Error
+	} else {
+		err = s.db.Raw(`
+			SELECT DISTINCT e.* FROM db_entities e
+			LEFT JOIN db_observations o ON e.name = o.entity_name
+			WHERE (LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?)
+			  AND e.name NOT IN (
+			    SELECT entity_name FROM db_observations WHERE content = '_status:archived'
+			  )
+		`, queryPattern, queryPattern, queryPattern).Scan(&matchingEntities).Error
+	}
+	if err != nil {
 		return KnowledgeGraph{}, err
 	}
 
@@ -236,12 +255,30 @@ func (s store) searchNodes(query string) (KnowledgeGraph, error) {
 }
 
 func (s store) openNodes(names []string) (KnowledgeGraph, error) {
+	return s.openNodesFiltered(names, false)
+}
+
+// openNodesFiltered retrieves specific nodes by name.
+// When includeArchived is false (default), entities with _status:archived are excluded.
+func (s store) openNodesFiltered(names []string, includeArchived bool) (KnowledgeGraph, error) {
 	if len(names) == 0 {
 		return KnowledgeGraph{}, nil
 	}
 
 	var matchingEntities []dbEntity
-	if err := s.db.Where("name IN ?", names).Find(&matchingEntities).Error; err != nil {
+	var err error
+	if includeArchived {
+		err = s.db.Where("name IN ?", names).Find(&matchingEntities).Error
+	} else {
+		err = s.db.Raw(`
+			SELECT e.* FROM db_entities e
+			WHERE e.name IN ?
+			  AND e.name NOT IN (
+			    SELECT entity_name FROM db_observations WHERE content = '_status:archived'
+			  )
+		`, names).Scan(&matchingEntities).Error
+	}
+	if err != nil {
 		return KnowledgeGraph{}, err
 	}
 
@@ -343,13 +380,25 @@ func (srv *MemoryService) ReadGraph() (KnowledgeGraph, error) {
 }
 
 // SearchNodes searches entities by name, type, or observation content.
+// Archived entities (_status:archived) are excluded by default.
 func (srv *MemoryService) SearchNodes(query string) (KnowledgeGraph, error) {
 	return srv.s.searchNodes(query)
 }
 
+// SearchNodesFiltered searches entities with optional inclusion of archived entities.
+func (srv *MemoryService) SearchNodesFiltered(query string, includeArchived bool) (KnowledgeGraph, error) {
+	return srv.s.searchNodesFiltered(query, includeArchived)
+}
+
 // OpenNodes retrieves specific nodes by name.
+// Archived entities (_status:archived) are excluded by default.
 func (srv *MemoryService) OpenNodes(names []string) (KnowledgeGraph, error) {
 	return srv.s.openNodes(names)
+}
+
+// OpenNodesFiltered retrieves specific nodes by name with optional inclusion of archived entities.
+func (srv *MemoryService) OpenNodesFiltered(names []string, includeArchived bool) (KnowledgeGraph, error) {
+	return srv.s.openNodesFiltered(names, includeArchived)
 }
 
 // TraverseGraph performs a BFS from entity, following edges up to maxDepth hops.

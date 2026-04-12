@@ -29,7 +29,9 @@ type GraphStore interface {
 	DeleteRelations(relations []memory.Relation) error
 	ReadGraph() (memory.KnowledgeGraph, error)
 	SearchNodes(query string) (memory.KnowledgeGraph, error)
+	SearchNodesFiltered(query string, includeArchived bool) (memory.KnowledgeGraph, error)
 	OpenNodes(names []string) (memory.KnowledgeGraph, error)
+	OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error)
 	EntityCount() (int64, error)
 	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error)
 	GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error)

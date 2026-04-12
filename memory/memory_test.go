@@ -270,3 +270,83 @@ func TestMemoryService_EntityCount(t *testing.T) {
 		t.Errorf("expected 2 entities, got %d", count)
 	}
 }
+
+func TestSearchNodes_ExcludesArchivedByDefault(t *testing.T) {
+	s := newTestService(t)
+
+	_, err := s.CreateEntities([]Entity{
+		{Name: "active-svc", EntityType: "service"},
+		{Name: "gone-svc", EntityType: "service"},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntities: %v", err)
+	}
+
+	// Mark gone-svc as archived.
+	_, err = s.AddObservations([]Observation{
+		{EntityName: "gone-svc", Contents: []string{"_status:archived"}},
+	})
+	if err != nil {
+		t.Fatalf("AddObservations: %v", err)
+	}
+
+	// SearchNodes without includeArchived should hide gone-svc.
+	graph, err := s.SearchNodes("svc")
+	if err != nil {
+		t.Fatalf("SearchNodes: %v", err)
+	}
+	for _, e := range graph.Entities {
+		if e.Name == "gone-svc" {
+			t.Error("SearchNodes should not return archived entity 'gone-svc' by default")
+		}
+	}
+	if len(graph.Entities) != 1 || graph.Entities[0].Name != "active-svc" {
+		t.Errorf("expected only active-svc, got: %v", graph.Entities)
+	}
+
+	// With includeArchived=true both entities should be returned.
+	graphAll, err := s.SearchNodesFiltered("svc", true)
+	if err != nil {
+		t.Fatalf("SearchNodesFiltered: %v", err)
+	}
+	if len(graphAll.Entities) != 2 {
+		t.Errorf("expected 2 entities with includeArchived=true, got %d", len(graphAll.Entities))
+	}
+}
+
+func TestOpenNodes_ExcludesArchivedByDefault(t *testing.T) {
+	s := newTestService(t)
+
+	_, err := s.CreateEntities([]Entity{
+		{Name: "live-svc", EntityType: "service"},
+		{Name: "dead-svc", EntityType: "service"},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntities: %v", err)
+	}
+
+	_, err = s.AddObservations([]Observation{
+		{EntityName: "dead-svc", Contents: []string{"_status:archived"}},
+	})
+	if err != nil {
+		t.Fatalf("AddObservations: %v", err)
+	}
+
+	// OpenNodes with default should return only live-svc.
+	graph, err := s.OpenNodes([]string{"live-svc", "dead-svc"})
+	if err != nil {
+		t.Fatalf("OpenNodes: %v", err)
+	}
+	if len(graph.Entities) != 1 || graph.Entities[0].Name != "live-svc" {
+		t.Errorf("expected only live-svc, got: %v", graph.Entities)
+	}
+
+	// With includeArchived=true both are returned.
+	graphAll, err := s.OpenNodesFiltered([]string{"live-svc", "dead-svc"}, true)
+	if err != nil {
+		t.Fatalf("OpenNodesFiltered: %v", err)
+	}
+	if len(graphAll.Entities) != 2 {
+		t.Errorf("expected 2 entities with includeArchived=true, got %d", len(graphAll.Entities))
+	}
+}

@@ -179,7 +179,9 @@ func (m *mockGraphStore) DeleteObservations(deletions []memory.Observation) erro
 func (m *mockGraphStore) DeleteRelations(relations []memory.Relation) error { return nil }
 func (m *mockGraphStore) ReadGraph() (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) SearchNodes(query string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) SearchNodesFiltered(query string, includeArchived bool) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) { return nil, nil }
 func (m *mockGraphStore) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) { return memory.IntegrationMap{}, nil }
 
