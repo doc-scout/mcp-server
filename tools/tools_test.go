@@ -111,6 +111,36 @@ func TestSearchDocsHandler(t *testing.T) {
 	}
 }
 
+func TestSearchDocsHandler_FileTypeFilter(t *testing.T) {
+	mock := &mockScanner{
+		files: []scanner.FileEntry{
+			{RepoName: "svc-api", Path: "openapi.yaml", Type: "openapi"},
+			{RepoName: "svc-docs", Path: "README.md", Type: "readme"},
+		},
+	}
+
+	handler := searchDocsHandler(mock)
+	req := &mcp.CallToolRequest{}
+
+	// Filter to openapi only.
+	_, output, err := handler(t.Context(), req, SearchDocsArgs{Query: "svc", FileType: "openapi"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(output.Files) != 1 || output.Files[0].Type != "openapi" {
+		t.Errorf("expected 1 openapi file, got %v", output.Files)
+	}
+
+	// No filter returns both files.
+	_, all, err := handler(t.Context(), req, SearchDocsArgs{Query: "svc"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(all.Files) != 2 {
+		t.Errorf("expected 2 files with no filter, got %d", len(all.Files))
+	}
+}
+
 func TestGetFileContentHandler(t *testing.T) {
 	mock := &mockScanner{
 		content: map[string]string{
