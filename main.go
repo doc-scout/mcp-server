@@ -22,6 +22,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/leonancarvalho/docscout-mcp/health"
 	"github.com/leonancarvalho/docscout-mcp/indexer"
 	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/leonancarvalho/docscout-mcp/scanner"
@@ -29,6 +30,34 @@ import (
 	"github.com/leonancarvalho/docscout-mcp/tools"
 	"github.com/leonancarvalho/docscout-mcp/webhook"
 )
+
+// serverHealthProvider implements health.StatusProvider using the live scanner and graph.
+type serverHealthProvider struct {
+	sc        *scanner.Scanner
+	graph     tools.GraphStore
+	startedAt time.Time
+}
+
+func (p *serverHealthProvider) HealthStatus() health.Status {
+	_, _, repoCount := p.sc.Status()
+
+	status := "starting"
+	if repoCount > 0 {
+		status = "ok"
+	}
+
+	var entities int64
+	if p.graph != nil {
+		entities, _ = p.graph.EntityCount()
+	}
+
+	return health.Status{
+		Status:    status,
+		StartedAt: p.startedAt,
+		RepoCount: repoCount,
+		Entities:  entities,
+	}
+}
 
 const (
 	serverName          = "DocScout-MCP"
@@ -231,8 +260,17 @@ func main() {
 			return mcpServer
 		}, nil)
 
+		healthProvider := &serverHealthProvider{
+			sc:        sc,
+			graph:     auditedGraph,
+			startedAt: time.Now(),
+		}
+
 		mux := http.NewServeMux()
 		mux.Handle("/", mcpHandler)
+		// /healthz is intentionally unauthenticated — load balancers and K8s probes
+		// need to reach it without a bearer token.
+		mux.HandleFunc("/healthz", health.Handler(healthProvider))
 		mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 
@@ -258,9 +296,10 @@ func main() {
 		}
 
 		// Bearer Token Auth Middleware — uses constant-time comparison to prevent timing attacks.
-		// The /webhook path is explicitly excluded: it carries its own HMAC-SHA256 signature.
+		// /webhook and /healthz are explicitly excluded: they carry their own auth or are
+		// intentionally public for infrastructure probes.
 		authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/webhook" {
+			if r.URL.Path == "/webhook" || r.URL.Path == "/healthz" {
 				mux.ServeHTTP(w, r)
 				return
 			}

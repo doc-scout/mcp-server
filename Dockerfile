@@ -59,6 +59,6 @@ EXPOSE 8080
 
 # Health check for HTTP transport mode. Override with --no-healthcheck for stdio mode.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD wget -qO- http://localhost:8080/metrics > /dev/null 2>&1 || exit 1
+    CMD wget -qO- http://localhost:8080/healthz > /dev/null 2>&1 || exit 1
 
 ENTRYPOINT ["docscout-mcp"]
