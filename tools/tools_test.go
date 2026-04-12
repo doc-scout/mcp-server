@@ -300,7 +300,13 @@ func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error
 func (m *mockGraphStore) OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) { return nil, nil }
 func (m *mockGraphStore) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) { return memory.IntegrationMap{}, nil }
-func (m *mockGraphStore) ListEntities(entityType string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) ListEntities(entityType string) (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+
+func (m *mockGraphStore) EntityTypeCounts() (map[string]int64, error) {
+	return map[string]int64{"service": m.count}, nil
+}
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{
@@ -330,6 +336,12 @@ func TestGetScanStatusHandler(t *testing.T) {
 	}
 	if !result.ContentEnabled {
 		t.Error("expected ContentEnabled=true")
+	}
+	if result.EntityBreakdown == nil {
+		t.Error("expected EntityBreakdown to be populated")
+	}
+	if result.EntityBreakdown["service"] != 5 {
+		t.Errorf("expected EntityBreakdown[service]=5, got %d", result.EntityBreakdown["service"])
 	}
 }
 

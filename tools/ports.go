@@ -33,6 +33,8 @@ type GraphStore interface {
 	OpenNodes(names []string) (memory.KnowledgeGraph, error)
 	OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error)
 	EntityCount() (int64, error)
+	// EntityTypeCounts returns a map of entity_type → count for all entities in the graph.
+	EntityTypeCounts() (map[string]int64, error)
 	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error)
 	GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error)
 	// ListEntities returns all entities matching entityType (case-insensitive).
