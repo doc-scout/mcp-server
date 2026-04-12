@@ -19,7 +19,9 @@ For the full technical roadmap with implementation details, see [`ROADMAP.md`](h
 | 10 | **Architecture Discovery & Content Search** | Auto-populates the knowledge graph from `catalog-info.yaml` (Backstage format). Opt-in full-text content search via `search_content`. |
 | 11 | **Infra Asset Scanning** | Recursive scanning of `deploy/`, `infra/`, `.github/workflows/` for Helm, Terraform, K8s, and workflow files. |
 | 12 | **Security Input Hardening** | Entity name validation, SQL LIKE wildcard escaping, whitespace-only query rejection, constant-time bearer token comparison, HTTP server timeouts. |
+| 13 | **Custom Parser Extension** | `FileParser` interface and `ParserRegistry` allow custom manifest parsers to be plugged in without forking. Built-in parsers for go.mod, package.json, pom.xml, catalog-info.yaml, CODEOWNERS, AsyncAPI, Spring Kafka, OpenAPI, and Protobuf. |
 | 14 | **Graph Traversal & Impact Analysis** | `traverse_graph` tool: server-side BFS with configurable direction, edge-type filter, and depth. Answers impact and ownership questions without loading the full graph. |
+| 15 | **Integration Topology Discovery** | Five parsers (AsyncAPI, Spring Kafka, OpenAPI, Proto, K8s env vars) auto-populate producer/consumer and API edges. `get_integration_map` tool returns the complete integration topology of a service in one call with `graph_coverage` confidence field. |
 | 16 | **Documentation Site (GitHub Pages)** | MkDocs Material site auto-deployed to GitHub Pages on every push to `main`. |
 
 ---
@@ -28,40 +30,9 @@ For the full technical roadmap with implementation details, see [`ROADMAP.md`](h
 
 ### Semantic Search & Vector Embeddings (RAG)
 
-**Current state:** Content search uses SQL `LIKE` queries — exact substring matching only.
+**Phase 1 ✅ (2026-04-11):** Content search upgraded from SQL `LIKE` to SQLite FTS5 — BM25 relevance ranking, Porter stemmer, multi-word AND queries. Zero new dependencies.
 
-**Goal:** Integrate vector embeddings (`pgvector` for PostgreSQL or `sqlite-vss`) so AI agents can perform semantic searches and find relevant docs even without exact keyword matches.
-
----
-
-### Custom Parser Extension (#13)
-
-**Current state:** Adding a new manifest parser requires edits in 4+ files. Every parser is hardcoded in the indexer.
-
-**Goal:** A `FileParser` interface and `ParserRegistry` so users can plug in custom formats (e.g. `Pipfile`, `.tool-versions`, `chart.lock`) without forking.
-
-```go
-type FileParser interface {
-    FileType()  string
-    Filenames() []string
-    Parse([]byte) (ParsedFile, error)
-}
-```
-
-Registration in `main.go`:
-```go
-import _ "mypkg/pipfile" // triggers init(), zero other changes required
-```
-
----
-
-### Integration Topology Discovery (#15)
-
-**Current state:** The graph has `depends_on` edges from package manifests, but no understanding of runtime integrations — Kafka topics, gRPC services, HTTP APIs.
-
-**Goal:** Five new parsers (AsyncAPI, Spring Kafka, OpenAPI, Proto, K8s env vars) automatically populate producer/consumer and API dependency edges. A `get_integration_map` tool returns the complete integration picture of a service in a single call, including a `graph_coverage` field so the AI knows how much to trust the answer.
-
-**Requires:** Custom Parser Extension (#13).
+**Phase 2:** Integrate vector embeddings (`pgvector` for PostgreSQL or `sqlite-vss`) so AI agents can perform true semantic searches and find relevant docs even without exact keyword matches.
 
 ---
 
