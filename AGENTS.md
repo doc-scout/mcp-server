@@ -78,3 +78,25 @@ func (p *Parser) Parse(data []byte) (parser.ParsedFile, error) { ... }
 - Auto-observations `_source:<FileType>` and `_scan_repo:<repo.FullName>` are added by the indexer; parsers must not duplicate them.
 - For suffix-based discovery (e.g. `*.proto`), include a sentinel like `".proto"` in `Filenames()` — the scanner matches files whose name ends with that suffix.
 - Infra directories (`deploy/`, `.github/workflows/`) are scanned by `scanInfraDir`; root-level filenames are scanned by `scanRepo`. New parsers targeting root-level files only need to add their filenames via `Filenames()`.
+
+## Integration Relation Types
+
+| Relation | From | To | Source |
+|---|---|---|---|
+| `publishes_event` | service | event-topic | AsyncAPI |
+| `subscribes_event` | service | event-topic | AsyncAPI |
+| `exposes_api` | service | api | OpenAPI/Swagger |
+| `provides_grpc` | service | grpc-service | .proto |
+| `depends_on_grpc` | service | grpc-service | .proto imports |
+| `calls_service` | service | service | K8s env vars |
+
+New entity types: `event-topic`, `grpc-service` (in addition to existing `api`, `service`, `team`, `person`).
+
+## `get_integration_map` tool
+
+Use `get_integration_map` to answer architecture, impact, and documentation questions about a specific service's integration topology. It returns all integration edges in a single call including a `graph_coverage` field:
+
+- `"full"` — at least one authoritative source (AsyncAPI, proto, OpenAPI) and no inferred sources
+- `"partial"` — mix of authoritative and inferred sources
+- `"inferred"` — all relations come from config heuristics (Spring Kafka, K8s env vars)
+- `"none"` — no integration data found for this service

@@ -58,11 +58,12 @@ var DefaultInfraDirs = []string{
 
 // infraExtensions is the set of file extensions indexed when scanning infra directories.
 var infraExtensions = map[string]bool{
-	".yaml": true,
-	".yml":  true,
-	".tf":   true,
-	".hcl":  true,
-	".toml": true,
+	".yaml":  true,
+	".yml":   true,
+	".tf":    true,
+	".hcl":   true,
+	".toml":  true,
+	".proto": true,
 }
 
 // FileEntry represents an indexed documentation file.

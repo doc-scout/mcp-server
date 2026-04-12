@@ -211,12 +211,16 @@ func (ai *AutoIndexer) upsertParsedFile(ctx context.Context, repo scanner.RepoIn
 	svcName := repoServiceName(repo)
 	rels := make([]memory.Relation, 0, len(parsed.Relations))
 	for _, r := range parsed.Relations {
+		from := r.From
+		if from == "" {
+			from = svcName
+		}
 		to := r.To
 		if to == "" {
 			to = svcName
 		}
 		rels = append(rels, memory.Relation{
-			From:         r.From,
+			From:         from,
 			To:           to,
 			RelationType: r.RelationType,
 		})

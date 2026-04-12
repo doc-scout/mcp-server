@@ -128,6 +128,17 @@ Examples:
   direction=incoming, relation_type=consumes_api → all services that consume a given API
   direction=both, depth=2                        → full two-hop neighbourhood of a service`,
 		}, withMetrics("traverse_graph", metrics, withRecovery("traverse_graph", traverseGraphHandler(graph))))
+
+		mcp.AddTool(s, &mcp.Tool{
+			Name: "get_integration_map",
+			Description: "Returns the complete integration topology of a service in a single call: " +
+				"which events it publishes and subscribes to, which APIs and gRPC services it exposes or depends on, " +
+				"and which services it calls directly. Each entry includes a confidence level so the AI agent can " +
+				"distinguish authoritative contract declarations (AsyncAPI, proto, OpenAPI) from inferred config values " +
+				"(Spring Kafka, K8s env vars). Use this tool before any architecture, impact analysis, or documentation " +
+				"task involving a specific service — it eliminates the need to read raw config files across multiple repos. " +
+				"Check graph_coverage to know how much to trust the result.",
+		}, withMetrics("get_integration_map", metrics, withRecovery("get_integration_map", getIntegrationMapHandler(graph))))
 	}
 
 	// --- Observability ---
