@@ -332,6 +332,7 @@ func (m *mockGraphStore) ListRelations(relationType, fromEntity string) ([]memor
 func (m *mockGraphStore) FindPath(from, to string, maxDepth int) ([]memory.PathEdge, error) {
 	return nil, nil
 }
+func (m *mockGraphStore) UpdateEntity(oldName, newName, newType string) error { return nil }
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{

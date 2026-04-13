@@ -44,6 +44,7 @@ type GraphStore interface {
 	// Empty string parameters act as wildcards (match all).
 	ListRelations(relationType, fromEntity string) ([]memory.Relation, error)
 	FindPath(from, to string, maxDepth int) ([]memory.PathEdge, error)
+	UpdateEntity(oldName, newName, newType string) error
 }
 
 // ContentSearcher provides full-text search over cached documentation content.

@@ -172,6 +172,17 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 		mcp.AddTool(s, &mcp.Tool{
 
+			Name: "update_entity",
+
+			Description: "Rename an entity and/or change its type. When renaming, all relations and observations " +
+
+				"that reference the entity are updated atomically — no data is lost. " +
+
+				"Use this when a service is renamed (e.g. 'payment-service' → 'payments-svc') or reclassified (e.g. from 'service' to 'api').",
+		}, withMetrics("update_entity", metrics, withRecovery("update_entity", updateEntityHandler(graph))))
+
+		mcp.AddTool(s, &mcp.Tool{
+
 			Name: "read_graph",
 
 			Description: "Read the entire knowledge graph",
