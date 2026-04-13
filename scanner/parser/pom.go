@@ -33,11 +33,11 @@ type pomDependency struct {
 
 // rawPom is the minimal XML structure we decode from pom.xml.
 type rawPom struct {
-	XMLName      xml.Name         `xml:"project"`
-	GroupID      string           `xml:"groupId"`
-	ArtifactID   string           `xml:"artifactId"`
-	Version      string           `xml:"version"`
-	Dependencies []pomDependency  `xml:"dependencies>dependency"`
+	XMLName      xml.Name        `xml:"project"`
+	GroupID      string          `xml:"groupId"`
+	ArtifactID   string          `xml:"artifactId"`
+	Version      string          `xml:"version"`
+	Dependencies []pomDependency `xml:"dependencies>dependency"`
 }
 
 // ParsePom parses raw pom.xml bytes and returns the extracted Maven metadata.

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v60/github"
+
 	"github.com/leonancarvalho/docscout-mcp/scanner/parser"
 )
 
@@ -482,7 +483,7 @@ func (s *Scanner) scanDocsDir(ctx context.Context, repoOwner, repoName, path str
 		case "file":
 			lowerPath := strings.ToLower(itemPath)
 			isAgentDir := strings.Contains(lowerPath, ".agents/") || strings.Contains(lowerPath, ".agent/") || strings.Contains(lowerPath, "_agents/") || strings.Contains(lowerPath, "_agent/")
-			
+
 			if strings.HasSuffix(lowerPath, ".md") || isAgentDir {
 				entries = append(entries, FileEntry{
 					RepoName: repoName,

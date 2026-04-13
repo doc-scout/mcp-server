@@ -6,8 +6,9 @@ package delete_entities_test
 import (
 	"testing"
 
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 )
 
 func TestE2E_DeleteEntities(t *testing.T) {

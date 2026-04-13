@@ -287,20 +287,46 @@ type mockGraphStore struct {
 func (m *mockGraphStore) EntityCount() (int64, error) {
 	return m.count, nil
 }
-func (m *mockGraphStore) CreateEntities(entities []memory.Entity) ([]memory.Entity, error) { return nil, nil }
-func (m *mockGraphStore) CreateRelations(relations []memory.Relation) ([]memory.Relation, error) { return nil, nil }
-func (m *mockGraphStore) AddObservations(observations []memory.Observation) ([]memory.Observation, error) { return nil, nil }
-func (m *mockGraphStore) DeleteEntities(entityNames []string) error { return nil }
+func (m *mockGraphStore) CreateEntities(entities []memory.Entity) ([]memory.Entity, error) {
+	return nil, nil
+}
+func (m *mockGraphStore) CreateRelations(relations []memory.Relation) ([]memory.Relation, error) {
+	return nil, nil
+}
+func (m *mockGraphStore) AddObservations(observations []memory.Observation) ([]memory.Observation, error) {
+	return nil, nil
+}
+func (m *mockGraphStore) DeleteEntities(entityNames []string) error               { return nil }
 func (m *mockGraphStore) DeleteObservations(deletions []memory.Observation) error { return nil }
-func (m *mockGraphStore) DeleteRelations(relations []memory.Relation) error { return nil }
-func (m *mockGraphStore) ReadGraph() (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
-func (m *mockGraphStore) SearchNodes(query string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
-func (m *mockGraphStore) SearchNodesFiltered(query string, includeArchived bool) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
-func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
-func (m *mockGraphStore) OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
-func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) { return nil, nil }
-func (m *mockGraphStore) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) { return memory.IntegrationMap{}, nil }
-func (m *mockGraphStore) ListEntities(entityType string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
+func (m *mockGraphStore) DeleteRelations(relations []memory.Relation) error       { return nil }
+func (m *mockGraphStore) ReadGraph() (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+func (m *mockGraphStore) SearchNodes(query string) (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+func (m *mockGraphStore) SearchNodesFiltered(query string, includeArchived bool) (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+func (m *mockGraphStore) OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) {
+	return nil, nil
+}
+func (m *mockGraphStore) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) {
+	return memory.IntegrationMap{}, nil
+}
+func (m *mockGraphStore) ListEntities(entityType string) (memory.KnowledgeGraph, error) {
+	return memory.KnowledgeGraph{}, nil
+}
+
+func (m *mockGraphStore) EntityTypeCounts() (map[string]int64, error) {
+	return map[string]int64{"service": m.count}, nil
+}
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{
@@ -330,6 +356,12 @@ func TestGetScanStatusHandler(t *testing.T) {
 	}
 	if !result.ContentEnabled {
 		t.Error("expected ContentEnabled=true")
+	}
+	if result.EntityBreakdown == nil {
+		t.Error("expected EntityBreakdown to be populated")
+	}
+	if result.EntityBreakdown["service"] != 5 {
+		t.Errorf("expected EntityBreakdown[service]=5, got %d", result.EntityBreakdown["service"])
 	}
 }
 

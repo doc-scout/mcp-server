@@ -440,6 +440,26 @@ func (srv *MemoryService) EntityCount() (int64, error) {
 	return count, err
 }
 
+// EntityTypeCounts returns the count of entities grouped by entity_type.
+func (srv *MemoryService) EntityTypeCounts() (map[string]int64, error) {
+	type row struct {
+		EntityType string
+		Count      int64
+	}
+	var rows []row
+	if err := srv.s.db.Model(&dbEntity{}).
+		Select("entity_type, COUNT(*) AS count").
+		Group("entity_type").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(rows))
+	for _, r := range rows {
+		counts[r.EntityType] = r.Count
+	}
+	return counts, nil
+}
+
 // GetIntegrationMap returns all integration edges for service up to depth hops.
 // depth is clamped to [1, 3].
 func (srv *MemoryService) GetIntegrationMap(ctx context.Context, service string, depth int) (IntegrationMap, error) {

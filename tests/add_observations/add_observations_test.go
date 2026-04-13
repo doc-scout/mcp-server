@@ -6,8 +6,9 @@ package add_observations_test
 import (
 	"testing"
 
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 )
 
 func TestE2E_AddObservations(t *testing.T) {
@@ -25,7 +26,7 @@ func TestE2E_AddObservations(t *testing.T) {
 			},
 		},
 	})
-	
+
 	// Test adding observations
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "add_observations",

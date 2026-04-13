@@ -23,8 +23,8 @@ func deleteEntitiesHandler(graph GraphStore) func(ctx context.Context, req *mcp.
 	return func(ctx context.Context, req *mcp.CallToolRequest, args DeleteEntitiesArgs) (*mcp.CallToolResult, any, error) {
 		if len(args.EntityNames) > massDeleteThreshold && !args.Confirm {
 			return nil, nil, fmt.Errorf(
-				"safety guard: refusing to delete %d entities in a single call (threshold: %d). "+
-					"Set confirm=true to proceed. Double-check that you are not deleting the entire graph by mistake.",
+				"safety guard: refusing to delete %d entities in a single call (threshold: %d) — "+
+					"set confirm=true to proceed; double-check that you are not deleting the entire graph by mistake",
 				len(args.EntityNames), massDeleteThreshold,
 			)
 		}

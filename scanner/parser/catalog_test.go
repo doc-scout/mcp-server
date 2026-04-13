@@ -44,10 +44,10 @@ spec:
 	}
 
 	wantObs := map[string]bool{
-		"lifecycle:production":                    true,
+		"lifecycle:production":                     true,
 		"description:Handles payment transactions": true,
-		"tag:payment":                             true,
-		"tag:critical":                            true,
+		"tag:payment":                              true,
+		"tag:critical":                             true,
 	}
 	for _, obs := range got.Observations {
 		delete(wantObs, obs)

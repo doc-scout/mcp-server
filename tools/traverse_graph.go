@@ -25,9 +25,9 @@ type TraverseGraphArgs struct {
 
 // TraverseGraphResult is the structured output of the traverse_graph tool.
 type TraverseGraphResult struct {
-	StartEntity string               `json:"start_entity"`
+	StartEntity string                `json:"start_entity"`
 	Nodes       []memory.TraverseNode `json:"nodes"`
-	TotalFound  int                  `json:"total_found"`
+	TotalFound  int                   `json:"total_found"`
 }
 
 func traverseGraphHandler(g GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args TraverseGraphArgs) (*mcp.CallToolResult, TraverseGraphResult, error) {

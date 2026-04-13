@@ -15,12 +15,12 @@ import (
 
 // dbDocContent stores cached file content indexed by repo and path.
 type dbDocContent struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	RepoName  string    `gorm:"index;uniqueIndex:idx_repo_path"`
-	Path      string    `gorm:"uniqueIndex:idx_repo_path"`
+	ID        uint   `gorm:"primaryKey;autoIncrement"`
+	RepoName  string `gorm:"index;uniqueIndex:idx_repo_path"`
+	Path      string `gorm:"uniqueIndex:idx_repo_path"`
 	SHA       string
-	FileType  string    `gorm:"index"` // e.g. "readme", "docs", "openapi", "catalog"
-	Content   string    `gorm:"type:text"`
+	FileType  string `gorm:"index"` // e.g. "readme", "docs", "openapi", "catalog"
+	Content   string `gorm:"type:text"`
 	IndexedAt time.Time
 }
 
@@ -46,7 +46,7 @@ type ContentCache struct {
 // FTS5 full-text search is automatically enabled when db is a SQLite connection.
 func NewContentCache(db *gorm.DB, enabled bool, maxSize int) *ContentCache {
 	cc := &ContentCache{db: db, enabled: enabled, maxSize: maxSize}
-	if enabled && db.Dialector.Name() == "sqlite" {
+	if enabled && db.Name() == "sqlite" {
 		if err := cc.initFTS5(); err != nil {
 			slog.Warn("[content] FTS5 setup failed, falling back to LIKE search", "error", err)
 		} else {
@@ -207,12 +207,7 @@ func (cc *ContentCache) searchFTS5(query, repoName, fileType string) ([]ContentM
 
 	matches := make([]ContentMatch, 0, len(rows))
 	for _, r := range rows {
-		matches = append(matches, ContentMatch{
-			RepoName: r.RepoName,
-			Path:     r.Path,
-			FileType: r.FileType,
-			Snippet:  r.Snippet,
-		})
+		matches = append(matches, ContentMatch(r))
 	}
 	return matches, nil
 }

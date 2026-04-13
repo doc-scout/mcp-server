@@ -6,8 +6,9 @@ package get_scan_status_test
 import (
 	"testing"
 
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 )
 
 func TestE2E_ScanStatus(t *testing.T) {

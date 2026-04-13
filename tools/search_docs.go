@@ -8,8 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/leonancarvalho/docscout-mcp/scanner"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
 
 type SearchDocsArgs struct {

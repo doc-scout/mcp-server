@@ -6,8 +6,9 @@ package tools
 import (
 	"context"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/memory"
 )
 
 type ListEntitiesArgs struct {

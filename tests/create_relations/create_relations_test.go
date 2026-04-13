@@ -6,8 +6,9 @@ package create_relations_test
 import (
 	"testing"
 
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 )
 
 func TestE2E_CreateRelations(t *testing.T) {
@@ -15,7 +16,7 @@ func TestE2E_CreateRelations(t *testing.T) {
 	t.Cleanup(func() { _ = session.Close() })
 
 	ctx := t.Context()
-	
+
 	// Setup: create entities first
 	_, _ = session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_entities",
@@ -26,7 +27,7 @@ func TestE2E_CreateRelations(t *testing.T) {
 			},
 		},
 	})
-	
+
 	// Test creating relations
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_relations",

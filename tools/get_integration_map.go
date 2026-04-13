@@ -7,8 +7,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/memory"
 )
 
 // IntegrationMapArgs are the inputs for get_integration_map.
