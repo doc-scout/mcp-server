@@ -104,6 +104,7 @@ type Scanner struct {
 	lastScanAt time.Time
 
 	onScanComplete func([]RepoInfo) // called after each full scan completes
+	triggerCh      chan struct{}    // signals an on-demand full scan; buffered(1) so TriggerScan never blocks
 }
 
 // New creates a new Scanner instance. registry must be non-nil.
@@ -153,6 +154,7 @@ func New(client *github.Client, org string, scanInterval time.Duration, targetFi
 		repoRegex:    repoRegex,
 		registry:     registry,
 		repos:        make(map[string]*RepoInfo),
+		triggerCh:    make(chan struct{}, 1),
 	}
 }
 
@@ -173,22 +175,41 @@ func (s *Scanner) Start(ctx context.Context) {
 		slog.Info("[scanner] Initial scan complete", "repos", len(s.repos))
 	}()
 
-	// Periodic re-scan.
-	if s.scanInterval > 0 {
-		go func() {
-			ticker := time.NewTicker(s.scanInterval)
+	// Periodic re-scan and on-demand trigger loop.
+	go func() {
+		var ticker *time.Ticker
+		var tickerC <-chan time.Time
+		if s.scanInterval > 0 {
+			ticker = time.NewTicker(s.scanInterval)
+			tickerC = ticker.C
 			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					slog.Info("[scanner] Starting periodic re-scan")
-					s.scanOrg(ctx)
-					slog.Info("[scanner] Re-scan complete", "repos", len(s.repos))
-				}
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tickerC:
+				slog.Info("[scanner] Starting periodic re-scan")
+				s.scanOrg(ctx)
+				slog.Info("[scanner] Re-scan complete", "repos", len(s.repos))
+			case <-s.triggerCh:
+				slog.Info("[scanner] Starting on-demand scan (triggered)")
+				s.scanOrg(ctx)
+				slog.Info("[scanner] On-demand scan complete", "repos", len(s.repos))
 			}
-		}()
+		}
+	}()
+}
+
+// TriggerScan queues an immediate full organisation scan.
+// Returns true if the scan was queued, false if one was already queued (the queue
+// holds at most one pending request, so duplicate triggers are coalesced).
+func (s *Scanner) TriggerScan() bool {
+	select {
+	case s.triggerCh <- struct{}{}:
+		return true
+	default:
+		return false
 	}
 }
 

@@ -70,6 +70,8 @@ func (m *mockScanner) Status() (bool, time.Time, int) {
 	return false, time.Time{}, len(m.repos)
 }
 
+func (m *mockScanner) TriggerScan() bool { return true }
+
 func TestListReposHandler(t *testing.T) {
 	mock := &mockScanner{
 		repos: []scanner.RepoInfo{

@@ -17,6 +17,9 @@ type DocumentScanner interface {
 	SearchDocs(query string) []scanner.FileEntry
 	GetFileContent(ctx context.Context, repo string, path string) (string, error)
 	Status() (scanning bool, lastScan time.Time, repoCount int)
+	// TriggerScan queues an immediate full scan. Returns true when successfully
+	// queued, false when a scan was already queued (duplicates are coalesced).
+	TriggerScan() bool
 }
 
 // GraphStore provides full access to the Knowledge Graph domain layer.
