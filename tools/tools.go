@@ -54,7 +54,7 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_docs",
-		Description: "Searches for documentation files by matching a query term against file paths and repository names.",
+		Description: "Searches for documentation files by matching a query term against file paths and repository names. Accepts an optional file_type filter to narrow results to a specific document category (e.g. 'openapi', 'asyncapi', 'proto', 'readme', 'helm').",
 	}, withMetrics("search_docs", metrics, withRecovery("search_docs", searchDocsHandler(sc))))
 
 	mcp.AddTool(s, &mcp.Tool{
