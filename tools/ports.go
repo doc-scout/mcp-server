@@ -43,6 +43,7 @@ type GraphStore interface {
 	// ListRelations returns all relations, optionally filtered by relationType and/or fromEntity.
 	// Empty string parameters act as wildcards (match all).
 	ListRelations(relationType, fromEntity string) ([]memory.Relation, error)
+	FindPath(from, to string, maxDepth int) ([]memory.PathEdge, error)
 }
 
 // ContentSearcher provides full-text search over cached documentation content.

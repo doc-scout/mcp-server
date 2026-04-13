@@ -267,6 +267,27 @@ Examples:
 				"Check graph_coverage to know how much to trust the result.",
 		}, withMetrics("get_integration_map", metrics, withRecovery("get_integration_map", getIntegrationMapHandler(graph))))
 
+		mcp.AddTool(s, &mcp.Tool{
+
+			Name: "find_path",
+
+			Description: `Finds the shortest connection path between two entities in the knowledge graph using undirected BFS.
+
+Returns the ordered sequence of directed edges (from, relationType, to) that connect them, regardless of edge direction.
+
+Use this to answer:
+
+  - "How does service A connect to service B?"
+
+  - "Is there any dependency chain between payment-svc and auth-svc?"
+
+  - "What is the relationship path between team X and service Y?"
+
+Returns found=false and an empty path when no connection exists within max_depth hops.
+
+Complement to traverse_graph (which explores from one end) and get_integration_map (which shows a single service's topology).`,
+		}, withMetrics("find_path", metrics, withRecovery("find_path", findPathHandler(graph))))
+
 	}
 
 	// --- Observability ---
