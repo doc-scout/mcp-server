@@ -43,7 +43,9 @@ func withMetrics[A, R any](
 // Register adds all DocScout MCP tools to the server.
 // graph and search may be nil — get_scan_status degrades gracefully, search_content is omitted.
 // metrics and docMetrics must not be nil.
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, metrics *ToolMetrics, docMetrics *DocMetrics) {
+// When readOnly is true, all graph mutation tools (create_entities, create_relations,
+// add_observations, delete_*) are omitted; only read-only graph tools are registered.
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, metrics *ToolMetrics, docMetrics *DocMetrics, readOnly bool) {
 	// --- Scanner Tools ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_repos",
@@ -63,7 +65,7 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_scan_status",
 		Description: "Returns the current state of the documentation scanner and knowledge graph index. Call this before searching to confirm the index is populated, especially right after startup.",
-	}, withMetrics("get_scan_status", metrics, withRecovery("get_scan_status", getScanStatusHandler(sc, graph, search))))
+	}, withMetrics("get_scan_status", metrics, withRecovery("get_scan_status", getScanStatusHandler(sc, graph, search, readOnly))))
 
 	if search != nil {
 		mcp.AddTool(s, &mcp.Tool{
@@ -74,35 +76,38 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 	// --- Memory / Knowledge Graph Tools ---
 	if graph != nil {
-		mcp.AddTool(s, &mcp.Tool{
-			Name:        "create_entities",
-			Description: "Create multiple new entities in the knowledge graph",
-		}, withMetrics("create_entities", metrics, withRecovery("create_entities", createEntitiesHandler(graph))))
+		// Mutation tools are omitted when read-only mode is active.
+		if !readOnly {
+			mcp.AddTool(s, &mcp.Tool{
+				Name:        "create_entities",
+				Description: "Create multiple new entities in the knowledge graph",
+			}, withMetrics("create_entities", metrics, withRecovery("create_entities", createEntitiesHandler(graph))))
 
-		mcp.AddTool(s, &mcp.Tool{
-			Name:        "create_relations",
-			Description: "Create multiple new relations between entities",
-		}, withMetrics("create_relations", metrics, withRecovery("create_relations", createRelationsHandler(graph))))
+			mcp.AddTool(s, &mcp.Tool{
+				Name:        "create_relations",
+				Description: "Create multiple new relations between entities",
+			}, withMetrics("create_relations", metrics, withRecovery("create_relations", createRelationsHandler(graph))))
 
-		mcp.AddTool(s, &mcp.Tool{
-			Name:        "add_observations",
-			Description: "Add new observations to existing entities",
-		}, withMetrics("add_observations", metrics, withRecovery("add_observations", addObservationsHandler(graph))))
+			mcp.AddTool(s, &mcp.Tool{
+				Name:        "add_observations",
+				Description: "Add new observations to existing entities",
+			}, withMetrics("add_observations", metrics, withRecovery("add_observations", addObservationsHandler(graph))))
 
-		mcp.AddTool(s, &mcp.Tool{
-			Name:        "delete_entities",
-			Description: fmt.Sprintf("Remove entities and their associated relations from the knowledge graph. Deleting more than %d entities in a single call requires confirm=true as a safety guard against accidental graph wipes.", massDeleteThreshold),
-		}, withMetrics("delete_entities", metrics, withRecovery("delete_entities", deleteEntitiesHandler(graph))))
+			mcp.AddTool(s, &mcp.Tool{
+				Name:        "delete_entities",
+				Description: fmt.Sprintf("Remove entities and their associated relations from the knowledge graph. Deleting more than %d entities in a single call requires confirm=true as a safety guard against accidental graph wipes.", massDeleteThreshold),
+			}, withMetrics("delete_entities", metrics, withRecovery("delete_entities", deleteEntitiesHandler(graph))))
 
-		mcp.AddTool(s, &mcp.Tool{
-			Name:        "delete_observations",
-			Description: "Remove specific observations from entities",
-		}, withMetrics("delete_observations", metrics, withRecovery("delete_observations", deleteObservationsHandler(graph))))
+			mcp.AddTool(s, &mcp.Tool{
+				Name:        "delete_observations",
+				Description: "Remove specific observations from entities",
+			}, withMetrics("delete_observations", metrics, withRecovery("delete_observations", deleteObservationsHandler(graph))))
 
-		mcp.AddTool(s, &mcp.Tool{
-			Name:        "delete_relations",
-			Description: "Remove specific relations from the graph",
-		}, withMetrics("delete_relations", metrics, withRecovery("delete_relations", deleteRelationsHandler(graph))))
+			mcp.AddTool(s, &mcp.Tool{
+				Name:        "delete_relations",
+				Description: "Remove specific relations from the graph",
+			}, withMetrics("delete_relations", metrics, withRecovery("delete_relations", deleteRelationsHandler(graph))))
+		}
 
 		mcp.AddTool(s, &mcp.Tool{
 			Name:        "read_graph",

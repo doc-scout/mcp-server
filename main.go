@@ -115,6 +115,10 @@ func main() {
 	}
 
 	scanContent := strings.EqualFold(os.Getenv("SCAN_CONTENT"), "true")
+	graphReadOnly := strings.EqualFold(os.Getenv("GRAPH_READ_ONLY"), "true")
+	if graphReadOnly {
+		slog.Info("Graph read-only mode enabled: mutation tools (create_entities, create_relations, add_observations, delete_*) will not be registered")
+	}
 	maxContentSize := defaultMaxContent
 	if raw := os.Getenv("MAX_CONTENT_SIZE"); raw != "" {
 		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
@@ -208,7 +212,7 @@ func main() {
 		}
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
-		tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics)
+		tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics, graphReadOnly)
 		slog.Info("Triggered tools/list_changed notification")
 	})
 
@@ -217,7 +221,7 @@ func main() {
 	if contentCache != nil {
 		searcher = contentCache
 	}
-	tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics)
+	tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics, graphReadOnly)
 
 	// --- Start scanner (initial + periodic) ---
 	sc.Start(ctx)

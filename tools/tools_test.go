@@ -15,6 +15,34 @@ import (
 	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
 
+// newTestServer creates a fresh MCP server for tool registration tests.
+func newTestServer() *mcp.Server {
+	return mcp.NewServer(&mcp.Implementation{Name: "test", Version: "v0"}, nil)
+}
+
+// listToolNames connects an in-memory client to s and returns the names of all registered tools.
+func listToolNames(s *mcp.Server) []string {
+	ctx := context.Background()
+	t1, t2 := mcp.NewInMemoryTransports()
+	if _, err := s.Connect(ctx, t1, nil); err != nil {
+		return nil
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: "tc", Version: "v0"}, nil)
+	session, err := client.Connect(ctx, t2, nil)
+	if err != nil {
+		return nil
+	}
+	res, err := session.ListTools(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(res.Tools))
+	for _, tool := range res.Tools {
+		names = append(names, tool.Name)
+	}
+	return names
+}
+
 // mockScanner implements DocumentScanner for testing
 type mockScanner struct {
 	repos   []scanner.RepoInfo
@@ -199,7 +227,7 @@ func TestGetScanStatusHandler(t *testing.T) {
 	counter := &mockGraphStore{count: 5}
 	searcher := &mockContentSearcher{count: 10, enabled: true}
 
-	handler := getScanStatusHandler(sc, counter, searcher)
+	handler := getScanStatusHandler(sc, counter, searcher, false)
 	req := &mcp.CallToolRequest{}
 
 	_, result, err := handler(t.Context(), req, ScanStatusArgs{})
@@ -217,6 +245,77 @@ func TestGetScanStatusHandler(t *testing.T) {
 	}
 	if !result.ContentEnabled {
 		t.Error("expected ContentEnabled=true")
+	}
+}
+
+func TestGetScanStatusHandler_ReadOnly(t *testing.T) {
+	sc := &mockScanner{}
+	handler := getScanStatusHandler(sc, nil, nil, true)
+	req := &mcp.CallToolRequest{}
+
+	_, result, err := handler(t.Context(), req, ScanStatusArgs{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.ReadOnly {
+		t.Error("expected ReadOnly=true when read-only mode is active")
+	}
+}
+
+func TestRegister_ReadOnly_OmitsMutationTools(t *testing.T) {
+	s := newTestServer()
+	graph := &mockGraphStore{}
+	Register(s, &mockScanner{}, graph, nil, NewToolMetrics(), NewDocMetrics(), true)
+
+	tools := listToolNames(s)
+	mutationTools := []string{
+		"create_entities", "create_relations", "add_observations",
+		"delete_entities", "delete_observations", "delete_relations",
+	}
+	for _, name := range mutationTools {
+		for _, got := range tools {
+			if got == name {
+				t.Errorf("expected mutation tool %q to be absent in read-only mode", name)
+			}
+		}
+	}
+
+	readOnlyTools := []string{"read_graph", "search_nodes", "open_nodes", "traverse_graph", "get_integration_map"}
+	for _, name := range readOnlyTools {
+		found := false
+		for _, got := range tools {
+			if got == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected read-only tool %q to be present", name)
+		}
+	}
+}
+
+func TestRegister_ReadWrite_IncludesMutationTools(t *testing.T) {
+	s := newTestServer()
+	graph := &mockGraphStore{}
+	Register(s, &mockScanner{}, graph, nil, NewToolMetrics(), NewDocMetrics(), false)
+
+	tools := listToolNames(s)
+	mutationTools := []string{
+		"create_entities", "create_relations", "add_observations",
+		"delete_entities", "delete_observations", "delete_relations",
+	}
+	for _, name := range mutationTools {
+		found := false
+		for _, got := range tools {
+			if got == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected mutation tool %q to be present in read-write mode", name)
+		}
 	}
 }
 
