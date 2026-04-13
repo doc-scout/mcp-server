@@ -90,6 +90,16 @@ func (a *GraphAuditLogger) DeleteRelations(relations []memory.Relation) error {
 	return err
 }
 
+func (a *GraphAuditLogger) UpdateEntity(oldName, newName, newType string) error {
+	err := a.inner.UpdateEntity(oldName, newName, newType)
+	if err != nil {
+		slog.Warn("[graph:audit] update_entity failed", "old_name", oldName, "new_name", newName, "new_type", newType, "error", err)
+	} else {
+		slog.Info("[graph:audit] update_entity", "old_name", oldName, "new_name", newName, "new_type", newType)
+	}
+	return err
+}
+
 // ── Read-only pass-throughs ───────────────────────────────────────────────────
 
 func (a *GraphAuditLogger) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) {

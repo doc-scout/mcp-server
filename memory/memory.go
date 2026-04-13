@@ -244,6 +244,53 @@ func (s store) listRelations(relationType, fromEntity string) ([]Relation, error
 	return relations, nil
 }
 
+// updateEntity renames an entity and/or changes its type in a transaction.
+// At least one of newName or newType must be non-empty.
+// If newName is provided, all relation and observation references are updated atomically.
+func (s store) updateEntity(oldName, newName, newType string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Verify the entity exists.
+		var entity dbEntity
+		if err := tx.Where("name = ?", oldName).First(&entity).Error; err != nil {
+			return fmt.Errorf("entity %q not found: %w", oldName, err)
+		}
+
+		if newName != "" && newName != oldName {
+			// Ensure the new name is not already taken.
+			var existing dbEntity
+			if err := tx.Where("name = ?", newName).First(&existing).Error; err == nil {
+				return fmt.Errorf("entity %q already exists", newName)
+			}
+
+			// Update relations.
+			if err := tx.Model(&dbRelation{}).Where("from_node = ?", oldName).Update("from_node", newName).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&dbRelation{}).Where("to_node = ?", oldName).Update("to_node", newName).Error; err != nil {
+				return err
+			}
+			// Update observations.
+			if err := tx.Model(&dbObservation{}).Where("entity_name = ?", oldName).Update("entity_name", newName).Error; err != nil {
+				return err
+			}
+			// Rename the entity (change primary key).
+			if err := tx.Model(&dbEntity{}).Where("name = ?", oldName).Update("name", newName).Error; err != nil {
+				return err
+			}
+			// For subsequent type update, work on the new name.
+			oldName = newName
+		}
+
+		if newType != "" && newType != entity.EntityType {
+			if err := tx.Model(&dbEntity{}).Where("name = ?", oldName).Update("entity_type", newType).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
 func (s store) searchNodes(query string) (KnowledgeGraph, error) {
 	return s.searchNodesFiltered(query, false)
 }
@@ -495,6 +542,13 @@ func (srv *MemoryService) GetIntegrationMap(ctx context.Context, service string,
 // maxDepth is clamped to [1, 10]. Returns an empty slice when no path is found.
 func (srv *MemoryService) FindPath(from, to string, maxDepth int) ([]PathEdge, error) {
 	return srv.s.findPath(from, to, maxDepth)
+}
+
+// UpdateEntity renames an entity and/or changes its entity type atomically.
+// Renaming cascades to all relations and observations that reference the old name.
+// At least one of newName or newType must be non-empty.
+func (srv *MemoryService) UpdateEntity(oldName, newName, newType string) error {
+	return srv.s.updateEntity(oldName, newName, newType)
 }
 
 // OpenDB opens the database connection and runs auto-migration for all models.
