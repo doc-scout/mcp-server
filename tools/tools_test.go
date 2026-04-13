@@ -323,9 +323,11 @@ func (m *mockGraphStore) GetIntegrationMap(ctx context.Context, service string, 
 func (m *mockGraphStore) ListEntities(entityType string) (memory.KnowledgeGraph, error) {
 	return memory.KnowledgeGraph{}, nil
 }
-
 func (m *mockGraphStore) EntityTypeCounts() (map[string]int64, error) {
 	return map[string]int64{"service": m.count}, nil
+}
+func (m *mockGraphStore) ListRelations(relationType, fromEntity string) ([]memory.Relation, error) {
+	return nil, nil
 }
 
 func TestGetScanStatusHandler(t *testing.T) {

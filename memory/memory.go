@@ -225,6 +225,25 @@ func (s store) deleteRelations(relations []Relation) error {
 	return nil
 }
 
+func (s store) listRelations(relationType, fromEntity string) ([]Relation, error) {
+	query := s.db.Model(&dbRelation{})
+	if relationType != "" {
+		query = query.Where("relation_type = ?", relationType)
+	}
+	if fromEntity != "" {
+		query = query.Where("from_node = ?", fromEntity)
+	}
+	var rows []dbRelation
+	if err := query.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	relations := make([]Relation, len(rows))
+	for i, r := range rows {
+		relations[i] = Relation{From: r.FromEntity, To: r.ToEntity, RelationType: r.RelationType}
+	}
+	return relations, nil
+}
+
 func (s store) searchNodes(query string) (KnowledgeGraph, error) {
 	return s.searchNodesFiltered(query, false)
 }
@@ -431,6 +450,12 @@ func (srv *MemoryService) TraverseGraph(entity, relationType, direction string, 
 // loading relations — use ReadGraph if you need edges too).
 func (srv *MemoryService) ListEntities(entityType string) (KnowledgeGraph, error) {
 	return srv.s.listEntities(entityType)
+}
+
+// ListRelations returns all relations, optionally filtered by relation_type and/or from_entity.
+// Empty string parameters act as wildcards.
+func (srv *MemoryService) ListRelations(relationType, fromEntity string) ([]Relation, error) {
+	return srv.s.listRelations(relationType, fromEntity)
 }
 
 // EntityCount returns the total number of entities in the knowledge graph.
