@@ -11,12 +11,13 @@ import (
 )
 
 type SearchNodesArgs struct {
-	Query string `json:"query" jsonschema:"query string"`
+	Query           string `json:"query" jsonschema:"query string"`
+	IncludeArchived bool   `json:"include_archived,omitempty" jsonschema:"When true, includes entities marked as archived (_status:archived). Default false — archived entities are hidden from results."`
 }
 
 func searchNodesHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args SearchNodesArgs) (*mcp.CallToolResult, memory.KnowledgeGraph, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchNodesArgs) (*mcp.CallToolResult, memory.KnowledgeGraph, error) {
-		g, err := graph.SearchNodes(args.Query)
+		g, err := graph.SearchNodesFiltered(args.Query, args.IncludeArchived)
 		if err != nil {
 			return nil, memory.KnowledgeGraph{}, err
 		}
