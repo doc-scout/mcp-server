@@ -18,7 +18,9 @@ type repoSummary struct {
 	FileTypes   []string `json:"file_types"`
 }
 
-type ListReposArgs struct{}
+type ListReposArgs struct {
+	FileType string `json:"file_type,omitempty" jsonschema:"optional filter: only return repos that contain at least one file of this type (e.g. 'openapi', 'asyncapi', 'readme', 'docs', 'helm', 'dockerfile'). Leave empty to return all repos."`
+}
 type ListReposResult struct {
 	Repos []repoSummary `json:"repos" jsonschema:"List of repositories with documentation"`
 }
@@ -32,6 +34,12 @@ func listReposHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.Cal
 			for _, f := range r.Files {
 				types[f.Type] = true
 			}
+
+			// Apply file_type filter: skip repos that don't have the requested type.
+			if args.FileType != "" && !types[args.FileType] {
+				continue
+			}
+
 			typeList := make([]string, 0, len(types))
 			for t := range types {
 				typeList = append(typeList, t)

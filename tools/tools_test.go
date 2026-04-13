@@ -111,6 +111,60 @@ func TestListReposHandler(t *testing.T) {
 	}
 }
 
+func TestListReposHandler_FileTypeFilter(t *testing.T) {
+	mock := &mockScanner{
+		repos: []scanner.RepoInfo{
+			{
+				Name:     "org/svc-api",
+				FullName: "org/svc-api",
+				Files: []scanner.FileEntry{
+					{RepoName: "svc-api", Path: "openapi.yaml", Type: "openapi"},
+				},
+			},
+			{
+				Name:     "org/svc-docs",
+				FullName: "org/svc-docs",
+				Files: []scanner.FileEntry{
+					{RepoName: "svc-docs", Path: "README.md", Type: "readme"},
+				},
+			},
+		},
+	}
+
+	handler := listReposHandler(mock)
+	req := &mcp.CallToolRequest{}
+
+	// filter to openapi only
+	_, output, err := handler(t.Context(), req, ListReposArgs{FileType: "openapi"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(output.Repos) != 1 {
+		t.Fatalf("expected 1 repo after filter, got %d", len(output.Repos))
+	}
+	if output.Repos[0].Name != "org/svc-api" {
+		t.Errorf("expected org/svc-api, got %s", output.Repos[0].Name)
+	}
+
+	// no filter returns all
+	_, all, err := handler(t.Context(), req, ListReposArgs{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(all.Repos) != 2 {
+		t.Errorf("expected 2 repos with no filter, got %d", len(all.Repos))
+	}
+
+	// filter that matches nothing
+	_, none, err := handler(t.Context(), req, ListReposArgs{FileType: "proto"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(none.Repos) != 0 {
+		t.Errorf("expected 0 repos for unmatched filter, got %d", len(none.Repos))
+	}
+}
+
 func TestSearchDocsHandler(t *testing.T) {
 	mock := &mockScanner{
 		files: []scanner.FileEntry{

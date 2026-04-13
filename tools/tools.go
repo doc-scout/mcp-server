@@ -49,7 +49,7 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 	// --- Scanner Tools ---
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_repos",
-		Description: "Lists all repositories in the organization that contain documentation files (catalog-info.yaml, mkdocs.yml, openapi.yaml, swagger.json, README.md, docs/*.md).",
+		Description: "Lists repositories in the organization that contain documentation files. Accepts an optional file_type filter to narrow results to repos that contain a specific document type (e.g. 'openapi', 'asyncapi', 'proto', 'helm', 'dockerfile', 'readme'). Returns repo name, description, URL, file count, and the set of file types present.",
 	}, withMetrics("list_repos", metrics, withRecovery("list_repos", listReposHandler(sc))))
 
 	mcp.AddTool(s, &mcp.Tool{
