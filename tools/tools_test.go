@@ -329,6 +329,9 @@ func (m *mockGraphStore) EntityTypeCounts() (map[string]int64, error) {
 func (m *mockGraphStore) ListRelations(relationType, fromEntity string) ([]memory.Relation, error) {
 	return nil, nil
 }
+func (m *mockGraphStore) FindPath(from, to string, maxDepth int) ([]memory.PathEdge, error) {
+	return nil, nil
+}
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{

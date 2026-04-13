@@ -491,6 +491,12 @@ func (srv *MemoryService) GetIntegrationMap(ctx context.Context, service string,
 	return srv.s.getIntegrationMap(ctx, service, depth)
 }
 
+// FindPath finds the shortest undirected path between two entities using BFS.
+// maxDepth is clamped to [1, 10]. Returns an empty slice when no path is found.
+func (srv *MemoryService) FindPath(from, to string, maxDepth int) ([]PathEdge, error) {
+	return srv.s.findPath(from, to, maxDepth)
+}
+
 // OpenDB opens the database connection and runs auto-migration for all models.
 // dbURL accepts: "sqlite://path.db", "postgres://...", a plain file path, or "" for in-memory SQLite.
 func OpenDB(dbURL string) (*gorm.DB, error) {

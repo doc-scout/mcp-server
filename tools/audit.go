@@ -136,6 +136,10 @@ func (a *GraphAuditLogger) TraverseGraph(entity, relationType, direction string,
 	return a.inner.TraverseGraph(entity, relationType, direction, maxDepth)
 }
 
+func (a *GraphAuditLogger) FindPath(from, to string, maxDepth int) ([]memory.PathEdge, error) {
+	return a.inner.FindPath(from, to, maxDepth)
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func entityNames(entities []memory.Entity) []string {
