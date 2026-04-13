@@ -6,8 +6,9 @@ package delete_observations_test
 import (
 	"testing"
 
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 )
 
 func TestE2E_DeleteObservations(t *testing.T) {
@@ -25,7 +26,7 @@ func TestE2E_DeleteObservations(t *testing.T) {
 			},
 		},
 	})
-	
+
 	// Test deleting specific observation
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "delete_observations",

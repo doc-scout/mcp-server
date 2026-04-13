@@ -94,13 +94,13 @@ func TestParseCodeowners_PatternWithNoOwners(t *testing.T) {
 
 func TestParseCodeowners_OwnerTypes(t *testing.T) {
 	cases := []struct {
-		token      string
-		wantName   string
-		wantType   string
+		token    string
+		wantName string
+		wantType string
 	}{
 		{"@myorg/infra-team", "infra-team", "team"},
 		{"@alice", "alice", "person"},
-		{"alice@company.com", "alice", "person"}, // plain email (no leading @)
+		{"alice@company.com", "alice", "person"},     // plain email (no leading @)
 		{"UNKNOWN_TOKEN", "unknown_token", "person"}, // fallback
 	}
 

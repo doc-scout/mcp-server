@@ -6,8 +6,9 @@ package tools
 import (
 	"context"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/memory"
 )
 
 func readGraphHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args any) (*mcp.CallToolResult, memory.KnowledgeGraph, error) {

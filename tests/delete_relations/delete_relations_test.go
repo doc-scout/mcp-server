@@ -6,8 +6,9 @@ package delete_relations_test
 import (
 	"testing"
 
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
 )
 
 func TestE2E_DeleteRelations(t *testing.T) {
@@ -34,7 +35,7 @@ func TestE2E_DeleteRelations(t *testing.T) {
 			},
 		},
 	})
-	
+
 	// Test deleting relations
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "delete_relations",
