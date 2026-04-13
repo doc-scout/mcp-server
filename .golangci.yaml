@@ -1,7 +1,7 @@
 # Copyright 2026 Leonan Carvalho
 # SPDX-License-Identifier: agpl
 
-version: 2
+version: "2"
 linters:
   default: none
   enable:
@@ -16,10 +16,7 @@ formatters:
         - standard
         - default
         - localmodule
-      skip-generated: true
-      skip-vendor: true
 run:
-  allow-parallel-running: true
   modules-download-mode: readonly
   tests: true
   timeout: 5m
