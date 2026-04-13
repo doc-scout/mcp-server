@@ -107,6 +107,19 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 		Description: "Returns the current state of the documentation scanner and knowledge graph index. Call this before searching to confirm the index is populated, especially right after startup.",
 	}, withMetrics("get_scan_status", metrics, withRecovery("get_scan_status", getScanStatusHandler(sc, graph, search, readOnly))))
 
+	mcp.AddTool(s, &mcp.Tool{
+
+		Name: "trigger_scan",
+
+		Description: "Queues an immediate full repository scan without waiting for the next scheduled interval. " +
+
+			"Use this after you know documentation has changed and you want to pick up the updates right away. " +
+
+			"The scan runs asynchronously — call get_scan_status to monitor progress. " +
+
+			"Duplicate triggers are coalesced: if a scan is already queued, this is a no-op (already_queued=true).",
+	}, withMetrics("trigger_scan", metrics, withRecovery("trigger_scan", triggerScanHandler(sc))))
+
 	if search != nil {
 
 		mcp.AddTool(s, &mcp.Tool{
