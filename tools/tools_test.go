@@ -300,6 +300,7 @@ func (m *mockGraphStore) OpenNodes(names []string) (memory.KnowledgeGraph, error
 func (m *mockGraphStore) OpenNodesFiltered(names []string, includeArchived bool) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) { return nil, nil }
 func (m *mockGraphStore) GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error) { return memory.IntegrationMap{}, nil }
+func (m *mockGraphStore) ListEntities(entityType string) (memory.KnowledgeGraph, error) { return memory.KnowledgeGraph{}, nil }
 
 func TestGetScanStatusHandler(t *testing.T) {
 	sc := &mockScanner{

@@ -35,6 +35,9 @@ type GraphStore interface {
 	EntityCount() (int64, error)
 	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error)
 	GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error)
+	// ListEntities returns all entities matching entityType (case-insensitive).
+	// When entityType is empty, all entities are returned.
+	ListEntities(entityType string) (memory.KnowledgeGraph, error)
 }
 
 // ContentSearcher provides full-text search over cached documentation content.
