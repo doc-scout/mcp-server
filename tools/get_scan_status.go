@@ -57,11 +57,8 @@ func getScanStatusHandler(sc DocumentScanner, graph GraphStore, search ContentSe
 			ContentIndexed: contentIndexed,
 			GraphEntities:  graphEntities,
 			ContentEnabled: contentEnabled,
-<<<<<<< HEAD
 			SearchMode:     searchMode,
-=======
 			ReadOnly:       readOnly,
->>>>>>> e0b7dbf (feat(tools): add GRAPH_READ_ONLY mode to disable mutation tools)
 		}, nil
 	}
 }

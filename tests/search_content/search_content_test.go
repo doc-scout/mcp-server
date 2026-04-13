@@ -36,24 +36,24 @@ func setupContentServer(t *testing.T) *mcp.ClientSession {
 
 	// Pre-populate the content cache with test fixtures.
 	fixtures := []struct {
-		repo, path, sha, content string
+		repo, path, sha, content, fileType string
 	}{
 		{"org/payment-svc", "README.md", "sha1",
-			"# Payment Service\nHandles Stripe transactions, refunds, and subscription billing."},
+			"# Payment Service\nHandles Stripe transactions, refunds, and subscription billing.", "readme"},
 		{"org/auth-svc", "README.md", "sha2",
-			"# Auth Service\nManages JWT tokens, OAuth2 flows, and session handling."},
+			"# Auth Service\nManages JWT tokens, OAuth2 flows, and session handling.", "readme"},
 		{"org/payment-svc", "openapi.yaml", "sha3",
-			"openapi: 3.0.0\ninfo:\n  title: Payment API\npaths:\n  /charge:\n    post:\n      summary: Charge a card"},
+			"openapi: 3.0.0\ninfo:\n  title: Payment API\npaths:\n  /charge:\n    post:\n      summary: Charge a card", "openapi"},
 		{"org/notification-svc", "README.md", "sha4",
-			"# Notification Service\nSends emails and SMS alerts for payment events."},
+			"# Notification Service\nSends emails and SMS alerts for payment events.", "readme"},
 	}
 	for _, f := range fixtures {
-		if err := contentCache.Upsert(f.repo, f.path, f.sha, f.content); err != nil {
+		if err := contentCache.Upsert(f.repo, f.path, f.sha, f.content, f.fileType); err != nil {
 			t.Fatalf("Upsert fixture: %v", err)
 		}
 	}
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, contentCache, tools.NewToolMetrics(), tools.NewDocMetrics())
+	tools.Register(server, &testutils.MockScanner{}, memorySrv, contentCache, tools.NewToolMetrics(), tools.NewDocMetrics(), false)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, t1, nil); err != nil {
