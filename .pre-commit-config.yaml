@@ -1,6 +1,6 @@
 repos:
-  # Hooks padrão para manter o repo limpo
-  - repo: https://github.com
+  # Standard file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
@@ -8,14 +8,20 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
-  # Formatação nativa do Go
-  - repo: https://github.com
+  # Go formatting and import ordering
+  - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
       - id: go-fmt
       - id: go-imports
 
-  # Automação da Licença
+  # golangci-lint — catches gci import ordering, staticcheck, govet, etc.
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.11.4
+    hooks:
+      - id: golangci-lint
+
+  # License header enforcement
   - repo: local
     hooks:
       - id: addlicense
