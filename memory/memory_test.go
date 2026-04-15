@@ -350,3 +350,38 @@ func TestOpenNodes_ExcludesArchivedByDefault(t *testing.T) {
 		t.Errorf("expected 2 entities with includeArchived=true, got %d", len(graphAll.Entities))
 	}
 }
+
+func TestUpdateEntity_NewNameAlreadyExists(t *testing.T) {
+	srv := newTestService(t)
+
+	// Create two entities.
+	_, err := srv.CreateEntities([]Entity{
+		{Name: "alpha", EntityType: "service"},
+		{Name: "beta", EntityType: "service"},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntities failed: %v", err)
+	}
+
+	// Renaming "alpha" to "beta" must be rejected — "beta" already exists.
+	err = srv.UpdateEntity("alpha", "beta", "")
+	if err == nil {
+		t.Fatal("expected error when renaming to an existing entity name, got nil")
+	}
+
+	// Both entities must still exist with their original names.
+	graph, err := srv.ReadGraph()
+	if err != nil {
+		t.Fatalf("ReadGraph failed: %v", err)
+	}
+	names := make(map[string]bool, len(graph.Entities))
+	for _, e := range graph.Entities {
+		names[e.Name] = true
+	}
+	if !names["alpha"] {
+		t.Error("expected entity 'alpha' to still exist after rejected rename")
+	}
+	if !names["beta"] {
+		t.Error("expected entity 'beta' to still exist after rejected rename")
+	}
+}

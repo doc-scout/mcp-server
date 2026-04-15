@@ -257,8 +257,11 @@ func (s store) updateEntity(oldName, newName, newType string) error {
 
 		if newName != "" && newName != oldName {
 			// Ensure the new name is not already taken.
-			var existing dbEntity
-			if err := tx.Where("name = ?", newName).First(&existing).Error; err == nil {
+			var taken int64
+			if err := tx.Model(&dbEntity{}).Where("name = ?", newName).Count(&taken).Error; err != nil {
+				return fmt.Errorf("checking entity name %q: %w", newName, err)
+			}
+			if taken > 0 {
 				return fmt.Errorf("entity %q already exists", newName)
 			}
 
