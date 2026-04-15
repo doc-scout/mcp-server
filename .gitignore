@@ -58,4 +58,4 @@ deploy/terraform/override.tf.json
 bin/
 
 # MkDocs generated site
-site/
+site/.worktrees/
