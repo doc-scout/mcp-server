@@ -59,6 +59,5 @@ func NewProvider(cfg Config) EmbeddingProvider {
 	return nil
 }
 
-// Stubs — implemented in openai.go and ollama.go
-func NewOpenAIProvider(apiKey, model string) EmbeddingProvider { panic("not implemented") }
+// Stub — implemented in ollama.go
 func NewOllamaProvider(baseURL, model string) EmbeddingProvider { panic("not implemented") }
