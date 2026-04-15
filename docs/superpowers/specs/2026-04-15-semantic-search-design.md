@@ -100,8 +100,10 @@ When `target` is `"content"`, `entity_results` is omitted. When `target` is `"en
 // Implementations must be safe for concurrent use.
 type EmbeddingProvider interface {
     Embed(ctx context.Context, texts []string) ([][]float32, error)
-    // ModelKey returns a stable string identifying the model in use.
-    // A change in ModelKey triggers re-indexing of stored vectors.
+    // ModelKey returns a stable string identifying the provider and model,
+    // formatted as "<provider>:<model>" (e.g. "openai:text-embedding-3-small",
+    // "ollama:nomic-embed-text"). A change in ModelKey triggers re-indexing
+    // of all stored vectors.
     ModelKey() string
 }
 ```
@@ -126,15 +128,31 @@ Two tables added to the existing database via auto-migration:
 
 ```sql
 CREATE TABLE IF NOT EXISTS doc_embeddings (
-    doc_id    TEXT PRIMARY KEY,
-    vector    BLOB NOT NULL,        -- []float32 encoded as little-endian IEEE 754
-    model_key TEXT NOT NULL,
-    updated_at DATETIME NOT NULL
+    doc_id       TEXT PRIMARY KEY,
+    content_hash TEXT NOT NULL,     -- SHA-256 of the raw doc text at index time.
+                                    --   Recomputed on each scan; row is re-embedded
+                                    --   when this hash differs from the stored value.
+                                    --   Prevents the vector from silently drifting out
+                                    --   of sync as documentation evolves over time.
+    vector       BLOB NOT NULL,     -- []float32 encoded as little-endian IEEE 754.
+                                    --   Valid only while content_hash matches the
+                                    --   current document and model_key matches the
+                                    --   active provider. Treat as stale otherwise.
+    model_key    TEXT NOT NULL,     -- Provider + model identifier (e.g. "openai:text-embedding-3-small").
+                                    --   A change here triggers full re-indexing for this repo.
+    updated_at   DATETIME NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS entity_embeddings (
     entity_name TEXT PRIMARY KEY,
-    vector      BLOB NOT NULL,
+    obs_hash    TEXT NOT NULL,      -- SHA-256 of sorted observations joined with "\n".
+                                    --   Recomputed after create_entities / add_observations /
+                                    --   delete_entities; row is re-embedded when this hash
+                                    --   differs, keeping the vector in sync with the live
+                                    --   knowledge graph as entities accumulate observations.
+    vector      BLOB NOT NULL,      -- []float32 encoded as little-endian IEEE 754.
+                                    --   Valid only while obs_hash matches current observations
+                                    --   and model_key matches the active provider.
     model_key   TEXT NOT NULL,
     updated_at  DATETIME NOT NULL
 );
@@ -142,32 +160,38 @@ CREATE TABLE IF NOT EXISTS entity_embeddings (
 
 Vector encoding: `[]float32` serialised as little-endian IEEE 754 bytes (4 bytes per dimension). Decoded in Go before similarity computation.
 
-**Query path**: load all rows whose `model_key` matches the active provider, compute cosine similarity in Go, return top-K.
+**Query path**: at search time, load all `doc_embeddings` rows whose `model_key` matches `provider.ModelKey()`, then filter in Go to those whose `content_hash` still matches the hash of the current document content (re-read from the `docs` table). For entities, the same: filter to rows whose `obs_hash` matches `SHA-256(current_sorted_observations)`. Rows that fail either check are excluded from results. The `semantic_search` response includes `stale_docs` and `stale_entities` counts so the caller knows how many items are pending re-indexing.
 
 Full table scan is acceptable: typical org sizes are well under 10,000 documents.
 
 ## Indexer
 
-`Indexer` is called by the scanner after each scan completes (via a post-scan hook in `main.go`).
+`Indexer` is triggered in two ways:
+1. **Post-scan**: after `trigger_scan` / background scan completes for a repo, `IndexDocs(repoFullName)` is called.
+2. **Post-mutation**: after `create_entities`, `add_observations`, or `delete_entities`, the affected entity names are queued for `IndexEntities(names...)` with a 2-second debounce to collapse rapid bursts.
 
-- Fetches all docs/entities whose `updated_at` is newer than the stored vector's `updated_at`, or whose stored `model_key` differs from the active provider's `ModelKey()`.
-- Embeds in batches of 100 (configurable constant).
-- Upserts vectors. A scan failure does not abort — the indexer logs errors and continues.
-- Runs in a background goroutine; concurrent scans are serialised with a mutex.
+**Staleness detection (docs):** `IndexDocs` computes `SHA-256(content)` for every current doc in the repo and compares it against `doc_embeddings.content_hash`. Rows where the hash or `model_key` differs are re-embedded. New docs are embedded. Docs no longer present in the repo have their `doc_embeddings` row deleted.
+
+**Staleness detection (entities):** `IndexEntities` fetches current observations for each name, computes `SHA-256(sorted_obs_joined)`, and compares against `entity_embeddings.obs_hash`. Re-embeds only if the hash or `model_key` differs.
+
+- Embeds in batches of 50 (OpenAI-friendly); Ollama is called sequentially.
+- Upserts vectors. A single-doc/entity failure does not abort the batch — errors are logged to stderr and the indexer continues.
+- Runs in a background goroutine; a mutex serialises concurrent indexing runs.
 
 ## Configuration
 
+Provider selection is implicit: set the relevant key/URL to enable a provider. If both are set, OpenAI takes precedence and a warning is logged to stderr. Neither set → feature disabled.
+
 | Env Var | Default | Description |
 |---|---|---|
-| `SEMANTIC_PROVIDER` | _(unset)_ | `"openai"` or `"ollama"`. Unset disables the feature. |
-| `OPENAI_API_KEY` | _(required when provider=openai)_ | OpenAI API key |
-| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Base URL for Ollama server |
-| `OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | Ollama embedding model |
+| `DOCSCOUT_EMBED_OPENAI_KEY` | _(unset)_ | OpenAI API key. Setting this enables the OpenAI provider. |
+| `DOCSCOUT_EMBED_OPENAI_MODEL` | `text-embedding-3-small` | OpenAI embedding model override |
+| `DOCSCOUT_EMBED_OLLAMA_URL` | _(unset)_ | Ollama base URL (e.g. `http://localhost:11434`). Setting this enables the Ollama provider. |
+| `DOCSCOUT_EMBED_OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model override |
 
 ## Graceful Degradation
 
-- `SEMANTIC_PROVIDER` unset → `semantic_search` returns structured error: `"semantic search not enabled: set SEMANTIC_PROVIDER to 'openai' or 'ollama'"`. Server starts normally.
+- Neither `DOCSCOUT_EMBED_OPENAI_KEY` nor `DOCSCOUT_EMBED_OLLAMA_URL` is set → `semantic_search` returns structured error: `"semantic search not enabled: set DOCSCOUT_EMBED_OPENAI_KEY or DOCSCOUT_EMBED_OLLAMA_URL"`. Server starts normally.
 - Ollama unreachable → tool call returns descriptive error. Existing keyword search (`search_docs`) is unaffected.
 - OpenAI rate limit → tool call returns descriptive error. Indexing will retry on next scan.
 - Model key changes → stale vectors are ignored at query time; re-indexing runs automatically on next scan.
