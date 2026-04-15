@@ -23,14 +23,15 @@ For the full technical roadmap with implementation details, see [`ROADMAP.md`](h
 | 14 | **Graph Traversal & Impact Analysis** | `traverse_graph` tool: server-side BFS with configurable direction, edge-type filter, and depth. Answers impact and ownership questions without loading the full graph. |
 | 15 | **Integration Topology Discovery** | Five parsers (AsyncAPI, Spring Kafka, OpenAPI, Proto, K8s env vars) auto-populate producer/consumer and API edges. `get_integration_map` tool returns the complete integration topology of a service in one call with `graph_coverage` confidence field. |
 | 16 | **Documentation Site (GitHub Pages)** | MkDocs Material site auto-deployed to GitHub Pages on every push to `main`. |
+| 17 | **FTS5 Full-Text Content Search** | Content search upgraded from SQL `LIKE` to SQLite FTS5 — BM25 relevance ranking, Porter stemmer, multi-word AND queries. Zero new dependencies. `search_mode` field in `get_scan_status` reports active engine. |
+| 18 | **Graph Query Tools** | `list_entities` (filter by type), `list_relations` (filter by type and/or source), `update_entity` (atomic rename + reclassify with full relation/observation cascade), `find_path` (undirected BFS shortest path between any two nodes), `trigger_scan` (on-demand scan queuing with deduplication), and `entity_breakdown` breakdown in `get_scan_status`. |
+| 19 | **File-Type Filters** | `list_repos` and `search_docs` accept an optional `file_type` parameter to narrow results to a specific document category (e.g. `openapi`, `asyncapi`, `proto`, `helm`). |
 
 ---
 
 ## Future Work
 
 ### Semantic Search & Vector Embeddings (RAG)
-
-**Phase 1 ✅ (2026-04-11):** Content search upgraded from SQL `LIKE` to SQLite FTS5 — BM25 relevance ranking, Porter stemmer, multi-word AND queries. Zero new dependencies.
 
 **Phase 2:** Integrate vector embeddings (`pgvector` for PostgreSQL or `sqlite-vss`) so AI agents can perform true semantic searches and find relevant docs even without exact keyword matches.
 
