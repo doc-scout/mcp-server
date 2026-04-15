@@ -19,7 +19,7 @@ type DeleteEntitiesArgs struct {
 	Confirm     bool     `json:"confirm,omitempty" jsonschema:"Must be set to true when deleting more than 10 entities at once. This is a safety guard to prevent accidental mass deletions."`
 }
 
-func deleteEntitiesHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args DeleteEntitiesArgs) (*mcp.CallToolResult, any, error) {
+func deleteEntitiesHandler(graph GraphStore, semantic SemanticSearch) func(ctx context.Context, req *mcp.CallToolRequest, args DeleteEntitiesArgs) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args DeleteEntitiesArgs) (*mcp.CallToolResult, any, error) {
 		if len(args.EntityNames) > massDeleteThreshold && !args.Confirm {
 			return nil, nil, fmt.Errorf(
@@ -29,6 +29,9 @@ func deleteEntitiesHandler(graph GraphStore) func(ctx context.Context, req *mcp.
 			)
 		}
 		err := graph.DeleteEntities(args.EntityNames)
+		if err == nil && semantic != nil {
+			semantic.ScheduleIndexEntities(args.EntityNames)
+		}
 		return nil, nil, err
 	}
 }
