@@ -296,3 +296,38 @@ func TestContentCache_Search_FilterByFileType(t *testing.T) {
 		t.Errorf("expected 2 matches without filter, got %d", len(all))
 	}
 }
+
+func TestContentCache_ListDocs(t *testing.T) {
+	cache := newTestContentCache(t, 1024*1024)
+
+	if err := cache.Upsert("org/svc-a", "README.md", "sha1", "content a", "readme"); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if err := cache.Upsert("org/svc-b", "README.md", "sha2", "content b", "readme"); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+
+	// Filter by repo
+	docs, err := cache.ListDocs("org/svc-a")
+	if err != nil {
+		t.Fatalf("ListDocs: %v", err)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("want 1 doc, got %d", len(docs))
+	}
+	if docs[0].DocID != "org/svc-a#README.md" {
+		t.Errorf("wrong DocID: %s", docs[0].DocID)
+	}
+	if docs[0].Content != "content a" {
+		t.Errorf("wrong Content: %s", docs[0].Content)
+	}
+
+	// All repos (empty string = no filter)
+	all, err := cache.ListDocs("")
+	if err != nil {
+		t.Fatalf("ListDocs all: %v", err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("want 2 docs, got %d", len(all))
+	}
+}

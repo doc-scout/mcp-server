@@ -32,6 +32,14 @@ type ContentMatch struct {
 	Snippet  string `json:"snippet"`
 }
 
+// DocRecord is a lightweight document record used by the semantic indexer.
+type DocRecord struct {
+	RepoName string
+	Path     string
+	DocID    string // "<RepoName>#<Path>"
+	Content  string
+}
+
 // ContentCache stores and searches raw file content indexed during scans.
 type ContentCache struct {
 	db      *gorm.DB
@@ -288,4 +296,28 @@ func extractSnippet(content, query string, snippetSize int) string {
 		snippet = snippet + "..."
 	}
 	return snippet
+}
+
+// ListDocs returns document records for semantic indexing.
+// If repoName is non-empty, only documents from that repository are returned.
+// Passing "" returns all documents across all repos.
+func (cc *ContentCache) ListDocs(repoName string) ([]DocRecord, error) {
+	db := cc.db
+	if repoName != "" {
+		db = db.Where("repo_name = ?", repoName)
+	}
+	var rows []dbDocContent
+	if err := db.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]DocRecord, len(rows))
+	for i, r := range rows {
+		out[i] = DocRecord{
+			RepoName: r.RepoName,
+			Path:     r.Path,
+			DocID:    r.RepoName + "#" + r.Path,
+			Content:  r.Content,
+		}
+	}
+	return out, nil
 }
