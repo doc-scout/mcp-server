@@ -6,6 +6,7 @@ package embeddings
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -98,11 +99,17 @@ func (idx *Indexer) IndexDocs(ctx context.Context, repoFullName string) {
 	}
 
 	// Remove stale rows for docs that no longer exist in this repo.
+	// Only consider embeddings that belong to this repo (DocID prefix = repoFullName+"#")
+	// to avoid deleting embeddings for other repos.
+	repoPrefix := repoFullName + "#"
 	currentIDs := make(map[string]bool, len(docs))
 	for _, d := range docs {
 		currentIDs[d.DocID] = true
 	}
 	for _, e := range existing {
+		if !strings.HasPrefix(e.DocID, repoPrefix) {
+			continue // belongs to a different repo — leave it alone
+		}
 		if !currentIDs[e.DocID] {
 			if err := idx.store.DeleteDocByID(e.DocID); err != nil {
 				slog.Error("[embeddings] IndexDocs: delete stale", "docID", e.DocID, "error", err)
