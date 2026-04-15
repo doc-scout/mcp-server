@@ -58,6 +58,3 @@ func NewProvider(cfg Config) EmbeddingProvider {
 	}
 	return nil
 }
-
-// Stub — implemented in ollama.go
-func NewOllamaProvider(baseURL, model string) EmbeddingProvider { panic("not implemented") }
