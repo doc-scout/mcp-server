@@ -73,7 +73,7 @@ This document outlines the current technical debts and the path forward for DocS
 - **Implemented**: MkDocs Material site auto-deployed to GitHub Pages on every push to `main` that touches `docs/` or `mkdocs.yml`.
 - `mkdocs.yml` — Material theme with dark/light mode, tabs, search, Mermaid diagrams, and code copy.
 - `docs/index.md` — Landing page with tabbed quick-start, Mermaid architecture diagram, and Material admonitions.
-- `docs/tools-reference.md` — Complete reference for all 16 MCP tools with parameters and examples.
+- `docs/tools-reference.md` — Complete reference for all 23 MCP tools with parameters and examples.
 - `docs/contributing.md` — Full contributing guide: setup, project structure, testing, PR checklist.
 - `docs/roadmap.md` — Public-facing roadmap with completed features and upcoming work.
 - `docs/security.md` — Security model and responsible disclosure policy.

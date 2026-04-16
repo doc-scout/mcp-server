@@ -91,6 +91,7 @@ jobs:
 
   docker:
     name: Push Docker Images
+    needs: build-binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
