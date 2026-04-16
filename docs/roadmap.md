@@ -26,16 +26,11 @@ For the full technical roadmap with implementation details, see [`ROADMAP.md`](h
 | 17 | **FTS5 Full-Text Content Search** | Content search upgraded from SQL `LIKE` to SQLite FTS5 — BM25 relevance ranking, Porter stemmer, multi-word AND queries. Zero new dependencies. `search_mode` field in `get_scan_status` reports active engine. |
 | 18 | **Graph Query Tools** | `list_entities` (filter by type), `list_relations` (filter by type and/or source), `update_entity` (atomic rename + reclassify with full relation/observation cascade), `find_path` (undirected BFS shortest path between any two nodes), `trigger_scan` (on-demand scan queuing with deduplication), and `entity_breakdown` breakdown in `get_scan_status`. |
 | 19 | **File-Type Filters** | `list_repos` and `search_docs` accept an optional `file_type` parameter to narrow results to a specific document category (e.g. `openapi`, `asyncapi`, `proto`, `helm`). |
+| 2 | **Semantic Search & Vector Embeddings (RAG)** | `semantic_search` MCP tool with vector embeddings via OpenAI or Ollama. Cosine similarity ranking, hash-based staleness detection, debounced background re-indexing. Zero-downtime: server starts normally if no embedding provider configured. |
 
 ---
 
 ## Future Work
-
-### Semantic Search & Vector Embeddings (RAG)
-
-**Phase 2:** Integrate vector embeddings (`pgvector` for PostgreSQL or `sqlite-vss`) so AI agents can perform true semantic searches and find relevant docs even without exact keyword matches.
-
----
 
 ### Graph Knowledge Access Control (RBAC)
 

@@ -108,13 +108,13 @@ This document outlines the current technical debts and the path forward for DocS
 - `tools/get_integration_map.go` — `get_integration_map` MCP tool.
 - `tests/integration_map/` — 3 E2E scenarios.
 
+### 2. Semantic Search and Vector Embeddings (RAG) ✅
+- **Phase 1 ✅ (2026-04-11)**: Replaced SQL `LIKE` with SQLite FTS5 full-text search — BM25 relevance ranking, Porter stemmer (`authenticate` → `authentication`), multi-word AND queries, special-char-safe query sanitization. Zero new dependencies.
+- **Phase 2 ✅ (2026-04-14)**: `semantic_search` MCP tool — vector embeddings via OpenAI or Ollama, cosine similarity ranking, hash-based staleness detection for docs and entities, debounced background re-indexing. Zero-downtime: server starts normally if no embedding provider is configured.
+
 ---
 
 ## Future Work
-
-### 2. Semantic Search and Vector Embeddings (RAG)
-- **Phase 1 ✅ (2026-04-11)**: Replaced SQL `LIKE` with SQLite FTS5 full-text search — BM25 relevance ranking, Porter stemmer (`authenticate` → `authentication`), multi-word AND queries, special-char-safe query sanitization. Zero new dependencies.
-- **Phase 2**: Integrate vector embeddings (`pgvector` for PostgreSQL or `sqlite-vss`) for true semantic search across documentation. This will allow AI agents to find relevant docs without exact keyword matches.
 
 ### 4. Graph Knowledge Access Control (RBAC)
 - **Current State**: Any LLM client connected to the MCP server can read any file and entity that was indexed.
