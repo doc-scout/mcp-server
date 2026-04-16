@@ -412,7 +412,6 @@ func main() {
 
 		if semanticSrv != nil {
 			for _, repo := range repos {
-				repo := repo // capture loop variable
 				go semanticSrv.IndexDocs(context.Background(), repo.FullName)
 			}
 		}
