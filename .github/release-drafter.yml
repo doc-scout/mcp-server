@@ -64,7 +64,7 @@ autolabeler:
       - '/^docs(\(.+\))?:/i'
   - label: 'chore'
     title:
-      - '/^(chore|refactor|perf)(\(.+\))?:/i'
+      - '/^(chore|refactor|perf|ci|build|test|style)(\(.+\))?:/i'
 
 template: |
   ## What's Changed

@@ -14,6 +14,10 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-binaries:
     name: Build ${{ matrix.os }}/${{ matrix.arch }}
@@ -80,13 +84,13 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: |
             docscout-mcp-*
             checksums.txt
 
   docker:
     name: Push Docker Images
-    needs: build-binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
