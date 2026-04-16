@@ -235,3 +235,7 @@ Review the [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md) and `AGENTS.
 ## License
 
 GNU AGPL v3
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind. AI-generated output depends on indexed repository data — always verify before acting on it. See [DISCLAIMER.md](DISCLAIMER.md) for full details.

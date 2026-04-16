@@ -56,6 +56,7 @@ nav:
     - Development Guidelines: DEVELOPMENT_GUIDELINES.md
     - Roadmap: roadmap.md
     - Security: security.md
+    - Disclaimer: disclaimer.md
 
 not_in_nav: |
   superpowers/
