@@ -1,0 +1,74 @@
+# Copyright 2026 Leonan Carvalho
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name-template: 'v$NEXT_PATCH_VERSION'
+tag-template: 'v$NEXT_PATCH_VERSION'
+
+categories:
+  - title: 'Breaking Changes'
+    labels:
+      - 'breaking'
+  - title: 'Features'
+    labels:
+      - 'feature'
+      - 'feat'
+  - title: 'Bug Fixes'
+    labels:
+      - 'bug'
+      - 'fix'
+  - title: 'Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+  - title: 'Maintenance'
+    labels:
+      - 'chore'
+      - 'deps'
+      - 'refactor'
+      - 'perf'
+
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'minor'
+      - 'feature'
+      - 'feat'
+  patch:
+    labels:
+      - 'patch'
+      - 'bug'
+      - 'fix'
+      - 'chore'
+      - 'documentation'
+      - 'docs'
+      - 'refactor'
+      - 'perf'
+  default: patch
+
+autolabeler:
+  - label: 'breaking'
+    title:
+      - '/BREAKING CHANGE/i'
+  - label: 'feature'
+    title:
+      - '/^feat(\(.+\))?:/i'
+  - label: 'bug'
+    title:
+      - '/^fix(\(.+\))?:/i'
+  - label: 'documentation'
+    title:
+      - '/^docs(\(.+\))?:/i'
+  - label: 'chore'
+    title:
+      - '/^(chore|refactor|perf)(\(.+\))?:/i'
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/leonancarvalho/docscout-mcp/compare/$PREVIOUS_TAG...$RESOLVED_VERSION
