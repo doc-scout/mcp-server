@@ -35,7 +35,7 @@ Edit (or create) the Gemini CLI settings file:
         "-e", "GITHUB_TOKEN=github_pat_...",
         "-e", "GITHUB_ORG=my-org",
         "-e", "SCAN_INTERVAL=30m",
-        "ghcr.io/your-username/docscout-mcp:latest"
+        "ghcr.io/leonancarvalho/docscout-mcp:latest"
       ]
     }
   }
