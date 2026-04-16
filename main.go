@@ -78,13 +78,12 @@ func (p *serverHealthProvider) HealthStatus() health.Status {
 const (
 	serverName = "DocScout-MCP"
 
-	serverVersion = "1.0.0"
-
 	defaultScanInterval = 30 * time.Minute
 
 	defaultMaxContent = 200 * 1024 // 200 KB
-
 )
+
+var serverVersion = "dev" // set at build time via -ldflags "-X main.serverVersion=<tag>"
 
 func parseScanInterval(raw string) time.Duration {
 
