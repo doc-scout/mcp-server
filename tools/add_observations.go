@@ -22,7 +22,7 @@ type AddObservationsResult struct {
 	Skipped []SkippedObservation `json:"skipped,omitempty"`
 }
 
-func addObservationsHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args AddObservationsArgs) (*mcp.CallToolResult, AddObservationsResult, error) {
+func addObservationsHandler(graph GraphStore, semantic SemanticSearch) func(ctx context.Context, req *mcp.CallToolRequest, args AddObservationsArgs) (*mcp.CallToolResult, AddObservationsResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args AddObservationsArgs) (*mcp.CallToolResult, AddObservationsResult, error) {
 		var clean []memory.Observation
 		var allSkipped []SkippedObservation
@@ -45,6 +45,17 @@ func addObservationsHandler(graph GraphStore) func(ctx context.Context, req *mcp
 		observations, err := graph.AddObservations(clean)
 		if err != nil {
 			return nil, AddObservationsResult{}, err
+		}
+		if semantic != nil {
+			seen := make(map[string]bool)
+			for _, obs := range observations {
+				seen[obs.EntityName] = true
+			}
+			names := make([]string, 0, len(seen))
+			for n := range seen {
+				names = append(names, n)
+			}
+			semantic.ScheduleIndexEntities(names)
 		}
 		return nil, AddObservationsResult{Observations: observations, Skipped: allSkipped}, nil
 	}

@@ -390,7 +390,7 @@ func TestGetScanStatusHandler_ReadOnly(t *testing.T) {
 func TestRegister_ReadOnly_OmitsMutationTools(t *testing.T) {
 	s := newTestServer()
 	graph := &mockGraphStore{}
-	Register(s, &mockScanner{}, graph, nil, NewToolMetrics(), NewDocMetrics(), true)
+	Register(s, &mockScanner{}, graph, nil, nil, NewToolMetrics(), NewDocMetrics(), true)
 
 	tools := listToolNames(s)
 	mutationTools := []string{
@@ -423,7 +423,7 @@ func TestRegister_ReadOnly_OmitsMutationTools(t *testing.T) {
 func TestRegister_ReadWrite_IncludesMutationTools(t *testing.T) {
 	s := newTestServer()
 	graph := &mockGraphStore{}
-	Register(s, &mockScanner{}, graph, nil, NewToolMetrics(), NewDocMetrics(), false)
+	Register(s, &mockScanner{}, graph, nil, nil, NewToolMetrics(), NewDocMetrics(), false)
 
 	tools := listToolNames(s)
 	mutationTools := []string{

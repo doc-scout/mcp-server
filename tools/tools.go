@@ -67,7 +67,7 @@ func withMetrics[A, R any](
 
 // Register adds all DocScout MCP tools to the server.
 
-// graph and search may be nil — get_scan_status degrades gracefully, search_content is omitted.
+// graph, search, and semantic may be nil — tools that require them are omitted.
 
 // metrics and docMetrics must not be nil.
 
@@ -75,7 +75,7 @@ func withMetrics[A, R any](
 
 // add_observations, delete_*) are omitted; only read-only graph tools are registered.
 
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, metrics *ToolMetrics, docMetrics *DocMetrics, readOnly bool) {
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, readOnly bool) {
 
 	// --- Scanner Tools ---
 
@@ -144,7 +144,7 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 				Name: "create_entities",
 
 				Description: "Create multiple new entities in the knowledge graph",
-			}, withMetrics("create_entities", metrics, withRecovery("create_entities", createEntitiesHandler(graph))))
+			}, withMetrics("create_entities", metrics, withRecovery("create_entities", createEntitiesHandler(graph, semantic))))
 
 			mcp.AddTool(s, &mcp.Tool{
 
@@ -158,14 +158,14 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 				Name: "add_observations",
 
 				Description: "Add new observations to existing entities",
-			}, withMetrics("add_observations", metrics, withRecovery("add_observations", addObservationsHandler(graph))))
+			}, withMetrics("add_observations", metrics, withRecovery("add_observations", addObservationsHandler(graph, semantic))))
 
 			mcp.AddTool(s, &mcp.Tool{
 
 				Name: "delete_entities",
 
 				Description: fmt.Sprintf("Remove entities and their associated relations from the knowledge graph. Deleting more than %d entities in a single call requires confirm=true as a safety guard against accidental graph wipes.", massDeleteThreshold),
-			}, withMetrics("delete_entities", metrics, withRecovery("delete_entities", deleteEntitiesHandler(graph))))
+			}, withMetrics("delete_entities", metrics, withRecovery("delete_entities", deleteEntitiesHandler(graph, semantic))))
 
 			mcp.AddTool(s, &mcp.Tool{
 
@@ -322,5 +322,14 @@ Complement to traverse_graph (which explores from one end) and get_integration_m
 
 		Description: "Returns how many times each MCP tool has been called and the top 20 most-fetched documents since server start. Use this to identify which documentation areas are most frequently accessed by AI agents, helping teams spot knowledge gaps.",
 	}, withRecovery("get_usage_stats", getUsageStatsHandler(metrics, docMetrics)))
+
+	// --- Semantic Search (Plus) ---
+
+	if semantic != nil {
+		mcp.AddTool(s, &mcp.Tool{
+			Name:        "semantic_search",
+			Description: "Runs a natural-language semantic search over indexed documentation content and/or knowledge graph entities using vector embeddings. Returns results ranked by cosine similarity. Requires the server to be started with DOCSCOUT_EMBED_OPENAI_KEY or DOCSCOUT_EMBED_OLLAMA_URL set. Use 'target' to choose 'content', 'entities', or 'both'. Check stale_docs/stale_entities to know how many items are pending re-indexing.",
+		}, withMetrics("semantic_search", metrics, withRecovery("semantic_search", semanticSearchHandler(semantic))))
+	}
 
 }

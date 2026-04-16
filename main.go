@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/oauth2"
 
+	"github.com/leonancarvalho/docscout-mcp/embeddings"
 	"github.com/leonancarvalho/docscout-mcp/health"
 	"github.com/leonancarvalho/docscout-mcp/indexer"
 	"github.com/leonancarvalho/docscout-mcp/memory"
@@ -352,6 +353,28 @@ func main() {
 
 	}
 
+	// --- Semantic Search Plus ---
+	embCfg := embeddings.ConfigFromEnv()
+	embProvider := embeddings.NewProvider(embCfg)
+
+	var semanticSrv tools.SemanticSearch
+	if embProvider != nil {
+		embStore, err := embeddings.NewVectorStore(db)
+		if err != nil {
+			slog.Error("Failed to create vector store", "error", err)
+			os.Exit(1)
+		}
+		var docSrc embeddings.DocStore
+		if contentCache != nil {
+			docSrc = contentCache
+		}
+		embIndexer := embeddings.NewIndexer(embProvider, embStore, docSrc, memorySrv)
+		semanticSrv = embeddings.NewSemanticSearcher(embProvider, embStore, embIndexer, docSrc, memorySrv)
+		slog.Info("[embeddings] Semantic search enabled", "provider", embProvider.ModelKey())
+	} else {
+		slog.Info("[embeddings] Semantic search disabled (no DOCSCOUT_EMBED_OPENAI_KEY or DOCSCOUT_EMBED_OLLAMA_URL)")
+	}
+
 	// --- Tool Metrics ---
 
 	toolMetrics := tools.NewToolMetrics()
@@ -384,9 +407,16 @@ func main() {
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
 
-		tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics, graphReadOnly)
+		tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly)
 
 		slog.Info("Triggered tools/list_changed notification")
+
+		if semanticSrv != nil {
+			for _, repo := range repos {
+				repo := repo // capture loop variable
+				go semanticSrv.IndexDocs(context.Background(), repo.FullName)
+			}
+		}
 
 	})
 
@@ -400,7 +430,7 @@ func main() {
 
 	}
 
-	tools.Register(mcpServer, sc, auditedGraph, searcher, toolMetrics, docMetrics, graphReadOnly)
+	tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly)
 
 	// --- Start scanner (initial + periodic) ---
 

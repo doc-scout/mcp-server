@@ -1,9 +1,10 @@
 # MCP Tools Reference
 
-DocScout-MCP exposes **16 MCP tools** across three categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
+DocScout-MCP exposes **22 MCP tools** across three categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
 
 !!! note "Tool availability"
     `search_content` is only registered when `SCAN_CONTENT=true` on a persistent `DATABASE_URL`.
+    All mutation tools (`create_*`, `add_observations`, `delete_*`, `update_entity`) are omitted when `GRAPH_READ_ONLY=true`.
     All other tools are always available.
 
 ---
@@ -12,9 +13,13 @@ DocScout-MCP exposes **16 MCP tools** across three categories. All tools are ins
 
 ### `list_repos`
 
-Lists all repositories in the organization that contain indexed files.
+Lists all repositories in the organization that contain indexed documentation files.
 
-**Parameters:** none
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `file_type` | string | | Filter to repos that contain at least one file of this type (e.g. `openapi`, `asyncapi`, `proto`, `helm`, `dockerfile`, `readme`). Leave empty to return all repos. |
 
 **Returns:** Array of `{ name, full_name, description, html_url, files[] }`.
 
@@ -29,6 +34,7 @@ Searches for documentation files by matching a query term against file paths and
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `query` | string | ✅ | Search term (must not be empty or whitespace-only) |
+| `file_type` | string | | Filter to files of this type (e.g. `openapi`, `asyncapi`, `proto`, `readme`, `helm`). Leave empty to return all matching files. |
 
 **Returns:** Array of `{ repo_name, path, type }`.
 
@@ -67,7 +73,25 @@ Returns the current state of the documentation scanner and knowledge graph index
 | `repo_count` | int | Number of repos indexed |
 | `content_indexed` | int | Files in the content cache (`SCAN_CONTENT=true` only) |
 | `graph_entities` | int | Total entities in the knowledge graph |
+| `entity_breakdown` | object | Map of `entity_type → count` (e.g. `{"service": 12, "api": 4}`) |
 | `content_enabled` | bool | Whether content caching is active |
+| `search_mode` | string | `"fts5"` (SQLite FTS5 full-text search), `"like"` (fallback), or `""` (disabled) |
+| `read_only` | bool | Whether the server is running in read-only graph mode |
+
+---
+
+### `trigger_scan`
+
+Queues an immediate full repository scan without waiting for the next scheduled interval. The scan runs asynchronously — call `get_scan_status` to monitor progress. Duplicate triggers are coalesced: if a scan is already queued, this is a no-op.
+
+**Parameters:** none
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `triggered` | bool | `true` when a scan was newly queued |
+| `already_queued` | bool | `true` when a scan was already pending and this request was a no-op |
 
 ---
 
@@ -130,11 +154,70 @@ Appends facts to existing entities. Observations that already exist on the entit
 
 ### `read_graph`
 
-Returns the entire knowledge graph. Use `search_nodes`, `open_nodes`, or `traverse_graph` when you only need a subset — they are much more token-efficient for large graphs.
+Returns the entire knowledge graph. Use `search_nodes`, `open_nodes`, `list_entities`, `list_relations`, or `traverse_graph` when you only need a subset — they are much more token-efficient for large graphs.
 
 **Parameters:** none
 
 **Returns:** `{ entities[], relations[] }`.
+
+---
+
+### `list_entities`
+
+Returns all knowledge graph entities, optionally filtered by type. More efficient than `read_graph` when you only need entities (no relations).
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `entity_type` | string | | Filter to entities of this type (e.g. `service`, `team`, `api`, `event-topic`, `grpc-service`, `person`). Leave empty to return all. |
+
+**Returns:** `{ entities[], relations[] }` — relations are always empty; only entities matching the filter are returned.
+
+---
+
+### `list_relations`
+
+Returns relations from the knowledge graph, filtered by type and/or source entity.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `relation_type` | string | | Filter by relation type (e.g. `depends_on`, `publishes_event`, `subscribes_event`, `exposes_api`, `provides_grpc`, `calls_service`, `owns`, `part_of`). Leave empty for all types. |
+| `from_entity` | string | | Filter to relations originating from this entity name. Leave empty for all sources. |
+
+Both filters can be combined. Leave both empty to return all relations.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `relations` | array | Array of `{ from, to, relationType }` |
+| `count` | int | Total number of matching relations |
+
+---
+
+### `update_entity`
+
+Renames an entity and/or changes its type. When renaming, all relations and observations that reference the entity are updated atomically — no data is lost.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | ✅ | Current name of the entity to update (must match exactly) |
+| `new_name` | string | | New name for the entity. All relations and observations are updated atomically. |
+| `new_type` | string | | New entity type (e.g. `service`, `team`, `api`). Omit to keep the current type. |
+
+At least one of `new_name` or `new_type` must be provided.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `updated` | bool | `true` when the update succeeded |
+| `name` | string | The effective name after the update |
 
 ---
 
@@ -198,6 +281,75 @@ traverse_graph(entity="auth-service", relation_type="depends_on", direction="out
 
 # Ownership: who owns checkout-service and its direct dependencies?
 traverse_graph(entity="checkout-service", direction="both", depth=2)
+```
+
+---
+
+### `get_integration_map`
+
+Returns the complete integration topology of a service in a single call: which events it publishes and subscribes to, which APIs and gRPC services it exposes or depends on, and which services it calls directly. Each entry includes a `confidence` level so the AI agent can distinguish authoritative contract declarations (AsyncAPI, proto, OpenAPI) from inferred config values (Spring Kafka, K8s env vars).
+
+**Parameters:**
+
+| Name | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `service` | string | ✅ | — | Entity name of the service in the knowledge graph |
+| `depth` | int | | `1` | Number of integration hops to include (1–3) |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `service` | string | The queried service name |
+| `publishes` | array | Event topics this service publishes to |
+| `subscribes` | array | Event topics this service subscribes from |
+| `exposes_api` | array | APIs this service exposes |
+| `provides_grpc` | array | gRPC services this service provides |
+| `grpc_deps` | array | gRPC services this service depends on |
+| `calls` | array | Services this service calls directly |
+| `graph_coverage` | string | `full` · `partial` · `inferred` · `none` |
+
+Each edge includes `target`, `confidence`, and optionally `schema`, `version`, `paths`, `source_repo`.
+
+**`graph_coverage` values:**
+
+| Value | Meaning |
+|---|---|
+| `full` | At least one authoritative source (AsyncAPI, proto, OpenAPI), no inferred sources |
+| `partial` | Mix of authoritative and inferred sources |
+| `inferred` | All relations come from config heuristics (Spring Kafka, K8s env vars) |
+| `none` | No integration data found for this service |
+
+---
+
+### `find_path`
+
+Finds the shortest connection path between two entities using undirected BFS. Returns the ordered sequence of directed edges (from, relationType, to) connecting them, regardless of edge direction.
+
+**Parameters:**
+
+| Name | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `from` | string | ✅ | — | Starting entity name |
+| `to` | string | ✅ | — | Destination entity name |
+| `max_depth` | int | | `6` | Maximum number of hops to search (1–10) |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `found` | bool | Whether a path was found within `max_depth` |
+| `path` | array | Ordered sequence of `{ from, relation_type, to }` edges |
+| `hops` | int | Number of edges in the path |
+
+**Example queries:**
+
+```
+# Is there any dependency chain between payment-svc and auth-svc?
+find_path(from="payment-svc", to="auth-svc")
+
+# What connects team-platform to checkout-service?
+find_path(from="team-platform", to="checkout-service", max_depth=4)
 ```
 
 ---

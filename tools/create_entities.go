@@ -22,7 +22,7 @@ type CreateEntitiesResult struct {
 	Skipped []SkippedObservation `json:"skipped,omitempty"`
 }
 
-func createEntitiesHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args CreateEntitiesArgs) (*mcp.CallToolResult, CreateEntitiesResult, error) {
+func createEntitiesHandler(graph GraphStore, semantic SemanticSearch) func(ctx context.Context, req *mcp.CallToolRequest, args CreateEntitiesArgs) (*mcp.CallToolResult, CreateEntitiesResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args CreateEntitiesArgs) (*mcp.CallToolResult, CreateEntitiesResult, error) {
 		var clean []memory.Entity
 		var allSkipped []SkippedObservation
@@ -40,6 +40,13 @@ func createEntitiesHandler(graph GraphStore) func(ctx context.Context, req *mcp.
 		entities, err := graph.CreateEntities(clean)
 		if err != nil {
 			return nil, CreateEntitiesResult{}, err
+		}
+		if semantic != nil {
+			names := make([]string, len(entities))
+			for i, e := range entities {
+				names[i] = e.Name
+			}
+			semantic.ScheduleIndexEntities(names)
 		}
 		return nil, CreateEntitiesResult{Entities: entities, Skipped: allSkipped}, nil
 	}

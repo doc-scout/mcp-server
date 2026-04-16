@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/leonancarvalho/docscout-mcp/embeddings"
 	"github.com/leonancarvalho/docscout-mcp/memory"
 	"github.com/leonancarvalho/docscout-mcp/scanner"
 )
@@ -57,4 +58,16 @@ type ContentSearcher interface {
 	Count() (int64, error)
 	// SearchMode returns the active search backend: "fts5" (SQLite FTS5) or "like" (LIKE fallback).
 	SearchMode() string
+}
+
+// SemanticSearch gates the semantic search Plus feature.
+// Pass nil to Register to disable semantic search entirely.
+type SemanticSearch interface {
+	Enabled() bool
+	SearchDocs(ctx context.Context, query, repo string, topK int) ([]embeddings.DocResult, int, error)
+	SearchEntities(ctx context.Context, query string, topK int) ([]embeddings.EntityResult, int, error)
+	// ScheduleIndexEntities queues entities for debounced re-indexing after graph mutations.
+	ScheduleIndexEntities(names []string)
+	// IndexDocs synchronously re-indexes docs for a repo. Call from a background goroutine.
+	IndexDocs(ctx context.Context, repo string)
 }
