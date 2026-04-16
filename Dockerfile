@@ -21,7 +21,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -ldflags="-s -w -X main.version=${VERSION}" -o /docscout-mcp .
+    go build -ldflags="-s -w -X main.serverVersion=${VERSION}" -o /docscout-mcp .
 
 # ---- Stage 2: Runtime ----
 FROM alpine:3.21
