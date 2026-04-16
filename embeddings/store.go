@@ -133,3 +133,8 @@ func (vs *VectorStore) LoadEntityEmbeddings(modelKey string) ([]EntityEmbedding,
 func (vs *VectorStore) DeleteDocByID(docID string) error {
 	return vs.db.Where("doc_id = ?", docID).Delete(&dbDocEmbedding{}).Error
 }
+
+// DeleteEntityByName removes a single entity embedding row by entity name.
+func (vs *VectorStore) DeleteEntityByName(entityName string) error {
+	return vs.db.Where("entity_name = ?", entityName).Delete(&dbEntityEmbedding{}).Error
+}

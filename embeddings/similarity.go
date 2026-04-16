@@ -6,6 +6,7 @@ package embeddings
 import (
 	"crypto/sha256"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strings"
@@ -14,8 +15,12 @@ import (
 )
 
 // CosineSimilarity returns the cosine similarity in [-1, 1] between two equal-length
-// float32 vectors. Returns 0 when either vector has zero magnitude.
+// float32 vectors. Returns 0 when either vector has zero magnitude or the lengths differ.
 func CosineSimilarity(a, b []float32) float64 {
+	if len(a) != len(b) {
+		slog.Error("[embeddings] CosineSimilarity: dimension mismatch — returning 0", "lenA", len(a), "lenB", len(b))
+		return 0
+	}
 	var dot, magA, magB float64
 	for i := range a {
 		ai, bi := float64(a[i]), float64(b[i])

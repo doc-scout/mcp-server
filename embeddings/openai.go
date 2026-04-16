@@ -69,7 +69,10 @@ func (p *openAIProvider) Embed(ctx context.Context, texts []string) ([][]float32
 }
 
 func (p *openAIProvider) embedBatch(ctx context.Context, texts []string) ([][]float32, error) {
-	body, _ := json.Marshal(openAIEmbedRequest{Input: texts, Model: p.model})
+	body, err := json.Marshal(openAIEmbedRequest{Input: texts, Model: p.model})
+	if err != nil {
+		return nil, fmt.Errorf("openai embed: marshal: %w", err)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/embeddings", bytes.NewReader(body))
 	if err != nil {
 		return nil, err

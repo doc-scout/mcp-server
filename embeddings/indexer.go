@@ -5,6 +5,7 @@ package embeddings
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"sync"
@@ -61,6 +62,8 @@ func (idx *Indexer) IndexDocs(ctx context.Context, repoFullName string) {
 		return
 	}
 
+	// TODO(perf): loads all doc embeddings for this model key; for large deployments consider
+	// loading only the rows matching this repo to reduce memory pressure.
 	existing, err := idx.store.LoadDocEmbeddings(idx.provider.ModelKey())
 	if err != nil {
 		slog.Error("[embeddings] IndexDocs: load existing", "error", err)
@@ -88,7 +91,11 @@ func (idx *Indexer) IndexDocs(ctx context.Context, repoFullName string) {
 		}
 		vectors, err := idx.provider.Embed(ctx, texts)
 		if err != nil {
-			slog.Error("[embeddings] IndexDocs: embed batch", "repo", repoFullName, "error", err)
+			if errors.Is(err, ErrRateLimit) {
+				slog.Warn("[embeddings] IndexDocs: rate limit hit; remaining docs will be retried on next scan", "repo", repoFullName)
+			} else {
+				slog.Error("[embeddings] IndexDocs: embed batch", "repo", repoFullName, "error", err)
+			}
 			continue
 		}
 		for j, d := range batch {
@@ -132,6 +139,8 @@ func (idx *Indexer) IndexEntities(ctx context.Context, names []string) {
 		return
 	}
 
+	// TODO(perf): loads all entity embeddings for this model key; for large deployments consider
+	// loading only the named entities to reduce memory pressure.
 	existing, err := idx.store.LoadEntityEmbeddings(idx.provider.ModelKey())
 	if err != nil {
 		slog.Error("[embeddings] IndexEntities: load existing", "error", err)
@@ -164,12 +173,30 @@ func (idx *Indexer) IndexEntities(ctx context.Context, names []string) {
 		}
 		vectors, err := idx.provider.Embed(ctx, texts)
 		if err != nil {
-			slog.Error("[embeddings] IndexEntities: embed batch", "error", err)
+			if errors.Is(err, ErrRateLimit) {
+				slog.Warn("[embeddings] IndexEntities: rate limit hit; remaining entities will be retried on next mutation")
+			} else {
+				slog.Error("[embeddings] IndexEntities: embed batch", "error", err)
+			}
 			continue
 		}
 		for j, it := range batch {
 			if err := idx.store.UpsertEntity(it.name, sha256hex(it.text), idx.provider.ModelKey(), vectors[j]); err != nil {
 				slog.Error("[embeddings] IndexEntities: upsert", "entity", it.name, "error", err)
+			}
+		}
+	}
+
+	// Remove embedding rows for entities that were requested but no longer exist in the graph.
+	// This handles the delete_entities case: deleted entities won't appear in OpenNodes results.
+	foundInGraph := make(map[string]bool, len(kg.Entities))
+	for _, e := range kg.Entities {
+		foundInGraph[e.Name] = true
+	}
+	for _, name := range names {
+		if !foundInGraph[name] {
+			if err := idx.store.DeleteEntityByName(name); err != nil {
+				slog.Error("[embeddings] IndexEntities: delete stale", "entity", name, "error", err)
 			}
 		}
 	}

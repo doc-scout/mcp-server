@@ -54,7 +54,10 @@ func (p *ollamaProvider) Embed(ctx context.Context, texts []string) ([][]float32
 }
 
 func (p *ollamaProvider) embedOne(ctx context.Context, text string) ([]float32, error) {
-	body, _ := json.Marshal(ollamaEmbedRequest{Model: p.model, Input: text})
+	body, err := json.Marshal(ollamaEmbedRequest{Model: p.model, Input: text})
+	if err != nil {
+		return nil, fmt.Errorf("ollama embed: marshal: %w", err)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/api/embed", bytes.NewReader(body))
 	if err != nil {
 		return nil, err

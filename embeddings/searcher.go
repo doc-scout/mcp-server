@@ -93,6 +93,8 @@ func (ss *SemanticSearcher) SearchDocs(ctx context.Context, query, repo string, 
 		return nil, 0, fmt.Errorf("load doc embeddings: %w", err)
 	}
 
+	// TODO(perf): when repo is "", this loads the entire content cache for hash-freshness
+	// checking. For large deployments, consider loading only the doc IDs present in `stored`.
 	current, err := ss.docs.ListDocs(repo)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list docs: %w", err)
