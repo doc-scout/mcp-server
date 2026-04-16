@@ -13,25 +13,25 @@ import (
 )
 
 type dbDocEmbedding struct {
-	DocID       string    `gorm:"primaryKey"`
-	ContentHash string    `gorm:"not null"`
+	DocID       string `gorm:"primaryKey"`
+	ContentHash string `gorm:"not null"`
 	// Vector stores []float32 as little-endian IEEE 754 bytes.
 	// This field is STALE when ContentHash no longer matches sha256hex(current doc content)
 	// or when ModelKey differs from the active provider. Re-indexed automatically on next scan.
-	Vector      []byte    `gorm:"not null"`
-	ModelKey    string    `gorm:"not null;index"`
-	UpdatedAt   time.Time `gorm:"not null"`
+	Vector    []byte    `gorm:"not null"`
+	ModelKey  string    `gorm:"not null;index"`
+	UpdatedAt time.Time `gorm:"not null"`
 }
 
 type dbEntityEmbedding struct {
-	EntityName string    `gorm:"primaryKey"`
-	ObsHash    string    `gorm:"not null"`
+	EntityName string `gorm:"primaryKey"`
+	ObsHash    string `gorm:"not null"`
 	// Vector stores []float32 as little-endian IEEE 754 bytes.
 	// This field is STALE when ObsHash no longer matches sha256hex(EntityText(current entity))
 	// or when ModelKey differs from the active provider. Re-indexed on next mutation.
-	Vector     []byte    `gorm:"not null"`
-	ModelKey   string    `gorm:"not null;index"`
-	UpdatedAt  time.Time `gorm:"not null"`
+	Vector    []byte    `gorm:"not null"`
+	ModelKey  string    `gorm:"not null;index"`
+	UpdatedAt time.Time `gorm:"not null"`
 }
 
 // VectorStore persists and retrieves float32 embedding vectors in the existing DB.

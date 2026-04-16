@@ -5,6 +5,7 @@ package embeddings
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -79,7 +80,7 @@ func (ss *SemanticSearcher) IndexDocs(ctx context.Context, repo string) {
 // repo may be empty to search all repos. Returns stale count alongside results.
 func (ss *SemanticSearcher) SearchDocs(ctx context.Context, query, repo string, topK int) ([]DocResult, int, error) {
 	if ss.provider == nil {
-		return nil, 0, fmt.Errorf(disabledMsg)
+		return nil, 0, errors.New(disabledMsg)
 	}
 
 	vecs, err := ss.provider.Embed(ctx, []string{query})
@@ -156,7 +157,7 @@ func (ss *SemanticSearcher) SearchDocs(ctx context.Context, query, repo string, 
 // SearchEntities returns the top-k semantically similar knowledge graph entities.
 func (ss *SemanticSearcher) SearchEntities(ctx context.Context, query string, topK int) ([]EntityResult, int, error) {
 	if ss.provider == nil {
-		return nil, 0, fmt.Errorf(disabledMsg)
+		return nil, 0, errors.New(disabledMsg)
 	}
 
 	vecs, err := ss.provider.Embed(ctx, []string{query})
