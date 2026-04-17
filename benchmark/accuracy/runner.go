@@ -45,11 +45,11 @@ type GroundTruth struct {
 
 // ParserStats holds accuracy metrics for one parser type.
 type ParserStats struct {
-	Type        string
-	TP, FP, FN  int
-	Precision   float64
-	Recall      float64
-	F1          float64
+	Type       string
+	TP, FP, FN int
+	Precision  float64
+	Recall     float64
+	F1         float64
 }
 
 // Results holds accuracy results across all parser types.

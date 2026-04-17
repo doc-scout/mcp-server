@@ -23,11 +23,11 @@ type LiveRunner struct {
 
 // LiveResult holds token measurements for a single question comparison.
 type LiveResult struct {
-	Index         int
-	Question      string
-	DocScoutToks  int
-	NaiveToks     int
-	SavingsPct    float64
+	Index        int
+	Question     string
+	DocScoutToks int
+	NaiveToks    int
+	SavingsPct   float64
 }
 
 // NewLiveRunner creates a LiveRunner. It reads the API key from ANTHROPIC_API_KEY
