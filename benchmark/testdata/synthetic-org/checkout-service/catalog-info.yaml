@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: checkout-service
+spec:
+  type: service
+  lifecycle: production
+  owner: checkout-team
+  dependsOn:
+    - component:billing-service

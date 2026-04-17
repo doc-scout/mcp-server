@@ -1,0 +1,6 @@
+spring:
+  kafka:
+    producer:
+      topic: payment.completed
+    consumer:
+      topics: order.created

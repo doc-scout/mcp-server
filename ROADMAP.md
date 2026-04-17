@@ -163,3 +163,23 @@ Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, g
 **Complements**: `#14 Graph Traversal` (traverse_graph works over the new edges once both are implemented).
 
 **Spec**: `docs/superpowers/specs/2026-04-03-integration-topology-discovery-design.md`
+
+### 20. Benchmark Suite
+
+**Goal:** Accuracy (F1 per parser) and token-efficiency benchmarks shipped as `benchmark/RESULTS.md`. Synthetic corpus with committed ground truth. `make benchmark` (no API key) and `make benchmark-live` (Claude API).
+
+### 21. `--benchmark` CLI Mode
+
+**Goal:** Users run `docscout-mcp --benchmark --org myorg` against their own GitHub org and get a shareable markdown report with accuracy F1 and token savings percentages.
+
+### 22. GitHub Actions Action
+
+**Goal:** `docscout-action` — run a DocScout scan in CI and post graph insights as PR comments. Enables teams to see dependency and ownership changes on every PR.
+
+### 23. LLM Eval Harness
+
+**Goal:** Answer-quality evaluation using an LLM judge (beyond token counting). Measures correctness of AI responses, not just cost. Reproducible eval set with expected answers for the canonical question corpus.
+
+### 24. OpenTelemetry Traces
+
+**Goal:** Distributed tracing for production multi-tenant deployments. One span per tool call, per scan, per indexer phase. Compatible with Jaeger, Grafana Tempo, and cloud providers.
