@@ -38,7 +38,7 @@ You can also configure it globally in VS Code. See [vscode.md](vscode.md) for th
         "-e", "GITHUB_TOKEN=github_pat_...",
         "-e", "GITHUB_ORG=my-org", 
         "-e", "SCAN_INTERVAL=1h",
-        "ghcr.io/your-username/docscout-mcp:latest"
+        "ghcr.io/leonancarvalho/docscout-mcp:latest"
       ]
     }
   }

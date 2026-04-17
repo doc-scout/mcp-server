@@ -261,13 +261,23 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 			Description: `Traverses the knowledge graph from a starting entity, following directed edges up to a given depth.
 
+
+
 Use this instead of read_graph when you need to answer focused questions about a specific service — it returns only the relevant subgraph without loading every entity.
+
+
 
 Examples:
 
+
+
   direction=outgoing, relation_type=depends_on  → transitive dependency tree of a service
 
+
+
   direction=incoming, relation_type=consumes_api → all services that consume a given API
+
+
 
   direction=both, depth=2                        → full two-hop neighbourhood of a service`,
 		}, withMetrics("traverse_graph", metrics, withRecovery("traverse_graph", traverseGraphHandler(graph))))
@@ -297,17 +307,31 @@ Examples:
 
 			Description: `Finds the shortest connection path between two entities in the knowledge graph using undirected BFS.
 
+
+
 Returns the ordered sequence of directed edges (from, relationType, to) that connect them, regardless of edge direction.
+
+
 
 Use this to answer:
 
+
+
   - "How does service A connect to service B?"
+
+
 
   - "Is there any dependency chain between payment-svc and auth-svc?"
 
+
+
   - "What is the relationship path between team X and service Y?"
 
+
+
 Returns found=false and an empty path when no connection exists within max_depth hops.
+
+
 
 Complement to traverse_graph (which explores from one end) and get_integration_map (which shows a single service's topology).`,
 		}, withMetrics("find_path", metrics, withRecovery("find_path", findPathHandler(graph))))
@@ -326,10 +350,14 @@ Complement to traverse_graph (which explores from one end) and get_integration_m
 	// --- Semantic Search (Plus) ---
 
 	if semantic != nil {
+
 		mcp.AddTool(s, &mcp.Tool{
-			Name:        "semantic_search",
+
+			Name: "semantic_search",
+
 			Description: "Runs a natural-language semantic search over indexed documentation content and/or knowledge graph entities using vector embeddings. Returns results ranked by cosine similarity. Requires the server to be started with DOCSCOUT_EMBED_OPENAI_KEY or DOCSCOUT_EMBED_OLLAMA_URL set. Use 'target' to choose 'content', 'entities', or 'both'. Check stale_docs/stale_entities to know how many items are pending re-indexing.",
 		}, withMetrics("semantic_search", metrics, withRecovery("semantic_search", semanticSearchHandler(semantic))))
+
 	}
 
 }

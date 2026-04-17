@@ -4,7 +4,7 @@
 BINARY      := docscout-mcp
 IMAGE       := ghcr.io/leonancarvalho/docscout-mcp
 VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-GOFLAGS     := -ldflags="-s -w -X main.version=$(VERSION)"
+GOFLAGS     := -ldflags="-s -w -X main.serverVersion=$(VERSION)"
 PLATFORMS   := linux/amd64 linux/arm64
 
 .PHONY: help build test lint vet vuln clean \

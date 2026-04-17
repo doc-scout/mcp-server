@@ -1,4 +1,5 @@
 // Copyright 2026 Leonan Carvalho
+
 // SPDX-License-Identifier: AGPL-3.0-only
 
 package tools
@@ -16,11 +17,19 @@ type ListEntitiesArgs struct {
 }
 
 func listEntitiesHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallToolRequest, args ListEntitiesArgs) (*mcp.CallToolResult, memory.KnowledgeGraph, error) {
+
 	return func(ctx context.Context, req *mcp.CallToolRequest, args ListEntitiesArgs) (*mcp.CallToolResult, memory.KnowledgeGraph, error) {
+
 		g, err := graph.ListEntities(args.EntityType)
+
 		if err != nil {
+
 			return nil, memory.KnowledgeGraph{}, err
+
 		}
+
 		return nil, g, nil
+
 	}
+
 }

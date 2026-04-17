@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-DocScout-MCP exposes **22 MCP tools** across three categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
+DocScout-MCP exposes **23 MCP tools** across three categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
 
 !!! note "Tool availability"
     `search_content` is only registered when `SCAN_CONTENT=true` on a persistent `DATABASE_URL`.

@@ -37,13 +37,13 @@ graph LR
     GH -->|"GitHub API + Webhooks"| S
     S --> P
     P -->|"entities + relations"| G
-    G -->|"15 MCP tools"| AI
+    G -->|"23 MCP tools"| AI
 ```
 
 1. **Scan** — Crawls every repo in your org: docs, manifests, infra files, and root tooling files. Repeats on a configurable interval and reacts to GitHub webhooks for instant updates.
 2. **Parse** — Extracts services, owners, dependencies, and relations from `go.mod`, `pom.xml`, `package.json`, `CODEOWNERS`, `catalog-info.yaml`, and more.
 3. **Graph** — Persists everything as entities and relations in SQLite or PostgreSQL, surviving restarts.
-4. **Answer** — AI clients query the graph via 15 MCP tools. No file-reading loops, no token waste, no guessing.
+4. **Answer** — AI clients query the graph via 23 MCP tools. No file-reading loops, no token waste, no guessing.
 
 ---
 
@@ -86,12 +86,12 @@ Grant **Read-only** access to `Contents` and `Metadata` for your org's repositor
 claude mcp add --transport stdio \
   --env GITHUB_TOKEN=github_pat_... \
   --env GITHUB_ORG=my-org \
-  docscout-mcp -- go run github.com/your-username/docscout-mcp@latest
+  docscout-mcp -- go run github.com/leonancarvalho/docscout-mcp@latest
 ```
 
 **Or build and run locally:**
 ```bash
-git clone https://github.com/your-username/docscout-mcp
+git clone https://github.com/leonancarvalho/docscout-mcp
 cd docscout-mcp
 
 GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run .
@@ -102,7 +102,7 @@ GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run .
 docker run -i \
   -e GITHUB_TOKEN="github_pat_..." \
   -e GITHUB_ORG="my-org" \
-  ghcr.io/your-username/docscout-mcp:latest
+  ghcr.io/leonancarvalho/docscout-mcp:latest
 ```
 
 ### 3. Ask Away
@@ -114,26 +114,33 @@ docker run -i \
 
 ---
 
-## MCP Tools (15)
+## MCP Tools (23)
 
 | Category | Tool | What it does |
 |---|---|---|
-| **Scanner** | `list_repos` | All repos with indexed files |
+| **Scanner** | `list_repos` | All repos with indexed files, filterable by type |
 | | `search_docs` | Search file paths and repo names |
 | | `get_file_content` | Raw content of any indexed file (path-traversal protected) |
 | | `get_scan_status` | Scanner state, last scan time, cache size |
+| | `trigger_scan` | Queue an immediate full scan without waiting for next interval |
 | | `search_content` | Full-text search across cached docs (`SCAN_CONTENT=true`) |
 | **Knowledge Graph** | `create_entities` | Add nodes to the graph |
 | | `create_relations` | Add directed edges between nodes |
 | | `add_observations` | Append facts to existing entities |
+| | `update_entity` | Rename an entity or change its type atomically |
 | | `read_graph` | Return the full graph |
+| | `list_entities` | List all entities, optionally filtered by type |
+| | `list_relations` | List relations, filtered by type and/or source entity |
 | | `search_nodes` | Search by name, type, or observation |
 | | `open_nodes` | Retrieve entities with their relations |
 | | `traverse_graph` | BFS traversal: impact analysis, dependency chains |
+| | `find_path` | Shortest connection path between two entities |
+| | `get_integration_map` | Full integration topology of a service in one call |
 | | `delete_entities` | Remove entities (> 10 requires `confirm: true`) |
 | | `delete_observations` | Remove specific facts |
 | | `delete_relations` | Remove specific edges |
 | **Observability** | `get_usage_stats` | Per-tool call counts + top 20 most-fetched docs |
+| **Semantic Search** | `semantic_search` | Natural-language vector search (requires embedding provider) |
 
 ---
 
@@ -228,3 +235,7 @@ Review the [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md) and `AGENTS.
 ## License
 
 GNU AGPL v3
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind. AI-generated output depends on indexed repository data — always verify before acting on it. See [DISCLAIMER.md](DISCLAIMER.md) for full details.
