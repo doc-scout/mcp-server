@@ -81,6 +81,7 @@ const (
 	defaultScanInterval = 30 * time.Minute
 
 	defaultMaxContent = 200 * 1024 // 200 KB
+
 )
 
 var serverVersion = "dev" // set at build time via -ldflags "-X main.serverVersion=<tag>"
@@ -353,25 +354,43 @@ func main() {
 	}
 
 	// --- Semantic Search Plus ---
+
 	embCfg := embeddings.ConfigFromEnv()
+
 	embProvider := embeddings.NewProvider(embCfg)
 
 	var semanticSrv tools.SemanticSearch
+
 	if embProvider != nil {
+
 		embStore, err := embeddings.NewVectorStore(db)
+
 		if err != nil {
+
 			slog.Error("Failed to create vector store", "error", err)
+
 			os.Exit(1)
+
 		}
+
 		var docSrc embeddings.DocStore
+
 		if contentCache != nil {
+
 			docSrc = contentCache
+
 		}
+
 		embIndexer := embeddings.NewIndexer(embProvider, embStore, docSrc, memorySrv)
+
 		semanticSrv = embeddings.NewSemanticSearcher(embProvider, embStore, embIndexer, docSrc, memorySrv)
+
 		slog.Info("[embeddings] Semantic search enabled", "provider", embProvider.ModelKey())
+
 	} else {
+
 		slog.Info("[embeddings] Semantic search disabled (no DOCSCOUT_EMBED_OPENAI_KEY or DOCSCOUT_EMBED_OLLAMA_URL)")
+
 	}
 
 	// --- Tool Metrics ---
@@ -411,9 +430,13 @@ func main() {
 		slog.Info("Triggered tools/list_changed notification")
 
 		if semanticSrv != nil {
+
 			for _, repo := range repos {
+
 				go semanticSrv.IndexDocs(context.Background(), repo.FullName)
+
 			}
+
 		}
 
 	})
