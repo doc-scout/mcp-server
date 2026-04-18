@@ -1,7 +1,7 @@
 # DocScout-MCP Benchmark Results
 
-<!-- generated_at: 2026-04-17T20:31:12Z -->
-<!-- docscout_version: dev -->
+<!-- generated_at: 2026-04-18T04:02:19Z -->
+<!-- docscout_version: 54a3226 -->
 
 > Reproduce: `make benchmark` (theoretical) or `make benchmark-live` (requires `ANTHROPIC_API_KEY`)
 
