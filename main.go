@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/oauth2"
 
+	benchmarkcmd "github.com/leonancarvalho/docscout-mcp/benchmark/cmd"
 	"github.com/leonancarvalho/docscout-mcp/embeddings"
 	"github.com/leonancarvalho/docscout-mcp/health"
 	"github.com/leonancarvalho/docscout-mcp/indexer"
@@ -153,6 +154,10 @@ func isInMemoryDB(dbURL string) bool {
 }
 
 func main() {
+
+	if len(os.Args) > 1 && os.Args[1] == "--benchmark" {
+		os.Exit(benchmarkcmd.Run(os.Args[2:]))
+	}
 
 	// Configure slog to write to stderr to prevent MCP stdio corruption
 

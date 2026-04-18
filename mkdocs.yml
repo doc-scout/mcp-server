@@ -51,6 +51,11 @@ nav:
     - Google Gemini CLI: gemini.md
     - Antigravity: antigravity.md
   - MCP Tools Reference: tools-reference.md
+  - Benchmarks: benchmarks.md
+  - Examples:
+    - Ownership Queries: examples/ownership-queries.md
+    - Impact Analysis: examples/impact-analysis.md
+    - Dependency Audits: examples/dependency-audit.md
   - Development:
     - Contributing: contributing.md
     - Development Guidelines: DEVELOPMENT_GUIDELINES.md

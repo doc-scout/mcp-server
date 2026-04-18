@@ -1,0 +1,14 @@
+[
+  "Which services depend on billing-service?",
+  "Who owns the checkout service?",
+  "What would break if database goes down?",
+  "List all services that expose a gRPC endpoint",
+  "Which repos have no CODEOWNERS?",
+  "What Go services depend on billing-service directly?",
+  "Which teams own more than one service?",
+  "What events does payment-worker publish?",
+  "Find the shortest dependency path from checkout-service to database",
+  "Which services have no OpenAPI spec?",
+  "What is the Go version of billing-service?",
+  "List all services that depend on kafka-client"
+]

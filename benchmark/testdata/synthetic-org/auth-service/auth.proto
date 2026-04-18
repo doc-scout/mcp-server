@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+}
+
+message VerifyRequest { string token = 1; }
+message VerifyResponse { bool valid = 1; }

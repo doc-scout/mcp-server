@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-service
+spec:
+  template:
+    spec:
+      containers:
+        - name: checkout-service
+          env:
+            - name: BILLING_SERVICE_URL
+              value: http://billing-service:8080

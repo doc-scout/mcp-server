@@ -12,7 +12,8 @@ PLATFORMS   := linux/amd64 linux/arm64
         docker-build docker-push docker-run \
         compose-up compose-down compose-logs \
         k8s-deploy k8s-delete helm-install helm-upgrade helm-uninstall \
-        release
+        release \
+        benchmark benchmark-live benchmark-dry
 
 # ── Default target ─────────────────────────────────────────────────────────────
 help: ## Show this help message
@@ -43,6 +44,18 @@ test-verbose: ## Run all tests with verbose output
 
 test-race: ## Run tests with race detector
 	go test -race ./...
+
+benchmark: build ## Run theoretical benchmark (no API key needed)
+	./$(BINARY) --benchmark --version $(VERSION) --output benchmark/RESULTS.md
+	@echo "Results written to benchmark/RESULTS.md"
+
+benchmark-live: build ## Run live benchmark (requires ANTHROPIC_API_KEY)
+	@if [ -z "$$ANTHROPIC_API_KEY" ]; then echo "Error: ANTHROPIC_API_KEY not set"; exit 1; fi
+	./$(BINARY) --benchmark --mode live --version $(VERSION) --output benchmark/RESULTS.md
+	@echo "Live results written to benchmark/RESULTS.md"
+
+benchmark-dry: build ## Show benchmark plan without running
+	./$(BINARY) --benchmark --dry-run
 
 lint: ## Run golangci-lint
 	golangci-lint run

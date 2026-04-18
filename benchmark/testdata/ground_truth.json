@@ -1,0 +1,201 @@
+{
+  "version": "1.0",
+  "cases": [
+    {
+      "id": "billing-gomod",
+      "parser": "gomod",
+      "input_file": "synthetic-org/billing-service/go.mod",
+      "expected_entity_name": "billing-service",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "go_module:github.com/synth-org/billing-service",
+        "go_version:1.22"
+      ],
+      "expected_rels": [
+        {"from": "billing-service", "to": "database", "type": "depends_on"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "billing-codeowners",
+      "parser": "codeowners",
+      "input_file": "synthetic-org/billing-service/CODEOWNERS",
+      "expected_entity_name": "",
+      "expected_entity_type": "",
+      "expected_obs_subset": [],
+      "expected_rels": [
+        {"from": "payments-team", "to": "", "type": "owns"}
+      ],
+      "expected_aux": [
+        {"name": "payments-team", "type": "team"}
+      ]
+    },
+    {
+      "id": "billing-openapi",
+      "parser": "openapi",
+      "input_file": "synthetic-org/billing-service/openapi.yaml",
+      "expected_entity_name": "Billing API",
+      "expected_entity_type": "api",
+      "expected_obs_subset": [
+        "_integration_source:openapi",
+        "version:1.0.0",
+        "paths:1"
+      ],
+      "expected_rels": [
+        {"from": "", "to": "Billing API", "type": "exposes_api"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "checkout-gomod",
+      "parser": "gomod",
+      "input_file": "synthetic-org/checkout-service/go.mod",
+      "expected_entity_name": "checkout-service",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "go_module:github.com/synth-org/checkout-service",
+        "go_version:1.22"
+      ],
+      "expected_rels": [
+        {"from": "checkout-service", "to": "database", "type": "depends_on"},
+        {"from": "checkout-service", "to": "billing-service", "type": "depends_on"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "checkout-catalog",
+      "parser": "catalog-info",
+      "input_file": "synthetic-org/checkout-service/catalog-info.yaml",
+      "expected_entity_name": "checkout-service",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "lifecycle:production"
+      ],
+      "expected_rels": [
+        {"from": "checkout-service", "to": "checkout-team", "type": "owned_by"},
+        {"from": "checkout-service", "to": "component:billing-service", "type": "depends_on"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "payment-worker-pom",
+      "parser": "pomxml",
+      "input_file": "synthetic-org/payment-worker/pom.xml",
+      "expected_entity_name": "payment-worker",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "maven_artifact:org.synth:payment-worker",
+        "java_group:org.synth",
+        "version:2.1.0"
+      ],
+      "expected_rels": [
+        {"from": "payment-worker", "to": "kafka-client", "type": "depends_on"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "payment-worker-asyncapi",
+      "parser": "asyncapi",
+      "input_file": "synthetic-org/payment-worker/asyncapi.yaml",
+      "expected_entity_name": "payment-worker",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "_integration_source:asyncapi"
+      ],
+      "expected_rels": [
+        {"from": "payment-worker", "to": "payment.completed", "type": "publishes_event"}
+      ],
+      "expected_aux": [
+        {"name": "payment.completed", "type": "event-topic"}
+      ]
+    },
+    {
+      "id": "frontend-packagejson",
+      "parser": "packagejson",
+      "input_file": "synthetic-org/frontend-app/package.json",
+      "expected_entity_name": "frontend-app",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "npm_package:frontend-app",
+        "version:1.0.0"
+      ],
+      "expected_rels": [
+        {"from": "frontend-app", "to": "react", "type": "depends_on"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "frontend-codeowners",
+      "parser": "codeowners",
+      "input_file": "synthetic-org/frontend-app/CODEOWNERS",
+      "expected_entity_name": "",
+      "expected_entity_type": "",
+      "expected_obs_subset": [],
+      "expected_rels": [
+        {"from": "alice", "to": "", "type": "owns"}
+      ],
+      "expected_aux": [
+        {"name": "alice", "type": "person"}
+      ]
+    },
+    {
+      "id": "auth-gomod",
+      "parser": "gomod",
+      "input_file": "synthetic-org/auth-service/go.mod",
+      "expected_entity_name": "auth-service",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "go_module:github.com/synth-org/auth-service",
+        "go_version:1.22"
+      ],
+      "expected_rels": [],
+      "expected_aux": []
+    },
+    {
+      "id": "auth-proto",
+      "parser": "proto",
+      "input_file": "synthetic-org/auth-service/auth.proto",
+      "expected_entity_name": "",
+      "expected_entity_type": "",
+      "expected_obs_subset": [
+        "_integration_source:proto",
+        "proto_package:auth"
+      ],
+      "expected_rels": [
+        {"from": "", "to": "AuthService", "type": "provides_grpc"}
+      ],
+      "expected_aux": [
+        {"name": "AuthService", "type": "grpc-service"}
+      ]
+    },
+    {
+      "id": "payment-worker-springkafka",
+      "parser": "spring-kafka",
+      "input_file": "synthetic-org/payment-worker/application.yml",
+      "expected_entity_name": "",
+      "expected_entity_type": "",
+      "expected_obs_subset": [
+        "_integration_source:spring-kafka"
+      ],
+      "expected_rels": [
+        {"from": "", "to": "payment.completed", "type": "publishes_event"},
+        {"from": "", "to": "order.created", "type": "subscribes_event"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "checkout-k8s",
+      "parser": "k8s",
+      "input_file": "synthetic-org/checkout-service/k8s/deployment.yaml",
+      "expected_entity_name": "",
+      "expected_entity_type": "",
+      "expected_obs_subset": [
+        "_integration_source:k8s-env"
+      ],
+      "expected_rels": [
+        {"from": "", "to": "billing-service", "type": "calls_service"}
+      ],
+      "expected_aux": []
+    }
+  ]
+}

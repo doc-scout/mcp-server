@@ -11,6 +11,8 @@ An [MCP](https://modelcontextprotocol.io) server written in Go that continuously
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet)](https://modelcontextprotocol.io)
+[![Token Savings](https://img.shields.io/badge/token--savings-93%25-brightgreen)](benchmark/RESULTS.md)
+[![Graph Accuracy F1](https://img.shields.io/badge/graph--accuracy-F1%201.00-blue)](benchmark/RESULTS.md)
 
 </div>
 
@@ -46,6 +48,16 @@ graph LR
 4. **Answer** — AI clients query the graph via 23 MCP tools. No file-reading loops, no token waste, no guessing.
 
 ---
+
+## Why DocScout?
+
+| Approach | Accuracy | Token Cost | Setup |
+|---|---|---|---|
+| AI reads files raw | Hallucination-prone | ~27,000/question | None |
+| Backstage catalog | High (manual) | Medium | Heavy (infra team) |
+| **DocScout-MCP** | **Verified (F1 1.00)** | **~290/question** | **5 minutes** |
+
+DocScout pre-computes the answer graph from your repos so your AI never reads files to answer architecture questions. See [benchmark/RESULTS.md](benchmark/RESULTS.md) for methodology.
 
 ## See It In Action
 
