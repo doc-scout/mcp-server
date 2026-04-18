@@ -22,7 +22,7 @@ jobs:
         with:
           # Check out the branch the release targets (usually main) so the
           # auto-commit action can push RESULTS.md back instead of a detached HEAD.
-          ref: ${{ github.event.release.target_commitish || 'main' }}
+          ref: ${{ github.event.release.target_commitish || github.ref || 'main' }}
           fetch-depth: 0
 
       - uses: actions/setup-go@v5
