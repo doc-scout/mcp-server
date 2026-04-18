@@ -10,6 +10,12 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Benchmark mode'
+        type: choice
+        options: [theoretical, live]
+        default: theoretical
 
 permissions:
   contents: write
@@ -32,7 +38,12 @@ jobs:
       - name: Run benchmark
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: make benchmark-live VERSION=${{ github.ref_name }}
+        run: |
+          if [ "${{ github.event.inputs.mode }}" = "theoretical" ]; then
+            make benchmark VERSION=${{ github.ref_name }}
+          else
+            make benchmark-live VERSION=${{ github.ref_name }}
+          fi
 
       - name: Commit updated RESULTS.md
         uses: stefanzweifel/git-auto-commit-action@v5
