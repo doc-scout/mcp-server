@@ -28,18 +28,18 @@ var filesNeededNaive = [12]int{
 // docScoutTypicalTokens is the estimated token count of a DocScout tool response
 // for each canonical question (index-matched).
 var docScoutTypicalTokens = [12]int{
-	320,  // traverse_graph result: 1-2 entity JSON objects
-	180,  // open_nodes result: 1 entity with owner relation
-	450,  // traverse_graph depth=2 result
-	280,  // list_entities filtered by type=grpc-service
-	210,  // list_repos with no CODEOWNERS flag
-	300,  // search_nodes + traverse_graph
-	240,  // list_entities type=team + traverse_graph
-	190,  // get_integration_map for payment-worker
-	380,  // find_path result
-	220,  // list_repos filtered
-	150,  // open_nodes for billing-service, read go_version obs
-	290,  // search_nodes kafka-client + traverse_graph incoming
+	320, // traverse_graph result: 1-2 entity JSON objects
+	180, // open_nodes result: 1 entity with owner relation
+	450, // traverse_graph depth=2 result
+	280, // list_entities filtered by type=grpc-service
+	210, // list_repos with no CODEOWNERS flag
+	300, // search_nodes + traverse_graph
+	240, // list_entities type=team + traverse_graph
+	190, // get_integration_map for payment-worker
+	380, // find_path result
+	220, // list_repos filtered
+	150, // open_nodes for billing-service, read go_version obs
+	290, // search_nodes kafka-client + traverse_graph incoming
 }
 
 // EstimateNaiveTokens returns the estimated token cost for a naive AI (no DocScout)
