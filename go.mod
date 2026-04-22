@@ -1,4 +1,4 @@
-module github.com/leonancarvalho/docscout-mcp
+module github.com/doc-scout/mcp-server
 
 go 1.26.1
 

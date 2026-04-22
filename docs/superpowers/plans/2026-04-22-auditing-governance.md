@@ -12,24 +12,25 @@
 
 ## File Map
 
-| File | Action | Responsibility |
-|---|---|---|
-| `memory/audit_store.go` | Create | `AuditEvent` model, `AuditFilter`, `AuditSummary`, `AuditStore` interface, `DBAuditStore` impl |
-| `memory/audit_store_test.go` | Create | Unit: write + query round-trip, UUIDv7 order, nil-safe no-op |
-| `tools/audit.go` | Modify | Add `agentFn func() string` + `store memory.AuditStore`; call `writeAuditEvent` after each mutation |
-| `tools/ports.go` | Modify | Add `AuditReader` read-only interface |
-| `tools/query_audit_log.go` | Create | `query_audit_log` MCP tool handler |
-| `tools/get_audit_summary.go` | Create | `get_audit_summary` MCP tool handler |
-| `tools/tools.go` | Modify | `Register` gains `auditReader AuditReader` param; register two new tools |
-| `tests/testutils/utils.go` | Modify | Update `SetupTestServer` call to pass `nil` audit reader |
-| `tests/audit/audit_test.go` | Create | Integration: mutation → query round-trip, risky events, HTTP endpoints |
-| `main.go` | Modify | Agent identity resolution; wire `AuditStore`; add `/audit` + `/audit/summary` routes |
+| File                         | Action | Responsibility                                                                                      |
+| ---------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| `memory/audit_store.go`      | Create | `AuditEvent` model, `AuditFilter`, `AuditSummary`, `AuditStore` interface, `DBAuditStore` impl      |
+| `memory/audit_store_test.go` | Create | Unit: write + query round-trip, UUIDv7 order, nil-safe no-op                                        |
+| `tools/audit.go`             | Modify | Add `agentFn func() string` + `store memory.AuditStore`; call `writeAuditEvent` after each mutation |
+| `tools/ports.go`             | Modify | Add `AuditReader` read-only interface                                                               |
+| `tools/query_audit_log.go`   | Create | `query_audit_log` MCP tool handler                                                                  |
+| `tools/get_audit_summary.go` | Create | `get_audit_summary` MCP tool handler                                                                |
+| `tools/tools.go`             | Modify | `Register` gains `auditReader AuditReader` param; register two new tools                            |
+| `tests/testutils/utils.go`   | Modify | Update `SetupTestServer` call to pass `nil` audit reader                                            |
+| `tests/audit/audit_test.go`  | Create | Integration: mutation → query round-trip, risky events, HTTP endpoints                              |
+| `main.go`                    | Modify | Agent identity resolution; wire `AuditStore`; add `/audit` + `/audit/summary` routes                |
 
 ---
 
 ### Task 1: AuditStore — data model + write + query + summary
 
 **Files:**
+
 - Create: `memory/audit_store.go`
 - Create: `memory/audit_store_test.go`
 
@@ -44,7 +45,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
+	"github.com/doc-scout/mcp-server/memory"
 )
 
 func TestAuditStore_WriteAndQuery(t *testing.T) {
@@ -337,6 +338,7 @@ git -c commit.gpgsign=false commit -m "feat: add AuditStore — UUIDv7-keyed aud
 ### Task 2: GraphAuditLogger — agent identity + write to store
 
 **Files:**
+
 - Modify: `tools/audit.go`
 - Modify: `tools/ports.go`
 
@@ -353,7 +355,7 @@ type AuditReader interface {
 }
 ```
 
-Add `"time"` and `"github.com/leonancarvalho/docscout-mcp/memory"` to the imports if not already present.
+Add `"time"` and `"github.com/doc-scout/mcp-server/memory"` to the imports if not already present.
 
 - [ ] **Step 2: Update `GraphAuditLogger` in `tools/audit.go`**
 
@@ -418,14 +420,14 @@ func (a *GraphAuditLogger) CreateEntities(entities []memory.Entity) ([]memory.En
 
 Apply the same pattern to all six mutation methods (`CreateRelations`, `AddObservations`, `DeleteEntities`, `DeleteObservations`, `DeleteRelations`, `UpdateEntity`), adjusting `tool`, `operation`, `targets`, and `count` for each:
 
-| Method | tool | operation | targets | count |
-|---|---|---|---|---|
-| `CreateRelations` | `"create_relations"` | `"create"` | `[]string{fmt.Sprintf("%d relations", len(relations))}` | `len(relations)` |
-| `AddObservations` | `"add_observations"` | `"add"` | `observationEntityNames(observations)` | `countObservations(observations)` |
-| `DeleteEntities` | `"delete_entities"` | `"delete"` | `entityNames` | `len(entityNames)` |
-| `DeleteObservations` | `"delete_observations"` | `"delete"` | `observationEntityNames(deletions)` | `len(deletions)` |
-| `DeleteRelations` | `"delete_relations"` | `"delete"` | `[]string{fmt.Sprintf("%d relations", len(relations))}` | `len(relations)` |
-| `UpdateEntity` | `"update_entity"` | `"update"` | `[]string{oldName}` | `1` |
+| Method               | tool                    | operation  | targets                                                 | count                             |
+| -------------------- | ----------------------- | ---------- | ------------------------------------------------------- | --------------------------------- |
+| `CreateRelations`    | `"create_relations"`    | `"create"` | `[]string{fmt.Sprintf("%d relations", len(relations))}` | `len(relations)`                  |
+| `AddObservations`    | `"add_observations"`    | `"add"`    | `observationEntityNames(observations)`                  | `countObservations(observations)` |
+| `DeleteEntities`     | `"delete_entities"`     | `"delete"` | `entityNames`                                           | `len(entityNames)`                |
+| `DeleteObservations` | `"delete_observations"` | `"delete"` | `observationEntityNames(deletions)`                     | `len(deletions)`                  |
+| `DeleteRelations`    | `"delete_relations"`    | `"delete"` | `[]string{fmt.Sprintf("%d relations", len(relations))}` | `len(relations)`                  |
+| `UpdateEntity`       | `"update_entity"`       | `"update"` | `[]string{oldName}`                                     | `1`                               |
 
 Add `"context"` and `"fmt"` to imports in `tools/audit.go` if not already present.
 
@@ -463,6 +465,7 @@ git -c commit.gpgsign=false commit -m "feat: GraphAuditLogger — agent identity
 ### Task 3: `query_audit_log` MCP tool
 
 **Files:**
+
 - Create: `tools/query_audit_log.go`
 - Modify: `tools/tools.go` (Register signature + tool registration)
 - Modify: `tests/testutils/utils.go` (fix Register call)
@@ -482,7 +485,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
+	"github.com/doc-scout/mcp-server/memory"
 )
 
 const auditDisabledMsg = "audit persistence not enabled — set DATABASE_URL to a persistent store"
@@ -596,6 +599,7 @@ git -c commit.gpgsign=false commit -m "feat: add query_audit_log MCP tool"
 ### Task 4: `get_audit_summary` MCP tool
 
 **Files:**
+
 - Create: `tools/get_audit_summary.go`
 - Modify: `tools/tools.go` (register the new tool)
 
@@ -614,7 +618,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
+	"github.com/doc-scout/mcp-server/memory"
 )
 
 // GetAuditSummaryArgs are the input parameters for get_audit_summary.
@@ -683,6 +687,7 @@ git -c commit.gpgsign=false commit -m "feat: add get_audit_summary MCP tool with
 ### Task 5: Wire `AuditStore` + HTTP endpoints in `main.go`
 
 **Files:**
+
 - Modify: `main.go`
 
 - [ ] **Step 1: Add agent identity resolution and AuditStore wiring to `main.go`**
@@ -857,6 +862,7 @@ git -c commit.gpgsign=false commit -m "feat: wire AuditStore to GraphAuditLogger
 ### Task 6: Integration tests
 
 **Files:**
+
 - Create: `tests/audit/audit_test.go`
 
 - [ ] **Step 1: Create `tests/audit/audit_test.go`**
@@ -875,9 +881,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/leonancarvalho/docscout-mcp/memory"
-	"github.com/leonancarvalho/docscout-mcp/tests/testutils"
-	"github.com/leonancarvalho/docscout-mcp/tools"
+	"github.com/doc-scout/mcp-server/memory"
+	"github.com/doc-scout/mcp-server/tests/testutils"
+	"github.com/doc-scout/mcp-server/tools"
 )
 
 // setupAuditServer creates a test MCP server with a live AuditStore.
