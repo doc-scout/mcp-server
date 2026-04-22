@@ -8,7 +8,7 @@ Thank you for your interest in contributing to DocScout-MCP!
 
 ```bash
 git clone https://github.com/doc-scout/mcp-server
-cd docscout-mcp
+cd mcp-server
 go mod download
 go test ./...
 ```

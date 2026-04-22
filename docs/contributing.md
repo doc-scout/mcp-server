@@ -15,7 +15,7 @@ Thank you for your interest in contributing. DocScout-MCP is an open-source MCP 
 
 ```bash
 git clone https://github.com/doc-scout/mcp-server
-cd docscout-mcp
+cd mcp-server
 
 # Install dependencies
 go mod download

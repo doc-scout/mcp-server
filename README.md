@@ -106,7 +106,7 @@ claude mcp add --transport stdio \
 
 ```bash
 git clone https://github.com/doc-scout/mcp-server
-cd docscout-mcp
+cd mcp-server
 
 GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run .
 ```
