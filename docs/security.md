@@ -29,7 +29,7 @@ DocScout-MCP is designed to be safe by default:
 : Observations are sanitized before storage (empty, too-short, too-long, and duplicate strings are rejected). Mass deletions of more than 10 entities require explicit `confirm: true`.
 
 **Audit log**
-: Every graph mutation emits a structured `slog.Info` line to stderr, providing a tamper-evident record of all changes.
+: Every graph mutation emits a structured `slog.Info` line to stderr. When `DATABASE_URL` points to a persistent store, mutations are also written to an `audit_events` table with a UUIDv7 primary key (chronological ordering without an extra index). The `query_audit_log` and `get_audit_summary` MCP tools surface this data for governance reviews. Mass deletions (`count > 10`), unknown agents, and error bursts are automatically flagged as risky events.
 
 **Constant-time token comparison**
 : The HTTP bearer token (`MCP_HTTP_BEARER_TOKEN`) is compared using `crypto/subtle.ConstantTimeCompare` to prevent timing attacks.

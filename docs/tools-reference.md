@@ -1,10 +1,11 @@
 # MCP Tools Reference
 
-DocScout-MCP exposes **23 MCP tools** across three categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
+DocScout-MCP exposes **25 MCP tools** across four categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
 
 !!! note "Tool availability"
     `search_content` is only registered when `SCAN_CONTENT=true` on a persistent `DATABASE_URL`.
     All mutation tools (`create_*`, `add_observations`, `delete_*`, `update_entity`) are omitted when `GRAPH_READ_ONLY=true`.
+    `query_audit_log` and `get_audit_summary` require a persistent `DATABASE_URL`; without it they return a structured error.
     All other tools are always available.
 
 ---
@@ -413,3 +414,91 @@ The `/metrics` HTTP endpoint (when `HTTP_ADDR` is set) emits the same data as Pr
 
 - `docscout_tool_calls_total{tool}` — total calls per tool
 - `docscout_document_accesses_total{repo,path}` — total fetches per document
+
+---
+
+## Audit Tools
+
+!!! info "Requires persistent storage"
+    Both tools require `DATABASE_URL` to point to a persistent store (SQLite file or PostgreSQL). Without it, they return:
+    `"audit persistence not enabled — set DATABASE_URL to a persistent store"`.
+
+### `query_audit_log`
+
+Retrieves raw audit events for every graph mutation, optionally filtered. Useful for governance reviews, incident investigation, and understanding what an AI agent changed and when.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `agent` | string | | Filter by agent identity (e.g. `"indexer-bot"`, `"claude-desktop"`) |
+| `tool` | string | | Filter by MCP tool name (e.g. `"create_entities"`, `"delete_entities"`) |
+| `operation` | string | | Filter by operation type: `create`, `delete`, `update`, or `add` |
+| `outcome` | string | | Filter by outcome: `ok` or `error` |
+| `since` | string | | RFC3339 timestamp lower bound (e.g. `"2026-04-20T00:00:00Z"`) |
+| `limit` | int | | Max events to return. Default `50`, max `500` |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `events` | array | List of `AuditEvent` objects (see below) |
+| `total` | int | Total matching rows (before limit) |
+
+**`AuditEvent` fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | UUIDv7 primary key — lexicographic sort = chronological order |
+| `created_at` | string | RFC3339 timestamp |
+| `agent` | string | Resolved agent identity |
+| `tool` | string | MCP tool name |
+| `operation` | string | `create` \| `delete` \| `update` \| `add` |
+| `targets` | string | JSON array of affected entity/relation names |
+| `count` | int | Number of items mutated |
+| `outcome` | string | `ok` \| `error` |
+| `error_msg` | string | Error description (populated on failure) |
+
+**HTTP equivalent:**
+
+```
+GET /audit?agent=indexer-bot&operation=delete&since=2026-04-20T00:00:00Z&limit=100
+→ 200 JSON: { "events": [...], "total": N }
+→ 503 JSON: { "error": "audit persistence not enabled..." }
+```
+
+---
+
+### `get_audit_summary`
+
+Returns an anomaly-focused report over a rolling time window. Designed for governance dashboards and detecting unexpected or risky agent behaviour.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `window` | string | | Rolling time window: `1h`, `24h` (default), or `7d` |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `total_mutations` | int | Total graph mutations in the window |
+| `by_agent` | object | Map of `agent → mutation count` |
+| `by_operation` | object | Map of `operation → mutation count` |
+| `error_rate` | float | Fraction of mutations that resulted in an error |
+| `risky_events` | array | Events that matched at least one risky criterion (see below) |
+
+**Risky event criteria:**
+
+- Any `delete` operation with `count > 10` (mass deletion)
+- Any event where `agent = "unknown"` (unidentified agent)
+- Any agent that produced more than 5 errors within a 1-hour window (error burst)
+
+**HTTP equivalent:**
+
+```
+GET /audit/summary?window=24h
+→ 200 JSON: { "total_mutations": N, "by_agent": {...}, "by_operation": {...}, "error_rate": 0.02, "risky_events": [...] }
+→ 503 JSON: { "error": "audit persistence not enabled..." }
+```
