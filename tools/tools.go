@@ -366,4 +366,9 @@ Complement to traverse_graph (which explores from one end) and get_integration_m
 		Description: "Query the persistent audit log of graph mutations. Filter by agent, tool name, operation type (create/delete/update/add), outcome (ok/error), or time window. Returns raw audit events and total count. Only available when DATABASE_URL is set to a persistent store.",
 	}, withMetrics("query_audit_log", metrics, withRecovery("query_audit_log", queryAuditLogHandler(auditReader))))
 
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "get_audit_summary",
+		Description: "Returns an aggregated summary of graph mutations over a time window. Includes total mutation count, per-agent and per-operation breakdowns, error rate, and risky events (mass deletes >10 entities, mutations from unknown agents, error bursts). Use this for governance reporting or anomaly detection. Only available when DATABASE_URL is set to a persistent store.",
+	}, withMetrics("get_audit_summary", metrics, withRecovery("get_audit_summary", getAuditSummaryHandler(auditReader))))
+
 }
