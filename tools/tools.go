@@ -75,7 +75,7 @@ func withMetrics[A, R any](
 
 // add_observations, delete_*) are omitted; only read-only graph tools are registered.
 
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, readOnly bool) {
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, readOnly bool, auditReader AuditReader) {
 
 	// --- Scanner Tools ---
 
@@ -359,5 +359,11 @@ Complement to traverse_graph (which explores from one end) and get_integration_m
 		}, withMetrics("semantic_search", metrics, withRecovery("semantic_search", semanticSearchHandler(semantic))))
 
 	}
+
+	// --- Audit Tools ---
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "query_audit_log",
+		Description: "Query the persistent audit log of graph mutations. Filter by agent, tool name, operation type (create/delete/update/add), outcome (ok/error), or time window. Returns raw audit events and total count. Only available when DATABASE_URL is set to a persistent store.",
+	}, withMetrics("query_audit_log", metrics, withRecovery("query_audit_log", queryAuditLogHandler(auditReader))))
 
 }
