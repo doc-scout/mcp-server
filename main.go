@@ -5,8 +5,10 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -329,14 +332,41 @@ func main() {
 
 	}
 
+	// --- Audit Store ---
+	// Only enabled for persistent (non-in-memory) deployments.
+	var auditStore memory.AuditStore
+	if !isInMemoryDB(dbURL) {
+		as, err := memory.NewAuditStore(db)
+		if err != nil {
+			slog.Error("Failed to initialise audit store", "error", err)
+			os.Exit(1)
+		}
+		auditStore = as
+		slog.Info("Audit persistence enabled")
+	} else {
+		slog.Info("Audit persistence disabled (no persistent DATABASE_URL)")
+	}
+
+	// --- Agent Identity ---
+	agentID := os.Getenv("AGENT_ID")
+	var capturedClient atomic.Value
+	capturedClient.Store("")
+
 	// --- MCP Server ---
 
 	mcpServer := mcp.NewServer(&mcp.Implementation{
-
-		Name: serverName,
-
+		Name:    serverName,
 		Version: serverVersion,
-	}, nil)
+	}, &mcp.ServerOptions{
+		InitializedHandler: func(_ context.Context, req *mcp.InitializedRequest) {
+			if agentID != "" {
+				return
+			}
+			if p := req.Session.InitializeParams(); p != nil && p.ClientInfo != nil && p.ClientInfo.Name != "" {
+				capturedClient.CompareAndSwap("", p.ClientInfo.Name)
+			}
+		},
+	})
 
 	// --- Memory / Knowledge Graph ---
 
@@ -344,7 +374,11 @@ func main() {
 
 	// Wrap with audit logger — logs every graph mutation to slog (stderr).
 
-	auditedGraph := tools.NewGraphAuditLogger(memorySrv, func() string { return "unknown" }, nil)
+	agentFn := func() string {
+		client, _ := capturedClient.Load().(string)
+		return cmp.Or(agentID, client, "unknown")
+	}
+	auditedGraph := tools.NewGraphAuditLogger(memorySrv, agentFn, auditStore)
 
 	// --- Content Cache ---
 
@@ -430,7 +464,7 @@ func main() {
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
 
-		tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly, nil)
+		tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly, auditStore)
 
 		slog.Info("Triggered tools/list_changed notification")
 
@@ -456,7 +490,7 @@ func main() {
 
 	}
 
-	tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly, nil)
+	tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly, auditStore)
 
 	// --- Start scanner (initial + periodic) ---
 
@@ -521,6 +555,65 @@ func main() {
 
 			}
 
+		})
+
+		mux.HandleFunc("/audit", func(w http.ResponseWriter, r *http.Request) {
+			if auditStore == nil {
+				http.Error(w, `{"error":"audit persistence not enabled — set DATABASE_URL to a persistent store"}`, http.StatusServiceUnavailable)
+				return
+			}
+			filter := memory.AuditFilter{
+				Agent:     r.URL.Query().Get("agent"),
+				Tool:      r.URL.Query().Get("tool"),
+				Operation: r.URL.Query().Get("operation"),
+				Outcome:   r.URL.Query().Get("outcome"),
+			}
+			if s := r.URL.Query().Get("since"); s != "" {
+				t, err := time.Parse(time.RFC3339, s)
+				if err != nil {
+					http.Error(w, `{"error":"invalid since timestamp"}`, http.StatusBadRequest)
+					return
+				}
+				filter.Since = t
+			}
+			if l := r.URL.Query().Get("limit"); l != "" {
+				if n, err := strconv.Atoi(l); err == nil {
+					filter.Limit = n
+				}
+			}
+			events, total, err := auditStore.Query(r.Context(), filter)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			if events == nil {
+				events = []memory.AuditEvent{}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{"events": events, "total": total})
+		})
+
+		mux.HandleFunc("/audit/summary", func(w http.ResponseWriter, r *http.Request) {
+			if auditStore == nil {
+				http.Error(w, `{"error":"audit persistence not enabled — set DATABASE_URL to a persistent store"}`, http.StatusServiceUnavailable)
+				return
+			}
+			windows := map[string]time.Duration{
+				"1h":  time.Hour,
+				"24h": 24 * time.Hour,
+				"7d":  7 * 24 * time.Hour,
+			}
+			window := windows[r.URL.Query().Get("window")]
+			if window == 0 {
+				window = 24 * time.Hour
+			}
+			summary, err := auditStore.Summary(r.Context(), window)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(summary)
 		})
 
 		// GitHub Webhooks — optional, enabled only when GITHUB_WEBHOOK_SECRET is set.
