@@ -68,6 +68,7 @@ After each scan completes, the indexer runs sequentially:
 | 2c | `package.json` | `service` entity, `npm_package`, `version`, `depends_on` per runtime dep |
 | 2d | `pom.xml` | `service` entity, `maven_artifact`, `java_group`, `version`, `depends_on` per compile/runtime dep |
 | 2e | `CODEOWNERS` | `team`/`person` entities per owner, `owns` relations to the service entity |
+| 2f | `.mcp.json`, `claude_desktop_config.json`, `.cursor/mcp.json`, `mcp.json`, `.vscode/mcp.json` | `mcp-server` entities per declared server, `uses_mcp` relation from the repo service to each server |
 | 3 | All entities | Entities from repos no longer in the scan receive `_status:archived` |
 
 ### Graph Safety
@@ -76,7 +77,7 @@ Every write operation passes through two layers of protection:
 
 1. **Observation quality filter** (`tools/graph_guard.go`): Rejects observations that are empty, shorter than 2 characters, longer than 500 characters, or duplicate within the same batch. The tool response includes a `skipped` field listing each rejection with its reason.
 
-2. **Audit logger** (`tools/audit.go`): A `GraphAuditLogger` decorator wraps the store and emits a structured `slog.Info` line for every mutation (`create_entities`, `add_observations`, `create_relations`, `delete_*`). Read-only operations pass through silently.
+2. **Audit logger** (`tools/audit.go`): A `GraphAuditLogger` decorator wraps the store, emits a structured `slog.Info` line for every mutation, and — when `DATABASE_URL` points to a persistent store — writes a row to the `audit_events` table. Each row records the agent identity (resolved from `AGENT_ID` env → MCP handshake `clientInfo.Name` → `"unknown"`), the tool name, operation, targets, count, and outcome. Read-only operations pass through silently.
 
 3. **Mass-delete guard** (`tools/delete_entities.go`): Deleting more than 10 entities in a single call is rejected unless `confirm: true` is explicitly set.
 
@@ -150,6 +151,21 @@ The server exposes tools over `stdio` (default) or Streamable HTTP (`HTTP_ADDR`)
 The `/metrics` HTTP endpoint (when `HTTP_ADDR` is set) emits two Prometheus counters:
 - `docscout_tool_calls_total{tool}` — total calls per tool
 - `docscout_document_accesses_total{repo,path}` — total fetches per document
+
+### Audit Tools (requires persistent `DATABASE_URL`)
+
+| Tool | Description |
+|------|-------------|
+| `query_audit_log` | Query the persistent audit log by agent, tool, operation, outcome, or time window |
+| `get_audit_summary` | Aggregated governance report with risky event detection (mass deletes, unknown agents, error bursts) |
+
+The `/audit` and `/audit/summary` HTTP endpoints (when `HTTP_ADDR` is set) expose the same data for dashboards and operators.
+
+### MCP Discovery Tools
+
+| Tool | Description |
+|------|-------------|
+| `discover_mcp_servers` | Inventory all `mcp-server` entities in the graph; filter by repo, transport, or tool capability |
 
 ---
 

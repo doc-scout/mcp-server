@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-DocScout-MCP exposes **25 MCP tools** across four categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
+DocScout-MCP exposes **26 MCP tools** across five categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
 
 !!! note "Tool availability"
     `search_content` is only registered when `SCAN_CONTENT=true` on a persistent `DATABASE_URL`.
@@ -502,3 +502,62 @@ GET /audit/summary?window=24h
 → 200 JSON: { "total_mutations": N, "by_agent": {...}, "by_operation": {...}, "error_rate": 0.02, "risky_events": [...] }
 → 503 JSON: { "error": "audit persistence not enabled..." }
 ```
+
+---
+
+## MCP Discovery Tools
+
+### `discover_mcp_servers`
+
+Discovers and catalogs MCP servers found in indexed GitHub repositories. Supports three query modes:
+
+1. **Inventory** — list all known MCP servers across the org
+2. **Capability search** — find servers that expose a specific tool (`tool_name` filter, case-insensitive substring match)
+3. **Dependency lookup** — combine with `traverse_graph` on a service entity to follow `uses_mcp` edges
+
+Only returns servers discovered from indexed config files (`.mcp.json`, `claude_desktop_config.json`, `.cursor/mcp.json`, `mcp.json`, `.vscode/mcp.json`). No live connections to MCP servers are made.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `repo` | string | | Filter results to a specific repository name |
+| `tool_name` | string | | Return only servers that have a tool matching this name (case-insensitive substring) |
+| `transport` | string | | Filter by transport type: `stdio`, `http`, or `sse` |
+| `limit` | int | | Max servers to return. Default `20`, max `100` |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `servers` | array | List of `MCPServerResult` objects (see below) |
+| `total` | int | Number of servers returned (after filtering) |
+
+**`MCPServerResult` fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Server name as declared in the config file |
+| `repo` | string | Repository where the config was discovered |
+| `transport` | string | `stdio`, `http`, `sse`, or `unknown` |
+| `command` | string | Full command string (stdio servers only) |
+| `url` | string | Endpoint URL (http/sse servers only) |
+| `tools` | array | Tool names available on this server (from registry or inline config) |
+| `config_file` | string | Config filename where this server was found |
+
+**Example queries:**
+
+```
+# Which MCP servers does my org use?
+discover_mcp_servers()
+
+# Which servers can search the web?
+discover_mcp_servers(tool_name="search")
+
+# Which MCP servers does payment-service use?
+traverse_graph(entity="payment-service", relation_type="uses_mcp", direction="outgoing", depth=1)
+```
+
+**Well-known server enrichment:**
+
+The following servers are automatically enriched with tool observations even if not declared inline: `github`, `filesystem`, `postgres`, `fetch`, `brave-search`, `slack`. Unknown servers are indexed with transport/command/url only.

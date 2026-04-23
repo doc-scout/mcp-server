@@ -39,13 +39,13 @@ graph LR
     GH -->|"GitHub API + Webhooks"| S
     S --> P
     P -->|"entities + relations"| G
-    G -->|"23 MCP tools"| AI
+    G -->|"26 MCP tools"| AI
 ```
 
 1. **Scan** — Crawls every repo in your org: docs, manifests, infra files, and root tooling files. Repeats on a configurable interval and reacts to GitHub webhooks for instant updates.
-2. **Parse** — Extracts services, owners, dependencies, and relations from `go.mod`, `pom.xml`, `package.json`, `CODEOWNERS`, `catalog-info.yaml`, and more.
+2. **Parse** — Extracts services, owners, dependencies, and relations from `go.mod`, `pom.xml`, `package.json`, `CODEOWNERS`, `catalog-info.yaml`, MCP config files, and more.
 3. **Graph** — Persists everything as entities and relations in SQLite or PostgreSQL, surviving restarts.
-4. **Answer** — AI clients query the graph via 23 MCP tools. No file-reading loops, no token waste, no guessing.
+4. **Answer** — AI clients query the graph via 26 MCP tools. No file-reading loops, no token waste, no guessing.
 
 ---
 
