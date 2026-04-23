@@ -32,6 +32,7 @@ import (
 	"github.com/doc-scout/mcp-server/memory"
 	"github.com/doc-scout/mcp-server/scanner"
 	"github.com/doc-scout/mcp-server/scanner/parser"
+	mcpparser "github.com/doc-scout/mcp-server/scanner/parser/mcp"
 	"github.com/doc-scout/mcp-server/tools"
 	"github.com/doc-scout/mcp-server/webhook"
 )
@@ -303,6 +304,9 @@ func main() {
 	parser.Register(parser.ProtoParser())
 
 	parser.Register(parser.K8sServiceParser())
+
+	// MCP Discovery parser
+	parser.Register(mcpparser.NewMcpConfigParser(mcpparser.DefaultKnownServers()))
 
 	// --- Scanner ---
 
