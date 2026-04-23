@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"text/template"
+	"html/template"
 )
 
 // ExportGraph serializes kg into the requested format.
@@ -44,7 +44,11 @@ type graphExportData struct {
 }
 
 func exportGraphJSON(kg KnowledgeGraph, title string) ([]byte, error) {
-	out := graphExportData{Title: title}
+	out := graphExportData{
+		Title: title,
+		Nodes: make([]exportNode, 0, len(kg.Entities)),
+		Edges: make([]exportEdge, 0, len(kg.Relations)),
+	}
 	for _, e := range kg.Entities {
 		obs := e.Observations
 		if obs == nil {
@@ -60,66 +64,56 @@ func exportGraphJSON(kg KnowledgeGraph, title string) ([]byte, error) {
 	for _, r := range kg.Relations {
 		out.Edges = append(out.Edges, exportEdge{From: r.From, To: r.To, Label: r.RelationType})
 	}
-	return json.MarshalIndent(out, "", "  ")
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("exportGraphJSON: marshal: %w", err)
+	}
+	return b, nil
 }
 
 type htmlTemplateData struct {
 	Title         string
 	EntityCount   int
 	RelationCount int
-	NodesJSON     string
-	EdgesJSON     string
+	NodesJSON     template.JS
+	EdgesJSON     template.JS
 }
 
-func exportGraphHTML(kg KnowledgeGraph, title string) ([]byte, error) {
-	type jsNode struct {
-		ID    string   `json:"id"`
-		Label string   `json:"label"`
-		Type  string   `json:"type"`
-		Obs   []string `json:"obs"`
-	}
-	type jsEdge struct {
-		From  string `json:"from"`
-		To    string `json:"to"`
-		Label string `json:"label"`
-	}
+var graphTmpl = template.Must(template.New("graph").Parse(graphHTMLTemplate))
 
-	nodes := make([]jsNode, 0, len(kg.Entities))
+func exportGraphHTML(kg KnowledgeGraph, title string) ([]byte, error) {
+	nodes := make([]exportNode, 0, len(kg.Entities))
 	for _, e := range kg.Entities {
 		obs := e.Observations
 		if obs == nil {
 			obs = []string{}
 		}
-		nodes = append(nodes, jsNode{ID: e.Name, Label: e.Name, Type: e.EntityType, Obs: obs})
+		nodes = append(nodes, exportNode{ID: e.Name, Label: e.Name, Type: e.EntityType, Observations: obs})
 	}
-	edges := make([]jsEdge, 0, len(kg.Relations))
+	edges := make([]exportEdge, 0, len(kg.Relations))
 	for _, r := range kg.Relations {
-		edges = append(edges, jsEdge{From: r.From, To: r.To, Label: r.RelationType})
+		edges = append(edges, exportEdge{From: r.From, To: r.To, Label: r.RelationType})
 	}
 
 	nodesJSON, err := json.Marshal(nodes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("exportGraphHTML: marshal nodes: %w", err)
 	}
 	edgesJSON, err := json.Marshal(edges)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("exportGraphHTML: marshal edges: %w", err)
 	}
 
 	data := htmlTemplateData{
 		Title:         title,
 		EntityCount:   len(kg.Entities),
 		RelationCount: len(kg.Relations),
-		NodesJSON:     string(nodesJSON),
-		EdgesJSON:     string(edgesJSON),
+		NodesJSON:     template.JS(nodesJSON),
+		EdgesJSON:     template.JS(edgesJSON),
 	}
 
-	tmpl, err := template.New("graph").Parse(graphHTMLTemplate)
-	if err != nil {
-		return nil, err
-	}
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
+	if err := graphTmpl.Execute(&buf, data); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -250,7 +244,7 @@ canvas.addEventListener('mousemove',e=>{
   if(hov){
     document.getElementById('tn').textContent=hov.label;
     document.getElementById('tt').textContent=hov.type;
-    document.getElementById('to').textContent=(hov.obs||[]).join('\n')||'(no observations)';
+    document.getElementById('to').textContent=(hov.observations||[]).join('\n')||'(no observations)';
     tip.style.display='block';
     tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-8)+'px';
   }else{tip.style.display='none';}
