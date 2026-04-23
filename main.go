@@ -344,7 +344,7 @@ func main() {
 
 	// Wrap with audit logger — logs every graph mutation to slog (stderr).
 
-	auditedGraph := tools.NewGraphAuditLogger(memorySrv)
+	auditedGraph := tools.NewGraphAuditLogger(memorySrv, func() string { return "unknown" }, nil)
 
 	// --- Content Cache ---
 
