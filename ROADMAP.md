@@ -112,6 +112,16 @@ This document outlines the current technical debts and the path forward for DocS
 - **Phase 1 ✅ (2026-04-11)**: Replaced SQL `LIKE` with SQLite FTS5 full-text search — BM25 relevance ranking, Porter stemmer (`authenticate` → `authentication`), multi-word AND queries, special-char-safe query sanitization. Zero new dependencies.
 - **Phase 2 ✅ (2026-04-14)**: `semantic_search` MCP tool — vector embeddings via OpenAI or Ollama, cosine similarity ranking, hash-based staleness detection for docs and entities, debounced background re-indexing. Zero-downtime: server starts normally if no embedding provider is configured.
 
+### 27. Benchmark Narrative — "The Number" ✅
+- **Implemented**: `benchmark/RESULTS.md` — 99.0% average token savings across 12 canonical questions, F1 1.00 parser accuracy across all 10 parsers. Badge added to README and docs site.
+
+### 25. Graph Visualization Export ✅
+- **Implemented**: `memory/export.go` — `ExportGraph(kg, format, title)` renders `html` (self-contained force-directed graph, vanilla JS Canvas, zero dependencies) and `json` (nodes+edges) formats.
+- `tools/export_graph.go` — `export_graph` MCP tool: accepts `format`, `title`, and optional `output_path`. Writes to disk or returns content inline.
+
+### 28. Onboarding in 60 Seconds ✅
+- **Implemented**: `bin/docscout-init.sh` — curl-installable shell script. Downloads latest binary for the detected OS/arch (falls back to `go run`), writes `.env.local`, and prints the Claude Desktop config snippet. No manual config required for the "try it" path.
+
 ---
 
 ## Future Work
