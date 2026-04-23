@@ -336,6 +336,11 @@ Returns found=false and an empty path when no connection exists within max_depth
 Complement to traverse_graph (which explores from one end) and get_integration_map (which shows a single service's topology).`,
 		}, withMetrics("find_path", metrics, withRecovery("find_path", findPathHandler(graph))))
 
+		mcp.AddTool(s, &mcp.Tool{
+			Name:        "discover_mcp_servers",
+			Description: "Discover and catalog MCP servers found in indexed GitHub repositories. Supports three query modes: (1) inventory — list all known MCP servers; (2) capability search — find servers that expose a specific tool (tool_name filter, case-insensitive substring match); (3) dependency lookup — combine with traverse_graph on a service entity to follow uses_mcp edges. Filter by repo, transport (stdio/http/sse), or tool name. Only returns servers discovered from indexed config files (.mcp.json, claude_desktop_config.json, .cursor/mcp.json, mcp.json, .vscode/mcp.json).",
+		}, withMetrics("discover_mcp_servers", metrics, withRecovery("discover_mcp_servers", discoverMCPServersHandler(graph))))
+
 	}
 
 	// --- Observability ---
