@@ -192,9 +192,13 @@ Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, g
 
 **Goal:** Users run `docscout-mcp --benchmark --org myorg` against their own GitHub org and get a shareable markdown report with accuracy F1 and token savings percentages.
 
-### 22. GitHub Actions Action
-
-**Goal:** `docscout-action` — run a DocScout scan in CI and post graph insights as PR comments. Enables teams to see dependency and ownership changes on every PR.
+### 22. GitHub Actions Action ✅
+- **Implemented (2026-04-23)**: `docscout-action` — composite GitHub Action that runs a DocScout scan in CI and posts graph insights as a Step Summary and optional PR comment.
+- `action.yml` — composite action definition with `github_token`, `version`, `comment_on_pr`, and `entity_types` inputs; exposes `entity_count` and `relation_count` outputs.
+- `bin/install-docscout.sh` — downloads the pre-built binary from GitHub Releases (linux/amd64, linux/arm64); falls back to `go install` if no binary is available.
+- `bin/run-scan.sh` — starts `docscout-mcp` with `HTTP_ADDR` set, polls `/healthz` until scan completes (up to 120 s), queries entity/relation counts from SQLite, writes the GitHub Step Summary, sets GITHUB_OUTPUT variables, and optionally posts/updates a PR comment via `gh`.
+- `.github/workflows/docscout-example.yml` — example workflow showing recommended usage.
+- `docs/github-action.md` — usage documentation covering inputs, outputs, permissions, and runner support.
 
 ### 23. LLM Eval Harness
 

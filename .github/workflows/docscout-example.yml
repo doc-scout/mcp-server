@@ -1,0 +1,21 @@
+name: DocScout Graph Analysis
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  graph-analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: doc-scout/mcp-server@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          comment_on_pr: 'true'
+          entity_types: 'service,api'
