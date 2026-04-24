@@ -193,9 +193,12 @@ Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, g
 
 **Goal:** Accuracy (F1 per parser) and token-efficiency benchmarks shipped as `benchmark/RESULTS.md`. Synthetic corpus with committed ground truth. `make benchmark` (no API key) and `make benchmark-live` (Claude API).
 
-### 21. `--benchmark` CLI Mode
-
-**Goal:** Users run `docscout-mcp --benchmark --org myorg` against their own GitHub org and get a shareable markdown report with accuracy F1 and token savings percentages.
+### 21. `--benchmark` CLI Mode ✅
+- **Implemented (2026-04-23)**: Added `--org myorg` and `--token TOKEN` flags to `docscout-mcp --benchmark`.
+- `benchmark/orgscan/orgscan.go` — new package that wires up scanner + indexer + memory against a real GitHub org in-process, runs one full scan pass, and collects graph statistics (entity count by type, relation count by confidence level).
+- `scanner/parser/registry.go` — added `RegisterDefaults(reg)` helper for isolated parser registries (avoids mutating the global singleton).
+- `benchmark/report/report.go` — new "Org Scan Stats" section renders repos scanned, scan duration, entity/type breakdown, and relation/confidence breakdown when `--org` is used.
+- `benchmark/cmd/main.go` — `--org`, `--token`, and `--org-timeout` flags; dry-run now shows GITHUB_TOKEN status when `--org` is set.
 
 ### 22. GitHub Actions Action ✅
 - **Implemented (2026-04-23)**: `docscout-action` — composite GitHub Action that runs a DocScout scan in CI and posts graph insights as a Step Summary and optional PR comment.
