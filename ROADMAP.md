@@ -132,6 +132,11 @@ This document outlines the current technical debts and the path forward for DocS
 ### 28. Onboarding in 60 Seconds ✅
 - **Implemented**: `bin/docscout-init.sh` — curl-installable shell script. Downloads latest binary for the detected OS/arch (falls back to `go run`), writes `.env.local`, and prints the Claude Desktop config snippet. No manual config required for the "try it" path.
 
+### 31. Benchmark Corpus Extension ✅
+- **Implemented (2026-04-23)**: Extended `benchmark/testdata/synthetic-org/` with `notification-service/` — a Node.js service covering `packagejson` and `codeowners` parsers.
+- Added 2 ground truth cases to `benchmark/testdata/ground_truth.json` (total: 15 cases across all parsers).
+- Added "Add a Corpus Example" step-by-step guide to `CONTRIBUTING.md` so contributors know how to add new fixtures.
+
 ---
 
 ## Future Work
