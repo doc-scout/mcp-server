@@ -117,3 +117,13 @@ type SemanticSearch interface {
 
 	IndexDocs(ctx context.Context, repo string)
 }
+
+// AuditReader is the read-only view of the audit store used by MCP tools and HTTP handlers.
+
+// memory.DBAuditStore satisfies this interface.
+
+type AuditReader interface {
+	Query(ctx context.Context, filter memory.AuditFilter) ([]memory.AuditEvent, int64, error)
+
+	Summary(ctx context.Context, window time.Duration) (memory.AuditSummary, error)
+}

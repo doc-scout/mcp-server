@@ -49,7 +49,15 @@ func TestOpenAPIParser_Parse_YAML(t *testing.T) {
 
 
 
+
+
+
+
 openapi: "3.0.0"
+
+
+
+
 
 
 
@@ -57,7 +65,15 @@ info:
 
 
 
+
+
+
+
   title: checkout-api
+
+
+
+
 
 
 
@@ -65,7 +81,15 @@ info:
 
 
 
+
+
+
+
 servers:
+
+
+
+
 
 
 
@@ -73,7 +97,15 @@ servers:
 
 
 
+
+
+
+
 paths:
+
+
+
+
 
 
 
@@ -81,7 +113,15 @@ paths:
 
 
 
+
+
+
+
     get: {}
+
+
+
+
 
 
 
@@ -89,7 +129,15 @@ paths:
 
 
 
+
+
+
+
     get: {}
+
+
+
+
 
 
 
@@ -171,7 +219,15 @@ func TestOpenAPIParser_Parse_MissingTitle(t *testing.T) {
 
 
 
+
+
+
+
 info:
+
+
+
+
 
 
 
