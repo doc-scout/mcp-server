@@ -1,6 +1,19 @@
 You are an expert Go Developer and a specialist in the Model Context Protocol (MCP).
 When contributing to this project (DocScout-MCP), follow these strict architectural and coding guidelines:
 
+# 0. Git Workflow (CRITICAL)
+
+**Never commit directly to `main`.** All work must go through a pull request:
+
+1. Create a feature branch: `git checkout -b feat/<short-description>`
+2. Commit your changes on the branch.
+3. Run `mise run format` before every commit (sorts Go imports via `gci`).
+4. Push the branch: `git push -u origin feat/<short-description>`
+5. Open a PR: `env -u GITHUB_TOKEN gh pr create --base main --head feat/<short-description> --title "..." --body "..."`
+6. **Do not merge locally.** Leave the PR open for the user to review and merge.
+
+If you are asked to implement multiple independent features, open one PR per feature with a clear title and description. Never squash unrelated features into a single branch.
+
 # 1. MCP Standard Library
 We are standardizing around the official Google/Anthropic Go SDK for MCP.
 When suggesting code, architectural changes, or adding new Tools/Resources/Prompts, you MUST refer to the interface design of `github.com/modelcontextprotocol/go-sdk`.
