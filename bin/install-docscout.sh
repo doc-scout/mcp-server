@@ -68,15 +68,22 @@ if [ "$DOWNLOADED" -eq 0 ]; then
     exit 1
   fi
 
+  # go install names the binary after the module directory ("mcp-server"), not BINARY.
+  # We rename it to BINARY immediately after installation.
+  MODULE_BINARY="mcp-server"
   GO_REF="github.com/${REPO}@latest"
   echo "Installing via: go install ${GO_REF}" >&2
-  GOBIN="${INSTALL_DIR}" go install "${GO_REF}" 2>/dev/null || {
+  if GOBIN="${INSTALL_DIR}" go install "${GO_REF}" 2>/dev/null; then
+    mv "${INSTALL_DIR}/${MODULE_BINARY}" "${INSTALL_DIR}/${BINARY}" 2>/dev/null || true
+    echo "Installed ${BINARY} to ${INSTALL_DIR}/${BINARY}" >&2
+  else
     # Non-root fallback
     GOBIN="${HOME}/go/bin"
     go install "${GO_REF}"
+    mv "${GOBIN}/${MODULE_BINARY}" "${GOBIN}/${BINARY}" 2>/dev/null || true
     echo "${GOBIN}" >> "$GITHUB_PATH"
-    echo "Installed ${BINARY} to ${GOBIN}/" >&2
-  }
+    echo "Installed ${BINARY} to ${GOBIN}/${BINARY}" >&2
+  fi
 fi
 
 echo "DocScout installation complete." >&2

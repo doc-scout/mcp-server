@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/doc-scout/mcp-server/benchmark/accuracy"
+	"github.com/doc-scout/mcp-server/benchmark/orgscan"
 	"github.com/doc-scout/mcp-server/benchmark/token"
 )
 
@@ -26,6 +27,8 @@ type Input struct {
 	LiveRes []token.LiveResult // optional, live mode results
 
 	Questions []string // canonical question strings
+
+	OrgStats *orgscan.OrgStats // optional, populated by --org mode
 
 }
 
@@ -142,6 +145,64 @@ func Generate(in Input) string {
 		fmt.Fprintf(&b, "| — | **Average** | **%d** | **%d** | **%.1f%%** |\n\n",
 
 			liveDS/nl, liveNaive/nl, liveAvg)
+
+	}
+
+	// Org scan stats section (optional — --org mode only)
+
+	if s := in.OrgStats; s != nil {
+
+		fmt.Fprintf(&b, "## Org Scan Stats (`%s`)\n\n", s.Org)
+
+		fmt.Fprintf(&b, "Live scan results against the real GitHub org.\n\n")
+
+		fmt.Fprintf(&b, "| Metric | Value |\n")
+
+		fmt.Fprintf(&b, "|--------|-------|\n")
+
+		fmt.Fprintf(&b, "| Repos scanned | %d |\n", s.Repos)
+
+		fmt.Fprintf(&b, "| Scan duration | %s |\n", s.ScanDuration.Round(time.Second))
+
+		fmt.Fprintf(&b, "| Total entities | **%d** |\n", s.EntityTotal)
+
+		fmt.Fprintf(&b, "| Total relations | **%d** |\n\n", s.RelTotal)
+
+		if len(s.EntityByType) > 0 {
+
+			fmt.Fprintf(&b, "### Entities by Type\n\n")
+
+			fmt.Fprintf(&b, "| Type | Count |\n")
+
+			fmt.Fprintf(&b, "|------|-------|\n")
+
+			for _, tc := range s.EntityByType {
+
+				fmt.Fprintf(&b, "| `%s` | %d |\n", tc.Label, tc.Count)
+
+			}
+
+			fmt.Fprintf(&b, "\n")
+
+		}
+
+		if len(s.RelByConf) > 0 {
+
+			fmt.Fprintf(&b, "### Relations by Confidence\n\n")
+
+			fmt.Fprintf(&b, "| Confidence | Count |\n")
+
+			fmt.Fprintf(&b, "|------------|-------|\n")
+
+			for _, tc := range s.RelByConf {
+
+				fmt.Fprintf(&b, "| `%s` | %d |\n", tc.Label, tc.Count)
+
+			}
+
+			fmt.Fprintf(&b, "\n")
+
+		}
 
 	}
 
