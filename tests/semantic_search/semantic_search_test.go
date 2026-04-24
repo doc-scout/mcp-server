@@ -129,7 +129,7 @@ func setupServer(t *testing.T) *mcp.ClientSession {
 
 	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "v1"}, nil)
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, cc, searcher, tools.NewToolMetrics(), tools.NewDocMetrics(), false, nil)
+	tools.Register(server, &testutils.MockScanner{}, memorySrv, cc, searcher, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, nil)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 

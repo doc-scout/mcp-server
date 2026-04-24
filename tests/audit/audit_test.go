@@ -35,7 +35,7 @@ func setupAuditServer(t *testing.T) (*mcp.ClientSession, memory.AuditStore) {
 	auditedGraph := tools.NewGraphAuditLogger(memorySrv, agentFn, auditStore)
 
 	tools.Register(server, &testutils.MockScanner{}, auditedGraph, nil, nil,
-		tools.NewToolMetrics(), tools.NewDocMetrics(), false, auditStore)
+		tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, auditStore)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, t1, nil); err != nil {

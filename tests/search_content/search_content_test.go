@@ -78,7 +78,7 @@ func setupContentServer(t *testing.T) *mcp.ClientSession {
 
 	}
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, contentCache, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), false, nil)
+	tools.Register(server, &testutils.MockScanner{}, memorySrv, contentCache, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, nil)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 

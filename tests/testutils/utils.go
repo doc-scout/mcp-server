@@ -107,7 +107,7 @@ func SetupTestServer(t *testing.T) *mcp.ClientSession {
 
 	// Register scanner tools and memory tools
 
-	tools.Register(server, &MockScanner{}, memorySrv, nil, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), false, nil)
+	tools.Register(server, &MockScanner{}, memorySrv, nil, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, nil)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 

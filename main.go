@@ -501,7 +501,7 @@ func main() {
 
 		// Re-register tools to implicitly trigger the MCP tools/list_changed notification
 
-		tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly, auditStore)
+		tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, contentCache, graphReadOnly, auditStore)
 
 		slog.Info("Triggered tools/list_changed notification")
 
@@ -527,7 +527,7 @@ func main() {
 
 	}
 
-	tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, graphReadOnly, auditStore)
+	tools.Register(mcpServer, sc, auditedGraph, searcher, semanticSrv, toolMetrics, docMetrics, contentCache, graphReadOnly, auditStore)
 
 	// --- Start scanner (initial + periodic) ---
 

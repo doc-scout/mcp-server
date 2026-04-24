@@ -132,6 +132,11 @@ This document outlines the current technical debts and the path forward for DocS
 ### 28. Onboarding in 60 Seconds ✅
 - **Implemented**: `bin/docscout-init.sh` — curl-installable shell script. Downloads latest binary for the detected OS/arch (falls back to `go run`), writes `.env.local`, and prints the Claude Desktop config snippet. No manual config required for the "try it" path.
 
+### 31. Benchmark Corpus Extension ✅
+- **Implemented (2026-04-23)**: Extended `benchmark/testdata/synthetic-org/` with `notification-service/` — a Node.js service covering `packagejson` and `codeowners` parsers.
+- Added 2 ground truth cases to `benchmark/testdata/ground_truth.json` (total: 15 cases across all parsers).
+- Added "Add a Corpus Example" step-by-step guide to `CONTRIBUTING.md` so contributors know how to add new fixtures.
+
 ---
 
 ## Future Work
@@ -192,9 +197,13 @@ Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, g
 
 **Goal:** Users run `docscout-mcp --benchmark --org myorg` against their own GitHub org and get a shareable markdown report with accuracy F1 and token savings percentages.
 
-### 22. GitHub Actions Action
-
-**Goal:** `docscout-action` — run a DocScout scan in CI and post graph insights as PR comments. Enables teams to see dependency and ownership changes on every PR.
+### 22. GitHub Actions Action ✅
+- **Implemented (2026-04-23)**: `docscout-action` — composite GitHub Action that runs a DocScout scan in CI and posts graph insights as a Step Summary and optional PR comment.
+- `action.yml` — composite action definition with `github_token`, `version`, `comment_on_pr`, and `entity_types` inputs; exposes `entity_count` and `relation_count` outputs.
+- `bin/install-docscout.sh` — downloads the pre-built binary from GitHub Releases (linux/amd64, linux/arm64); falls back to `go install` if no binary is available.
+- `bin/run-scan.sh` — starts `docscout-mcp` with `HTTP_ADDR` set, polls `/healthz` until scan completes (up to 120 s), queries entity/relation counts from SQLite, writes the GitHub Step Summary, sets GITHUB_OUTPUT variables, and optionally posts/updates a PR comment via `gh`.
+- `.github/workflows/docscout-example.yml` — example workflow showing recommended usage.
+- `docs/github-action.md` — usage documentation covering inputs, outputs, permissions, and runner support.
 
 ### 23. LLM Eval Harness
 
@@ -203,3 +212,9 @@ Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, g
 ### 24. OpenTelemetry Traces
 
 **Goal:** Distributed tracing for production multi-tenant deployments. One span per tool call, per scan, per indexer phase. Compatible with Jaeger, Grafana Tempo, and cloud providers.
+
+### 26. `ingest_url` MCP Tool ✅
+
+- **Implemented (2026-04-23)**: New `ingest_url` tool fetches any public HTTP/HTTPS URL and ingests its content into the knowledge graph.
+- `tools/ingest_url.go` — validates URL scheme, checks `ALLOWED_INGEST_DOMAINS` allowlist (empty = allow all), rate-limits to ≤5 req/s per domain (200ms min gap), fetches with 15s timeout and `User-Agent: docscout-mcp/1.0`, extracts `<title>`, `<h1>`–`<h3>` headings, `<meta name="description">`, and word-count estimate from the HTML body. Creates a graph entity (or adds observations to an existing one) and optionally stores raw HTML in the `ContentCache`.
+- `tools/tools.go` — `Register` signature extended with `cache *memory.ContentCache`; tool registered inside the `graph != nil && !readOnly` block.

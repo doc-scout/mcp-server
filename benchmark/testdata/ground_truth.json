@@ -196,6 +196,36 @@
         {"from": "", "to": "billing-service", "type": "calls_service"}
       ],
       "expected_aux": []
+    },
+    {
+      "id": "notification-packagejson",
+      "parser": "packagejson",
+      "input_file": "synthetic-org/notification-service/package.json",
+      "expected_entity_name": "notification-service",
+      "expected_entity_type": "service",
+      "expected_obs_subset": [
+        "npm_package:notification-service",
+        "version:1.3.0"
+      ],
+      "expected_rels": [
+        {"from": "notification-service", "to": "express", "type": "depends_on"},
+        {"from": "notification-service", "to": "amqplib", "type": "depends_on"}
+      ],
+      "expected_aux": []
+    },
+    {
+      "id": "notification-codeowners",
+      "parser": "codeowners",
+      "input_file": "synthetic-org/notification-service/CODEOWNERS",
+      "expected_entity_name": "",
+      "expected_entity_type": "",
+      "expected_obs_subset": [],
+      "expected_rels": [
+        {"from": "platform-team", "to": "", "type": "owns"}
+      ],
+      "expected_aux": [
+        {"name": "platform-team", "type": "team"}
+      ]
     }
   ]
 }

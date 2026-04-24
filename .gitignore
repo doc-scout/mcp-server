@@ -54,8 +54,9 @@ deploy/terraform/*.tfvars
 deploy/terraform/override.tf
 deploy/terraform/override.tf.json
 
-# Build output dir
+# Build output dir — but keep shell scripts tracked
 bin/
+!bin/*.sh
 
 # MkDocs generated site
 site/.worktrees/

@@ -1,0 +1,48 @@
+name: DocScout Graph Analysis
+description: Scans this repository and builds a knowledge graph. Posts a summary to GitHub Step Summary and optionally as a PR comment.
+author: Doc Scout
+
+inputs:
+  github_token:
+    description: GitHub token with repo read access
+    required: true
+  version:
+    description: DocScout version to install (e.g. 'v0.1.0'). Defaults to 'latest'.
+    required: false
+    default: 'latest'
+  comment_on_pr:
+    description: Post a PR comment with graph stats (true/false)
+    required: false
+    default: 'false'
+  entity_types:
+    description: Comma-separated entity types to highlight in the summary (e.g. 'service,api')
+    required: false
+    default: ''
+
+outputs:
+  entity_count:
+    description: Total number of entities in the graph
+    value: ${{ steps.scan.outputs.entity_count }}
+  relation_count:
+    description: Total number of relations in the graph
+    value: ${{ steps.scan.outputs.relation_count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install DocScout
+      shell: bash
+      run: ${{ github.action_path }}/bin/install-docscout.sh
+      env:
+        DOCSCOUT_VERSION: ${{ inputs.version }}
+
+    - name: Run scan
+      id: scan
+      shell: bash
+      run: ${{ github.action_path }}/bin/run-scan.sh
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        COMMENT_ON_PR: ${{ inputs.comment_on_pr }}
+        ENTITY_TYPES: ${{ inputs.entity_types }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
