@@ -44,7 +44,71 @@ func TestParseGoMod_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 go 1.22
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -92,6 +156,22 @@ require (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	github.com/foo/bar v1.2.3
 
 
@@ -108,7 +188,39 @@ require (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	github.com/baz/qux v0.1.0 // indirect
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -156,7 +268,55 @@ require (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 require github.com/direct/single v1.0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -261,7 +421,71 @@ func TestParseGoMod_OnlyIndirectDeps(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 go 1.21
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -309,6 +533,22 @@ require (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	github.com/transitive/dep v2.0.0 // indirect
 
 
@@ -325,7 +565,39 @@ require (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -393,7 +665,55 @@ func TestParseGoMod_MissingModule(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 require github.com/foo/bar v1.0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -455,7 +775,55 @@ func TestParseGoMod_SimpleModule(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 go 1.22
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -77,7 +77,7 @@ func withMetrics[A, R any](
 
 // add_observations, delete_*) are omitted; only read-only graph tools are registered.
 
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, cache *memory.ContentCache, readOnly bool) {
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, cache *memory.ContentCache, readOnly bool, auditReader AuditReader) {
 
 	// --- Scanner Tools ---
 
@@ -706,6 +706,11 @@ Returns found=false and an empty path when no connection exists within max_depth
 Complement to traverse_graph (which explores from one end) and get_integration_map (which shows a single service's topology).`,
 		}, withMetrics("find_path", metrics, withRecovery("find_path", findPathHandler(graph))))
 
+		mcp.AddTool(s, &mcp.Tool{
+			Name:        "discover_mcp_servers",
+			Description: "Discover and catalog MCP servers found in indexed GitHub repositories. Supports three query modes: (1) inventory — list all known MCP servers; (2) capability search — find servers that expose a specific tool (tool_name filter, case-insensitive substring match); (3) dependency lookup — combine with traverse_graph on a service entity to follow uses_mcp edges. Filter by repo, transport (stdio/http/sse), or tool name. Only returns servers discovered from indexed config files (.mcp.json, claude_desktop_config.json, .cursor/mcp.json, mcp.json, .vscode/mcp.json).",
+		}, withMetrics("discover_mcp_servers", metrics, withRecovery("discover_mcp_servers", discoverMCPServersHandler(graph))))
+
 	}
 
 	// --- Observability ---
@@ -729,5 +734,17 @@ Complement to traverse_graph (which explores from one end) and get_integration_m
 		}, withMetrics("semantic_search", metrics, withRecovery("semantic_search", semanticSearchHandler(semantic))))
 
 	}
+
+	// --- Audit Tools ---
+
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "query_audit_log",
+		Description: "Query the persistent audit log of graph mutations. Filter by agent, tool name, operation type (create/delete/update/add), outcome (ok/error), or time window. Returns raw audit events and total count. Only available when DATABASE_URL is set to a persistent store.",
+	}, withMetrics("query_audit_log", metrics, withRecovery("query_audit_log", queryAuditLogHandler(auditReader))))
+
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "get_audit_summary",
+		Description: "Returns an aggregated summary of graph mutations over a time window. Includes total mutation count, per-agent and per-operation breakdowns, error rate, and risky events (mass deletes >10 entities, mutations from unknown agents, error bursts). Use this for governance reporting or anomaly detection. Only available when DATABASE_URL is set to a persistent store.",
+	}, withMetrics("get_audit_summary", metrics, withRecovery("get_audit_summary", getAuditSummaryHandler(auditReader))))
 
 }

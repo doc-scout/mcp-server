@@ -89,8 +89,9 @@ func (p *Parser) Parse(data []byte) (parser.ParsedFile, error) { ... }
 | `provides_grpc` | service | grpc-service | .proto |
 | `depends_on_grpc` | service | grpc-service | .proto imports |
 | `calls_service` | service | service | K8s env vars |
+| `uses_mcp` | service | mcp-server | mcp-config parser |
 
-New entity types: `event-topic`, `grpc-service` (in addition to existing `api`, `service`, `team`, `person`).
+New entity types: `event-topic`, `grpc-service`, `mcp-server` (in addition to existing `api`, `service`, `team`, `person`).
 
 ## `get_integration_map` tool
 

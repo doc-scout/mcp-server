@@ -649,7 +649,7 @@ func TestRegister_ReadOnly_OmitsMutationTools(t *testing.T) {
 
 	graph := &mockGraphStore{}
 
-	Register(s, &mockScanner{}, graph, nil, nil, NewToolMetrics(), NewDocMetrics(), nil, true)
+	Register(s, &mockScanner{}, graph, nil, nil, NewToolMetrics(), NewDocMetrics(), nil, true, nil)
 
 	tools := listToolNames(s)
 
@@ -708,7 +708,7 @@ func TestRegister_ReadWrite_IncludesMutationTools(t *testing.T) {
 
 	graph := &mockGraphStore{}
 
-	Register(s, &mockScanner{}, graph, nil, nil, NewToolMetrics(), NewDocMetrics(), nil, false)
+	Register(s, &mockScanner{}, graph, nil, nil, NewToolMetrics(), NewDocMetrics(), nil, false, nil)
 
 	tools := listToolNames(s)
 

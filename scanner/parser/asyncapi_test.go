@@ -46,7 +46,15 @@ func TestAsyncAPIParser_Parse_PublishAndSubscribe(t *testing.T) {
 
 
 
+
+
+
+
 asyncapi: "2.6.0"
+
+
+
+
 
 
 
@@ -54,7 +62,15 @@ info:
 
 
 
+
+
+
+
   title: order-service
+
+
+
+
 
 
 
@@ -62,7 +78,15 @@ channels:
 
 
 
+
+
+
+
   order.created:
+
+
+
+
 
 
 
@@ -70,7 +94,15 @@ channels:
 
 
 
+
+
+
+
       message:
+
+
+
+
 
 
 
@@ -78,7 +110,15 @@ channels:
 
 
 
+
+
+
+
   payment.approved:
+
+
+
+
 
 
 
@@ -86,11 +126,23 @@ channels:
 
 
 
+
+
+
+
       message:
 
 
 
+
+
+
+
         name: PaymentApprovedEvent
+
+
+
+
 
 
 
@@ -186,7 +238,15 @@ func TestAsyncAPIParser_Parse_EmptyChannels(t *testing.T) {
 
 
 
+
+
+
+
 asyncapi: "2.6.0"
+
+
+
+
 
 
 
@@ -194,11 +254,23 @@ info:
 
 
 
+
+
+
+
   title: quiet-service
 
 
 
+
+
+
+
 channels: {}
+
+
+
+
 
 
 
@@ -228,7 +300,15 @@ func TestAsyncAPIParser_Parse_MissingTitle(t *testing.T) {
 
 
 
+
+
+
+
 asyncapi: "2.6.0"
+
+
+
+
 
 
 
@@ -236,7 +316,15 @@ info: {}
 
 
 
+
+
+
+
 channels: {}
+
+
+
+
 
 
 
