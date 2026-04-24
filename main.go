@@ -160,7 +160,9 @@ func isInMemoryDB(dbURL string) bool {
 func main() {
 
 	if len(os.Args) > 1 && os.Args[1] == "--benchmark" {
+
 		os.Exit(benchmarkcmd.Run(os.Args[2:]))
+
 	}
 
 	// Configure slog to write to stderr to prevent MCP stdio corruption

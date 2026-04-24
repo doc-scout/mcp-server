@@ -11,7 +11,7 @@ An [MCP](https://modelcontextprotocol.io) server written in Go that continuously
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet)](https://modelcontextprotocol.io)
-[![Token Savings](https://img.shields.io/badge/token--savings-93%25-brightgreen)](benchmark/RESULTS.md)
+[![Token Savings](https://img.shields.io/badge/token--savings-99%25-brightgreen)](benchmark/RESULTS.md)
 [![Graph Accuracy F1](https://img.shields.io/badge/graph--accuracy-F1%201.00-blue)](benchmark/RESULTS.md)
 
 </div>

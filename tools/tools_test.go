@@ -515,9 +515,9 @@ func (m *mockGraphStore) OpenNodesFiltered(names []string, includeArchived bool)
 
 }
 
-func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) {
+func (m *mockGraphStore) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, []memory.TraverseEdge, error) {
 
-	return nil, nil
+	return nil, nil, nil
 
 }
 

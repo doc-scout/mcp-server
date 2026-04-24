@@ -1,4 +1,5 @@
 // Copyright 2026 Doc Scout
+
 // SPDX-License-Identifier: AGPL-3.0-only
 
 // embeddings/indexer_test.go

@@ -62,7 +62,7 @@ type GraphStore interface {
 
 	EntityTypeCounts() (map[string]int64, error)
 
-	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error)
+	TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, []memory.TraverseEdge, error)
 
 	GetIntegrationMap(ctx context.Context, service string, depth int) (memory.IntegrationMap, error)
 

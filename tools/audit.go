@@ -211,7 +211,7 @@ func (a *GraphAuditLogger) EntityTypeCounts() (map[string]int64, error) {
 
 }
 
-func (a *GraphAuditLogger) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, error) {
+func (a *GraphAuditLogger) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]memory.TraverseNode, []memory.TraverseEdge, error) {
 
 	return a.inner.TraverseGraph(entity, relationType, direction, maxDepth)
 

@@ -10,6 +10,11 @@ type ParsedRelation struct {
 	From         string
 	To           string
 	RelationType string // e.g. "depends_on", "owns", "provides_api"
+	// Confidence is the edge reliability level. Parsers set "authoritative" for explicit
+	// contract files (AsyncAPI, OpenAPI, proto, go.mod, pom.xml, catalog, CODEOWNERS, package.json)
+	// and "inferred" for heuristic sources (Spring Kafka, K8s env vars).
+	// If empty, the indexer defaults to "authoritative".
+	Confidence string
 }
 
 // AuxEntity is an additional graph entity produced alongside the primary entity.

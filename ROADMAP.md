@@ -108,9 +108,29 @@ This document outlines the current technical debts and the path forward for DocS
 - `tools/get_integration_map.go` — `get_integration_map` MCP tool.
 - `tests/integration_map/` — 3 E2E scenarios.
 
+### 29. Relation Confidence Scores ✅
+- **Implemented (2026-04-23)**: Added `confidence` field to every relation: `"authoritative"` for relations from explicit contract files, `"inferred"` for heuristic sources, `"ambiguous"` for caller-marked edges.
+- `memory/memory.go` — `Relation` struct gains `Confidence string`; `dbRelation` GORM model adds `confidence` column (AutoMigrate; backward-compatible default `"authoritative"`).
+- `scanner/parser/extension.go` — `ParsedRelation.Confidence` field; parsers set it: asyncapi/openapi/proto → `"authoritative"`, springkafka/k8sintegration → `"inferred"`.
+- `indexer/indexer.go` — passes `Confidence` through; defaults to `"authoritative"` when empty.
+- `memory/traverse.go` — new `TraverseEdge` struct; `traverse_graph` result now includes an `edges` array with `from`, `to`, `relationType`, and `confidence`.
+- `memory/pathfind.go` — `PathEdge` gains `confidence` field.
+- `tools/create_relations.go` — defaults caller-supplied relations to `"authoritative"` when `confidence` is omitted; callers can override by setting `"inferred"` or `"ambiguous"`.
+- `tools/traverse_graph.go` — `TraverseGraphResult.Edges []TraverseEdge` added to surface edge confidence on every traversal.
+
 ### 2. Semantic Search and Vector Embeddings (RAG) ✅
 - **Phase 1 ✅ (2026-04-11)**: Replaced SQL `LIKE` with SQLite FTS5 full-text search — BM25 relevance ranking, Porter stemmer (`authenticate` → `authentication`), multi-word AND queries, special-char-safe query sanitization. Zero new dependencies.
 - **Phase 2 ✅ (2026-04-14)**: `semantic_search` MCP tool — vector embeddings via OpenAI or Ollama, cosine similarity ranking, hash-based staleness detection for docs and entities, debounced background re-indexing. Zero-downtime: server starts normally if no embedding provider is configured.
+
+### 27. Benchmark Narrative — "The Number" ✅
+- **Implemented**: `benchmark/RESULTS.md` — 99.0% average token savings across 12 canonical questions, F1 1.00 parser accuracy across all 10 parsers. Badge added to README and docs site.
+
+### 25. Graph Visualization Export ✅
+- **Implemented**: `memory/export.go` — `ExportGraph(kg, format, title)` renders `html` (self-contained force-directed graph, vanilla JS Canvas, zero dependencies) and `json` (nodes+edges) formats.
+- `tools/export_graph.go` — `export_graph` MCP tool: accepts `format`, `title`, and optional `output_path`. Writes to disk or returns content inline.
+
+### 28. Onboarding in 60 Seconds ✅
+- **Implemented**: `bin/docscout-init.sh` — curl-installable shell script. Downloads latest binary for the detected OS/arch (falls back to `go run`), writes `.env.local`, and prints the Claude Desktop config snippet. No manual config required for the "try it" path.
 
 ---
 

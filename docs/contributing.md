@@ -4,6 +4,18 @@ Thank you for your interest in contributing. DocScout-MCP is an open-source MCP 
 
 ---
 
+## Try DocScout in 60 Seconds
+
+No Git clone needed:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/doc-scout/mcp-server/main/bin/docscout-init.sh | sh
+```
+
+The script downloads the latest binary, writes `.env.local`, and prints the Claude Desktop config snippet.
+
+---
+
 ## Getting Started
 
 ### Prerequisites

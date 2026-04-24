@@ -15,43 +15,163 @@ func TestParseCatalog_Component(t *testing.T) {
 
 	yaml := []byte(`
 
+
+
+
+
+
+
 apiVersion: backstage.io/v1alpha1
+
+
+
+
+
+
 
 kind: Component
 
+
+
+
+
+
+
 metadata:
+
+
+
+
+
+
 
   name: payment-service
 
+
+
+
+
+
+
   description: Handles payment transactions
+
+
+
+
+
+
 
   tags:
 
+
+
+
+
+
+
     - payment
+
+
+
+
+
+
 
     - critical
 
+
+
+
+
+
+
 spec:
+
+
+
+
+
+
 
   type: service
 
+
+
+
+
+
+
   lifecycle: production
+
+
+
+
+
+
 
   owner: team-payments
 
+
+
+
+
+
+
   system: payment-platform
+
+
+
+
+
+
 
   dependsOn:
 
+
+
+
+
+
+
     - component:database
+
+
+
+
+
+
 
   providesApis:
 
+
+
+
+
+
+
     - payment-api
+
+
+
+
+
+
 
   consumesApis:
 
+
+
+
+
+
+
     - notification-api
+
+
+
+
+
+
 
 `)
 
@@ -178,17 +298,59 @@ func TestParseCatalog_MissingOptionalFields(t *testing.T) {
 
 	yaml := []byte(`
 
+
+
+
+
+
+
 apiVersion: backstage.io/v1alpha1
+
+
+
+
+
+
 
 kind: Component
 
+
+
+
+
+
+
 metadata:
+
+
+
+
+
+
 
   name: minimal-service
 
+
+
+
+
+
+
 spec:
 
+
+
+
+
+
+
   type: service
+
+
+
+
+
+
 
 `)
 
