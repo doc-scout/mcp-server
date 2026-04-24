@@ -69,6 +69,7 @@ func (p *asyncAPIParser) Parse(data []byte) (ParsedFile, error) {
 				From:         title,
 				To:           channelName,
 				RelationType: "publishes_event",
+				Confidence:   "authoritative",
 			})
 		}
 		if ch.Subscribe != nil {
@@ -76,6 +77,7 @@ func (p *asyncAPIParser) Parse(data []byte) (ParsedFile, error) {
 				From:         title,
 				To:           channelName,
 				RelationType: "subscribes_event",
+				Confidence:   "authoritative",
 			})
 		}
 	}

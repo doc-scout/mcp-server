@@ -77,10 +77,10 @@ func parseSpringKafkaYAML(data []byte) []ParsedRelation {
 	}
 	var rels []ParsedRelation
 	if t := strings.TrimSpace(cfg.Spring.Kafka.Producer.Topic); t != "" && !isPlaceholder(t) {
-		rels = append(rels, ParsedRelation{From: "", To: t, RelationType: "publishes_event"})
+		rels = append(rels, ParsedRelation{From: "", To: t, RelationType: "publishes_event", Confidence: "inferred"})
 	}
 	for _, topic := range splitTopics(cfg.Spring.Kafka.Consumer.Topics) {
-		rels = append(rels, ParsedRelation{From: "", To: topic, RelationType: "subscribes_event"})
+		rels = append(rels, ParsedRelation{From: "", To: topic, RelationType: "subscribes_event", Confidence: "inferred"})
 	}
 	return rels
 }
@@ -106,7 +106,7 @@ func parseSpringKafkaProperties(data []byte) []ParsedRelation {
 			}
 		case "spring.kafka.consumer.topics":
 			for _, topic := range splitTopics(value) {
-				rels = append(rels, ParsedRelation{From: "", To: topic, RelationType: "subscribes_event"})
+				rels = append(rels, ParsedRelation{From: "", To: topic, RelationType: "subscribes_event", Confidence: "inferred"})
 			}
 		}
 	}

@@ -75,6 +75,7 @@ func (p *k8sServiceParser) Parse(data []byte) (ParsedFile, error) {
 				From:         "", // indexer fills with repo service name
 				To:           target,
 				RelationType: "calls_service",
+				Confidence:   "inferred",
 			})
 		}
 	}

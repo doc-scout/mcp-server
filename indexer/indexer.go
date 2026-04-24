@@ -359,6 +359,11 @@ func (ai *AutoIndexer) upsertParsedFile(ctx context.Context, repo scanner.RepoIn
 
 		}
 
+		confidence := r.Confidence
+		if confidence == "" {
+			confidence = "authoritative"
+		}
+
 		rels = append(rels, memory.Relation{
 
 			From: from,
@@ -366,6 +371,8 @@ func (ai *AutoIndexer) upsertParsedFile(ctx context.Context, repo scanner.RepoIn
 			To: to,
 
 			RelationType: r.RelationType,
+
+			Confidence: confidence,
 		})
 
 	}

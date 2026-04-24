@@ -73,7 +73,7 @@ func (p *openAPIParser) Parse(data []byte) (ParsedFile, error) {
 		Observations: obs,
 		Relations: []ParsedRelation{
 			// From is empty: filled by indexer with repo service name.
-			{From: "", To: title, RelationType: "exposes_api"},
+			{From: "", To: title, RelationType: "exposes_api", Confidence: "authoritative"},
 		},
 	}, nil
 }

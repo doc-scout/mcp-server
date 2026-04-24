@@ -55,6 +55,7 @@ func (p *protoParser) Parse(data []byte) (ParsedFile, error) {
 					From:         "",
 					To:           name,
 					RelationType: "provides_grpc",
+					Confidence:   "authoritative",
 				})
 			}
 			continue
@@ -79,6 +80,7 @@ func (p *protoParser) Parse(data []byte) (ParsedFile, error) {
 					From:         "",
 					To:           base,
 					RelationType: "depends_on_grpc",
+					Confidence:   "authoritative",
 				})
 			}
 		}

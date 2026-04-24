@@ -35,6 +35,8 @@ type TraverseGraphResult struct {
 
 	Nodes []memory.TraverseNode `json:"nodes"`
 
+	Edges []memory.TraverseEdge `json:"edges"`
+
 	TotalFound int `json:"total_found"`
 }
 
@@ -80,7 +82,7 @@ func traverseGraphHandler(g GraphStore) func(ctx context.Context, req *mcp.CallT
 
 		}
 
-		nodes, err := g.TraverseGraph(args.Entity, args.RelationType, direction, depth)
+		nodes, edges, err := g.TraverseGraph(args.Entity, args.RelationType, direction, depth)
 
 		if err != nil {
 
@@ -93,6 +95,8 @@ func traverseGraphHandler(g GraphStore) func(ctx context.Context, req *mcp.CallT
 			StartEntity: args.Entity,
 
 			Nodes: nodes,
+
+			Edges: edges,
 
 			TotalFound: len(nodes),
 		}, nil

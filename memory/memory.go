@@ -42,6 +42,12 @@ type Relation struct {
 	To string `json:"to"`
 
 	RelationType string `json:"relationType"`
+
+	// Confidence indicates how the relation was derived.
+	// "authoritative" — from an explicit contract file (AsyncAPI, OpenAPI, proto, go.mod, pom.xml, catalog, CODEOWNERS, package.json).
+	// "inferred"      — from a config heuristic (Spring Kafka, K8s env vars).
+	// "ambiguous"     — caller explicitly marked the edge as uncertain.
+	Confidence string `json:"confidence,omitempty"`
 }
 
 // Observation contains facts about an entity.
@@ -79,6 +85,8 @@ type dbRelation struct {
 	ToEntity string `gorm:"index;column:to_node"`
 
 	RelationType string `gorm:"index"`
+
+	Confidence string `gorm:"default:authoritative"`
 }
 
 type dbObservation struct {
@@ -155,6 +163,8 @@ func (s store) loadGraph() (KnowledgeGraph, error) {
 			To: r.ToEntity,
 
 			RelationType: r.RelationType,
+
+			Confidence: r.Confidence,
 		})
 
 	}
@@ -221,13 +231,17 @@ func (s store) createRelations(relations []Relation) ([]Relation, error) {
 
 		if count == 0 {
 
-			if err := s.db.Create(&dbRelation{FromEntity: r.From, ToEntity: r.To, RelationType: r.RelationType}).Error; err != nil {
+			confidence := r.Confidence
+		if confidence == "" {
+			confidence = "authoritative"
+		}
+		if err := s.db.Create(&dbRelation{FromEntity: r.From, ToEntity: r.To, RelationType: r.RelationType, Confidence: confidence}).Error; err != nil {
 
 				return nil, err
 
 			}
 
-			newRelations = append(newRelations, r)
+			newRelations = append(newRelations, Relation{From: r.From, To: r.To, RelationType: r.RelationType, Confidence: confidence})
 
 		}
 
@@ -395,7 +409,7 @@ func (s store) listRelations(relationType, fromEntity string) ([]Relation, error
 
 	for i, r := range rows {
 
-		relations[i] = Relation{From: r.FromEntity, To: r.ToEntity, RelationType: r.RelationType}
+		relations[i] = Relation{From: r.FromEntity, To: r.ToEntity, RelationType: r.RelationType, Confidence: r.Confidence}
 
 	}
 
@@ -695,6 +709,8 @@ func (s store) buildSubGraph(entities []dbEntity) (KnowledgeGraph, error) {
 			To: r.ToEntity,
 
 			RelationType: r.RelationType,
+
+			Confidence: r.Confidence,
 		})
 
 	}
@@ -821,7 +837,7 @@ func (srv *MemoryService) OpenNodesFiltered(names []string, includeArchived bool
 
 // The start entity is not included in the results.
 
-func (srv *MemoryService) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]TraverseNode, error) {
+func (srv *MemoryService) TraverseGraph(entity, relationType, direction string, maxDepth int) ([]TraverseNode, []TraverseEdge, error) {
 
 	return srv.s.traverseGraph(entity, relationType, direction, maxDepth)
 
