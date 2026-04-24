@@ -104,11 +104,9 @@ func Generate(in Input) string {
 
 	n := len(in.TokenEsts)
 
-	avg := savingsPct(totalDS/n, totalNaive/n)
-
 	fmt.Fprintf(&b, "| — | **Average** | **%d** | **%d** | **%.1f%%** |\n\n",
 
-		totalDS/n, totalNaive/n, avg)
+		totalDS/n, totalNaive/n, token.SavingsPct(totalDS, totalNaive))
 
 	// Live results section (optional)
 
@@ -140,11 +138,9 @@ func Generate(in Input) string {
 
 		nl := len(in.LiveRes)
 
-		liveAvg := savingsPct(liveDS/nl, liveNaive/nl)
-
 		fmt.Fprintf(&b, "| — | **Average** | **%d** | **%d** | **%.1f%%** |\n\n",
 
-			liveDS/nl, liveNaive/nl, liveAvg)
+			liveDS/nl, liveNaive/nl, token.SavingsPct(liveDS, liveNaive))
 
 	}
 
@@ -207,20 +203,6 @@ func Generate(in Input) string {
 	}
 
 	return b.String()
-
-}
-
-// savingsPct returns the percentage of tokens saved by using DocScout vs naive.
-
-func savingsPct(ds, naive int) float64 {
-
-	if naive == 0 {
-
-		return 0
-
-	}
-
-	return float64(naive-ds) / float64(naive) * 100
 
 }
 

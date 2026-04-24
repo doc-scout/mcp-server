@@ -187,7 +187,6 @@ func score(res *Results, tc TestCase, pf parser.ParsedFile) {
 	stats := getOrCreate(res, tc.Parser)
 
 	// Entity name + type
-
 	if tc.ExpectedName != "" {
 
 		if pf.EntityName == tc.ExpectedName && pf.EntityType == tc.ExpectedType {
@@ -206,10 +205,17 @@ func score(res *Results, tc TestCase, pf parser.ParsedFile) {
 
 		}
 
+	} else if pf.EntityName != "" {
+
+		// Parser emitted a primary entity when none was expected.
+		stats.FP++
+
 	}
 
-	// Observations (subset match: every expected obs must appear in actual)
-
+	// Observations use subset-match semantics: we verify expected obs are present
+	// but do not penalise extra observations, because parsers legitimately add
+	// metadata beyond what ground truth enumerates. FP is therefore not tracked
+	// here; only recall (TP/FN) is measured for the observations dimension.
 	for _, obs := range tc.ExpectedObsSubset {
 
 		if slices.Contains(pf.Observations, obs) {
