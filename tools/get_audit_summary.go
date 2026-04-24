@@ -5,6 +5,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -20,14 +21,14 @@ type GetAuditSummaryArgs struct {
 
 // GetAuditSummaryResult is the structured output of get_audit_summary.
 type GetAuditSummaryResult struct {
-	WindowHours int                `json:"window_hours"`
+	WindowHours int                 `json:"window_hours"`
 	Summary     memory.AuditSummary `json:"summary"`
 }
 
 func getAuditSummaryHandler(r AuditReader) func(ctx context.Context, req *mcp.CallToolRequest, args GetAuditSummaryArgs) (*mcp.CallToolResult, GetAuditSummaryResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args GetAuditSummaryArgs) (*mcp.CallToolResult, GetAuditSummaryResult, error) {
 		if r == nil {
-			return nil, GetAuditSummaryResult{}, fmt.Errorf(auditDisabledMsg)
+			return nil, GetAuditSummaryResult{}, errors.New(auditDisabledMsg)
 		}
 
 		hours := args.WindowHours

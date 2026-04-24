@@ -21,7 +21,23 @@ func TestParseCatalog_Component(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
 apiVersion: backstage.io/v1alpha1
+
+
+
+
+
+
+
+
 
 
 
@@ -37,7 +53,23 @@ kind: Component
 
 
 
+
+
+
+
+
+
+
+
 metadata:
+
+
+
+
+
+
+
+
 
 
 
@@ -53,7 +85,23 @@ metadata:
 
 
 
+
+
+
+
+
+
+
+
   description: Handles payment transactions
+
+
+
+
+
+
+
+
 
 
 
@@ -69,7 +117,23 @@ metadata:
 
 
 
+
+
+
+
+
+
+
+
     - payment
+
+
+
+
+
+
+
+
 
 
 
@@ -85,7 +149,23 @@ metadata:
 
 
 
+
+
+
+
+
+
+
+
 spec:
+
+
+
+
+
+
+
+
 
 
 
@@ -101,7 +181,23 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
   lifecycle: production
+
+
+
+
+
+
+
+
 
 
 
@@ -117,7 +213,23 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
   system: payment-platform
+
+
+
+
+
+
+
+
 
 
 
@@ -133,7 +245,23 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
     - component:database
+
+
+
+
+
+
+
+
 
 
 
@@ -149,7 +277,23 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
     - payment-api
+
+
+
+
+
+
+
+
 
 
 
@@ -165,7 +309,23 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
     - notification-api
+
+
+
+
+
+
+
+
 
 
 
@@ -304,7 +464,23 @@ func TestParseCatalog_MissingOptionalFields(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
 apiVersion: backstage.io/v1alpha1
+
+
+
+
+
+
+
+
 
 
 
@@ -320,7 +496,23 @@ kind: Component
 
 
 
+
+
+
+
+
+
+
+
 metadata:
+
+
+
+
+
+
+
+
 
 
 
@@ -336,6 +528,14 @@ metadata:
 
 
 
+
+
+
+
+
+
+
+
 spec:
 
 
@@ -344,7 +544,23 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
   type: service
+
+
+
+
+
+
+
+
 
 
 

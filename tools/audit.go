@@ -19,134 +19,239 @@ import (
 )
 
 // GraphAuditLogger is a GraphStore decorator that logs every mutation to slog
+
 // and, when a store is provided, persists an AuditEvent row.
 
 type GraphAuditLogger struct {
-	inner   GraphStore
-	agentFn func() string     // called per event; never nil
-	store   memory.AuditStore // nil = no-op (in-memory deployments)
+	inner GraphStore
+
+	agentFn func() string // called per event; never nil
+
+	store memory.AuditStore // nil = no-op (in-memory deployments)
+
 }
 
 // NewGraphAuditLogger wraps inner with audit logging.
+
 // agentFn is called on each write to resolve the current agent identity.
+
 // store may be nil — audit persistence is skipped silently.
+
 func NewGraphAuditLogger(inner GraphStore, agentFn func() string, store memory.AuditStore) *GraphAuditLogger {
+
 	return &GraphAuditLogger{inner: inner, agentFn: agentFn, store: store}
+
 }
 
 func (a *GraphAuditLogger) writeAuditEvent(ctx context.Context, tool, operation string, targets []string, count int, outcome, errorMsg string) {
+
 	if a.store == nil {
+
 		return
+
 	}
+
 	event := memory.AuditEvent{
-		Agent:     a.agentFn(),
-		Tool:      tool,
+
+		Agent: a.agentFn(),
+
+		Tool: tool,
+
 		Operation: operation,
-		Targets:   memory.MarshalTargets(targets),
-		Count:     count,
-		Outcome:   outcome,
-		ErrorMsg:  errorMsg,
+
+		Targets: memory.MarshalTargets(targets),
+
+		Count: count,
+
+		Outcome: outcome,
+
+		ErrorMsg: errorMsg,
 	}
+
 	if err := a.store.Write(ctx, event); err != nil {
+
 		slog.Warn("[graph:audit] failed to persist audit event", "tool", tool, "error", err)
+
 	}
+
 }
 
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 func (a *GraphAuditLogger) CreateEntities(entities []memory.Entity) ([]memory.Entity, error) {
+
 	names := entityNames(entities)
+
 	result, err := a.inner.CreateEntities(entities)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] create_entities failed", "names", names, "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] create_entities", "names", names, "count", len(result))
+
 	}
+
 	a.writeAuditEvent(context.Background(), "create_entities", "create", names, len(entities), outcome, errMsg)
+
 	return result, err
+
 }
 
 func (a *GraphAuditLogger) CreateRelations(relations []memory.Relation) ([]memory.Relation, error) {
+
 	result, err := a.inner.CreateRelations(relations)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] create_relations failed", "count", len(relations), "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] create_relations", "count", len(result))
+
 	}
+
 	a.writeAuditEvent(context.Background(), "create_relations", "create", []string{fmt.Sprintf("%d relations", len(relations))}, len(relations), outcome, errMsg)
+
 	return result, err
+
 }
 
 func (a *GraphAuditLogger) AddObservations(observations []memory.Observation) ([]memory.Observation, error) {
+
 	entities := observationEntityNames(observations)
+
 	totalObs := countObservations(observations)
+
 	result, err := a.inner.AddObservations(observations)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] add_observations failed", "entities", entities, "total_obs", totalObs, "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] add_observations", "entities", entities, "total_obs", totalObs)
+
 	}
+
 	a.writeAuditEvent(context.Background(), "add_observations", "add", entities, totalObs, outcome, errMsg)
+
 	return result, err
+
 }
 
 func (a *GraphAuditLogger) DeleteEntities(entityNames []string) error {
+
 	err := a.inner.DeleteEntities(entityNames)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] delete_entities failed", "names", entityNames, "count", len(entityNames), "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] delete_entities", "names", entityNames, "count", len(entityNames))
+
 	}
+
 	a.writeAuditEvent(context.Background(), "delete_entities", "delete", entityNames, len(entityNames), outcome, errMsg)
+
 	return err
+
 }
 
 func (a *GraphAuditLogger) DeleteObservations(deletions []memory.Observation) error {
+
 	entities := observationEntityNames(deletions)
+
 	err := a.inner.DeleteObservations(deletions)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] delete_observations failed", "entities", entities, "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] delete_observations", "entities", entities, "count", len(deletions))
+
 	}
+
 	a.writeAuditEvent(context.Background(), "delete_observations", "delete", entities, len(deletions), outcome, errMsg)
+
 	return err
+
 }
 
 func (a *GraphAuditLogger) DeleteRelations(relations []memory.Relation) error {
+
 	err := a.inner.DeleteRelations(relations)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] delete_relations failed", "count", len(relations), "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] delete_relations", "count", len(relations))
+
 	}
+
 	a.writeAuditEvent(context.Background(), "delete_relations", "delete", []string{fmt.Sprintf("%d relations", len(relations))}, len(relations), outcome, errMsg)
+
 	return err
+
 }
 
 func (a *GraphAuditLogger) UpdateEntity(oldName, newName, newType string) error {
+
 	err := a.inner.UpdateEntity(oldName, newName, newType)
+
 	outcome, errMsg := "ok", ""
+
 	if err != nil {
+
 		slog.Warn("[graph:audit] update_entity failed", "old_name", oldName, "new_name", newName, "new_type", newType, "error", err)
+
 		outcome, errMsg = "error", err.Error()
+
 	} else {
+
 		slog.Info("[graph:audit] update_entity", "old_name", oldName, "new_name", newName, "new_type", newType)
+
 	}
+
 	a.writeAuditEvent(context.Background(), "update_entity", "update", []string{oldName}, 1, outcome, errMsg)
+
 	return err
+
 }
 
 // ── Read-only pass-throughs ───────────────────────────────────────────────────

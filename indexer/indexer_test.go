@@ -165,7 +165,15 @@ func TestAutoIndexer_CreatesEntitiesFromCatalog(t *testing.T) {
 
 
 
+
+
+
+
 apiVersion: backstage.io/v1alpha1
+
+
+
+
 
 
 
@@ -173,7 +181,15 @@ kind: Component
 
 
 
+
+
+
+
 metadata:
+
+
+
+
 
 
 
@@ -181,7 +197,15 @@ metadata:
 
 
 
+
+
+
+
   description: Handles payment
+
+
+
+
 
 
 
@@ -189,7 +213,15 @@ spec:
 
 
 
+
+
+
+
   type: service
+
+
+
+
 
 
 
@@ -197,7 +229,15 @@ spec:
 
 
 
+
+
+
+
   owner: team-payments
+
+
+
+
 
 
 
@@ -205,7 +245,15 @@ spec:
 
 
 
+
+
+
+
     - component:db
+
+
+
+
 
 
 
@@ -505,7 +553,15 @@ func TestAutoIndexer_PreservesManualEntities(t *testing.T) {
 
 
 
+
+
+
+
 apiVersion: backstage.io/v1alpha1
+
+
+
+
 
 
 
@@ -513,7 +569,15 @@ kind: Component
 
 
 
+
+
+
+
 metadata:
+
+
+
+
 
 
 
@@ -521,7 +585,15 @@ metadata:
 
 
 
+
+
+
+
 spec:
+
+
+
+
 
 
 
@@ -529,7 +601,15 @@ spec:
 
 
 
+
+
+
+
   lifecycle: production
+
+
+
+
 
 
 

@@ -5,6 +5,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -34,7 +35,7 @@ type QueryAuditLogResult struct {
 func queryAuditLogHandler(r AuditReader) func(ctx context.Context, req *mcp.CallToolRequest, args QueryAuditLogArgs) (*mcp.CallToolResult, QueryAuditLogResult, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args QueryAuditLogArgs) (*mcp.CallToolResult, QueryAuditLogResult, error) {
 		if r == nil {
-			return nil, QueryAuditLogResult{}, fmt.Errorf(auditDisabledMsg)
+			return nil, QueryAuditLogResult{}, errors.New(auditDisabledMsg)
 		}
 
 		filter := memory.AuditFilter{
