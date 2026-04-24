@@ -24,6 +24,16 @@ func createRelationsHandler(graph GraphStore) func(ctx context.Context, req *mcp
 
 	return func(ctx context.Context, req *mcp.CallToolRequest, args CreateRelationsArgs) (*mcp.CallToolResult, CreateRelationsResult, error) {
 
+		for i := range args.Relations {
+
+			if args.Relations[i].Confidence == "" {
+
+				args.Relations[i].Confidence = "authoritative"
+
+			}
+
+		}
+
 		relations, err := graph.CreateRelations(args.Relations)
 
 		if err != nil {

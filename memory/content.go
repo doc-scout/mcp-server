@@ -115,11 +115,35 @@ func (cc *ContentCache) initFTS5() error {
 
 		`CREATE VIRTUAL TABLE IF NOT EXISTS doc_contents_fts USING fts5(
 
+
+
+
+
+
+
 			repo_name UNINDEXED,
+
+
+
+
+
+
 
 			content,
 
+
+
+
+
+
+
 			tokenize = 'porter ascii'
+
+
+
+
+
+
 
 		)`,
 
@@ -127,31 +151,103 @@ func (cc *ContentCache) initFTS5() error {
 
 		`CREATE TRIGGER IF NOT EXISTS doc_contents_fts_insert
 
+
+
+
+
+
+
 		 AFTER INSERT ON db_doc_contents BEGIN
+
+
+
+
+
+
 
 		   INSERT INTO doc_contents_fts(rowid, repo_name, content)
 
+
+
+
+
+
+
 		   VALUES (new.id, new.repo_name, new.content);
+
+
+
+
+
+
 
 		 END`,
 
 		`CREATE TRIGGER IF NOT EXISTS doc_contents_fts_update
 
+
+
+
+
+
+
 		 AFTER UPDATE ON db_doc_contents BEGIN
+
+
+
+
+
+
 
 		   DELETE FROM doc_contents_fts WHERE rowid = old.id;
 
+
+
+
+
+
+
 		   INSERT INTO doc_contents_fts(rowid, repo_name, content)
 
+
+
+
+
+
+
 		   VALUES (new.id, new.repo_name, new.content);
+
+
+
+
+
+
 
 		 END`,
 
 		`CREATE TRIGGER IF NOT EXISTS doc_contents_fts_delete
 
+
+
+
+
+
+
 		 AFTER DELETE ON db_doc_contents BEGIN
 
+
+
+
+
+
+
 		   DELETE FROM doc_contents_fts WHERE rowid = old.id;
+
+
+
+
+
+
 
 		 END`,
 	}
@@ -318,13 +414,43 @@ func (cc *ContentCache) searchFTS5(query, repoName, fileType string) ([]ContentM
 
 	sql := `
 
+
+
+
+
+
+
 		SELECT dc.repo_name, dc.path, dc.file_type,
+
+
+
+
+
+
 
 		       snippet(doc_contents_fts, 1, '', '', '...', 48) AS snippet
 
+
+
+
+
+
+
 		FROM doc_contents_fts
 
+
+
+
+
+
+
 		JOIN db_doc_contents dc ON dc.id = doc_contents_fts.rowid
+
+
+
+
+
+
 
 		WHERE doc_contents_fts MATCH ?`
 

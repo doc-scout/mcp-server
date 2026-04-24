@@ -9,6 +9,7 @@ type PathEdge struct {
 	From         string `json:"from"`
 	RelationType string `json:"relationType"`
 	To           string `json:"to"`
+	Confidence   string `json:"confidence,omitempty"`
 }
 
 // pathEdgeRow is used for scanning raw edge rows that include the relation type.
@@ -16,6 +17,7 @@ type pathEdgeRow struct {
 	FromNode     string `gorm:"column:from_node"`
 	ToNode       string `gorm:"column:to_node"`
 	RelationType string `gorm:"column:relation_type"`
+	Confidence   string `gorm:"column:confidence"`
 }
 
 // pathParentInfo records how a node was reached during BFS.
@@ -60,8 +62,8 @@ func (s store) findPath(from, to string, maxDepth int) ([]PathEdge, error) {
 				frontierNode, neighbour string
 				edge                    PathEdge
 			}{
-				{e.FromNode, e.ToNode, PathEdge{From: e.FromNode, RelationType: e.RelationType, To: e.ToNode}},
-				{e.ToNode, e.FromNode, PathEdge{From: e.FromNode, RelationType: e.RelationType, To: e.ToNode}},
+				{e.FromNode, e.ToNode, PathEdge{From: e.FromNode, RelationType: e.RelationType, To: e.ToNode, Confidence: e.Confidence}},
+				{e.ToNode, e.FromNode, PathEdge{From: e.FromNode, RelationType: e.RelationType, To: e.ToNode, Confidence: e.Confidence}},
 			}
 
 			for _, c := range candidates {
@@ -90,7 +92,7 @@ func (s store) findPath(from, to string, maxDepth int) ([]PathEdge, error) {
 func (s store) allEdgesFor(frontier []string) ([]pathEdgeRow, error) {
 	var rows []pathEdgeRow
 	err := s.db.Model(&dbRelation{}).
-		Select("from_node, to_node, relation_type").
+		Select("from_node, to_node, relation_type, confidence").
 		Where("from_node IN ? OR to_node IN ?", frontier, frontier).
 		Find(&rows).Error
 	return rows, err

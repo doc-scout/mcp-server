@@ -13,11 +13,19 @@ type TraverseNode struct {
 	Path         []string `json:"path"` // entity names from start (exclusive) to this node (inclusive)
 }
 
+// TraverseEdge is a directed edge discovered during graph traversal.
+type TraverseEdge struct {
+	From         string `json:"from"`
+	To           string `json:"to"`
+	RelationType string `json:"relationType"`
+	Confidence   string `json:"confidence,omitempty"`
+}
+
 // traverseGraph performs BFS from entity up to maxDepth hops.
 // direction must be "outgoing", "incoming", or "both".
 // relationType filters edges by type; empty string matches all types.
 // The start entity itself is not included in the results.
-func (s store) traverseGraph(entity, relationType, direction string, maxDepth int) ([]TraverseNode, error) {
+func (s store) traverseGraph(entity, relationType, direction string, maxDepth int) ([]TraverseNode, []TraverseEdge, error) {
 	type bfsEntry struct {
 		name string
 		path []string
@@ -26,6 +34,7 @@ func (s store) traverseGraph(entity, relationType, direction string, maxDepth in
 	visited := map[string]bool{entity: true}
 	frontier := []bfsEntry{{name: entity, path: []string{entity}}}
 	var results []TraverseNode
+	var edges []TraverseEdge
 
 	for depth := 1; depth <= maxDepth && len(frontier) > 0; depth++ {
 		frontierNames := make([]string, len(frontier))
@@ -40,36 +49,41 @@ func (s store) traverseGraph(entity, relationType, direction string, maxDepth in
 			pathOf[e.name] = e.path
 		}
 
-		neighbours, err := s.queryNeighbours(frontierNames, relationType, direction)
+		edgeRows, err := s.queryNeighbours(frontierNames, relationType, direction)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var nextFrontier []bfsEntry
-		for from, targets := range neighbours {
-			parentPath := pathOf[from]
-			for _, target := range targets {
-				if visited[target] {
-					continue
-				}
-				visited[target] = true
-				nodePath := make([]string, len(parentPath), len(parentPath)+1)
-				copy(nodePath, parentPath)
-				nodePath = append(nodePath, target)
-
-				results = append(results, TraverseNode{
-					Name:     target,
-					Distance: depth,
-					Path:     nodePath[1:], // strip the start entity; path = nodes traversed to reach target
-				})
-				nextFrontier = append(nextFrontier, bfsEntry{name: target, path: nodePath})
+		for _, row := range edgeRows {
+			parentPath := pathOf[row.FromNode]
+			target := row.ToNode
+			edges = append(edges, TraverseEdge{
+				From:         row.FromNode,
+				To:           target,
+				RelationType: row.RelationType,
+				Confidence:   row.Confidence,
+			})
+			if visited[target] {
+				continue
 			}
+			visited[target] = true
+			nodePath := make([]string, len(parentPath), len(parentPath)+1)
+			copy(nodePath, parentPath)
+			nodePath = append(nodePath, target)
+
+			results = append(results, TraverseNode{
+				Name:     target,
+				Distance: depth,
+				Path:     nodePath[1:], // strip the start entity; path = nodes traversed to reach target
+			})
+			nextFrontier = append(nextFrontier, bfsEntry{name: target, path: nodePath})
 		}
 		frontier = nextFrontier
 	}
 
 	if len(results) == 0 {
-		return results, nil
+		return results, edges, nil
 	}
 
 	// Batch-load entity types and observations for all discovered nodes.
@@ -80,7 +94,7 @@ func (s store) traverseGraph(entity, relationType, direction string, maxDepth in
 
 	var dbEntities []dbEntity
 	if err := s.db.Where("name IN ?", names).Find(&dbEntities).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	typeOf := make(map[string]string, len(dbEntities))
 	for _, e := range dbEntities {
@@ -89,7 +103,7 @@ func (s store) traverseGraph(entity, relationType, direction string, maxDepth in
 
 	var dbObs []dbObservation
 	if err := s.db.Where("entity_name IN ?", names).Find(&dbObs).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	obsOf := make(map[string][]string)
 	for _, o := range dbObs {
@@ -101,22 +115,20 @@ func (s store) traverseGraph(entity, relationType, direction string, maxDepth in
 		results[i].Observations = obsOf[results[i].Name]
 	}
 
-	return results, nil
+	return results, edges, nil
 }
 
-// queryNeighbours returns a map[fromNode][]toNode for the given frontier and direction.
+// queryNeighbours returns edge rows for the given frontier and direction.
 // For "both", it merges outgoing and incoming results.
-func (s store) queryNeighbours(frontier []string, relationType, direction string) (map[string][]string, error) {
-	result := make(map[string][]string)
+func (s store) queryNeighbours(frontier []string, relationType, direction string) ([]edgeRow, error) {
+	var result []edgeRow
 
 	if direction == "outgoing" || direction == "both" {
 		rows, err := s.edgeQuery(frontier, relationType, "outgoing")
 		if err != nil {
 			return nil, err
 		}
-		for from, targets := range rows {
-			result[from] = append(result[from], targets...)
-		}
+		result = append(result, rows...)
 	}
 
 	if direction == "incoming" || direction == "both" {
@@ -124,17 +136,17 @@ func (s store) queryNeighbours(frontier []string, relationType, direction string
 		if err != nil {
 			return nil, err
 		}
-		for from, targets := range rows {
-			result[from] = append(result[from], targets...)
-		}
+		result = append(result, rows...)
 	}
 
 	return result, nil
 }
 
 type edgeRow struct {
-	FromNode string `gorm:"column:from_node"`
-	ToNode   string `gorm:"column:to_node"`
+	FromNode     string `gorm:"column:from_node"`
+	ToNode       string `gorm:"column:to_node"`
+	RelationType string `gorm:"column:relation_type"`
+	Confidence   string `gorm:"column:confidence"`
 }
 
 // edgeQuery fetches one hop of edges for the given frontier nodes.
@@ -142,28 +154,21 @@ type edgeRow struct {
 // For incoming: frontier nodes are to_node, neighbours are from_node
 //
 //	(aliased so the result map is always keyed by the frontier node).
-func (s store) edgeQuery(frontier []string, relationType, direction string) (map[string][]string, error) {
+func (s store) edgeQuery(frontier []string, relationType, direction string) ([]edgeRow, error) {
 	var rows []edgeRow
-	var err error
 
 	db := s.db.Model(&dbRelation{})
 	if direction == "outgoing" {
-		db = db.Select("from_node, to_node").Where("from_node IN ?", frontier)
+		db = db.Select("from_node, to_node, relation_type, confidence").Where("from_node IN ?", frontier)
 	} else {
-		// Swap columns so the caller always reads FromNode as the "source" frontier node.
-		db = db.Select("to_node AS from_node, from_node AS to_node").Where("to_node IN ?", frontier)
+		// Swap columns so FromNode is always the frontier side.
+		db = db.Select("to_node AS from_node, from_node AS to_node, relation_type, confidence").Where("to_node IN ?", frontier)
 	}
 	if relationType != "" {
 		db = db.Where("relation_type = ?", relationType)
 	}
-	err = db.Find(&rows).Error
-	if err != nil {
+	if err := db.Find(&rows).Error; err != nil {
 		return nil, err
 	}
-
-	out := make(map[string][]string)
-	for _, r := range rows {
-		out[r.FromNode] = append(out[r.FromNode], r.ToNode)
-	}
-	return out, nil
+	return rows, nil
 }
