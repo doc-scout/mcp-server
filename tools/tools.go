@@ -11,6 +11,8 @@ import (
 	"runtime/debug"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/doc-scout/mcp-server/memory"
 )
 
 // withRecovery wraps an MCP tool handler to catch and log panics gracefully.
@@ -75,7 +77,7 @@ func withMetrics[A, R any](
 
 // add_observations, delete_*) are omitted; only read-only graph tools are registered.
 
-func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, readOnly bool) {
+func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search ContentSearcher, semantic SemanticSearch, metrics *ToolMetrics, docMetrics *DocMetrics, cache *memory.ContentCache, readOnly bool) {
 
 	// --- Scanner Tools ---
 
@@ -180,6 +182,18 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 				Description: "Remove specific relations from the graph",
 			}, withMetrics("delete_relations", metrics, withRecovery("delete_relations", deleteRelationsHandler(graph))))
+
+			mcp.AddTool(s, &mcp.Tool{
+
+				Name: "ingest_url",
+
+				Description: "Fetches a public URL (http/https) and ingests its content into the knowledge graph. " +
+					"Extracts the page title, meta description, headings (h1–h3), and word count. " +
+					"Creates a new graph entity (or adds observations to an existing one) and optionally stores the raw HTML in the content cache. " +
+					"Rate-limited to 5 requests per second per domain. " +
+					"Domain access can be restricted via the ALLOWED_INGEST_DOMAINS environment variable (comma-separated list; empty = allow all). " +
+					"Returns the entity name, URL, observation count, and whether the content was cached.",
+			}, withMetrics("ingest_url", metrics, withRecovery("ingest_url", ingestURLHandler(graph, cache))))
 
 		}
 

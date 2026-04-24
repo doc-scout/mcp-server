@@ -203,3 +203,9 @@ Output: { publishes, subscribes, exposes_api, provides_grpc, grpc_deps, calls, g
 ### 24. OpenTelemetry Traces
 
 **Goal:** Distributed tracing for production multi-tenant deployments. One span per tool call, per scan, per indexer phase. Compatible with Jaeger, Grafana Tempo, and cloud providers.
+
+### 26. `ingest_url` MCP Tool ✅
+
+- **Implemented (2026-04-23)**: New `ingest_url` tool fetches any public HTTP/HTTPS URL and ingests its content into the knowledge graph.
+- `tools/ingest_url.go` — validates URL scheme, checks `ALLOWED_INGEST_DOMAINS` allowlist (empty = allow all), rate-limits to ≤5 req/s per domain (200ms min gap), fetches with 15s timeout and `User-Agent: docscout-mcp/1.0`, extracts `<title>`, `<h1>`–`<h3>` headings, `<meta name="description">`, and word-count estimate from the HTML body. Creates a graph entity (or adds observations to an existing one) and optionally stores raw HTML in the `ContentCache`.
+- `tools/tools.go` — `Register` signature extended with `cache *memory.ContentCache`; tool registered inside the `graph != nil && !readOnly` block.

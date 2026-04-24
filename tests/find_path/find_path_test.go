@@ -41,7 +41,7 @@ func newSession(t *testing.T) *mcp.ClientSession {
 
 	memorySrv := memory.NewMemoryService(db)
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, nil, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), false)
+	tools.Register(server, &testutils.MockScanner{}, memorySrv, nil, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 
