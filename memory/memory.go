@@ -44,9 +44,13 @@ type Relation struct {
 	RelationType string `json:"relationType"`
 
 	// Confidence indicates how the relation was derived.
+
 	// "authoritative" — from an explicit contract file (AsyncAPI, OpenAPI, proto, go.mod, pom.xml, catalog, CODEOWNERS, package.json).
+
 	// "inferred"      — from a config heuristic (Spring Kafka, K8s env vars).
+
 	// "ambiguous"     — caller explicitly marked the edge as uncertain.
+
 	Confidence string `json:"confidence,omitempty"`
 }
 
@@ -232,10 +236,14 @@ func (s store) createRelations(relations []Relation) ([]Relation, error) {
 		if count == 0 {
 
 			confidence := r.Confidence
-		if confidence == "" {
-			confidence = "authoritative"
-		}
-		if err := s.db.Create(&dbRelation{FromEntity: r.From, ToEntity: r.To, RelationType: r.RelationType, Confidence: confidence}).Error; err != nil {
+
+			if confidence == "" {
+
+				confidence = "authoritative"
+
+			}
+
+			if err := s.db.Create(&dbRelation{FromEntity: r.From, ToEntity: r.To, RelationType: r.RelationType, Confidence: confidence}).Error; err != nil {
 
 				return nil, err
 
@@ -529,11 +537,19 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 		err = s.db.Raw(`
 
+
+
 			SELECT DISTINCT e.* FROM db_entities e
+
+
 
 			LEFT JOIN db_observations o ON e.name = o.entity_name
 
+
+
 			WHERE LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?
+
+
 
 		`, queryPattern, queryPattern, queryPattern).Scan(&matchingEntities).Error
 
@@ -541,17 +557,31 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 		err = s.db.Raw(`
 
+
+
 			SELECT DISTINCT e.* FROM db_entities e
+
+
 
 			LEFT JOIN db_observations o ON e.name = o.entity_name
 
+
+
 			WHERE (LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?)
+
+
 
 			  AND e.name NOT IN (
 
+
+
 			    SELECT entity_name FROM db_observations WHERE content = '_status:archived'
 
+
+
 			  )
+
+
 
 		`, queryPattern, queryPattern, queryPattern).Scan(&matchingEntities).Error
 
@@ -619,15 +649,27 @@ func (s store) openNodesFiltered(names []string, includeArchived bool) (Knowledg
 
 		err = s.db.Raw(`
 
+
+
 			SELECT e.* FROM db_entities e
+
+
 
 			WHERE e.name IN ?
 
+
+
 			  AND e.name NOT IN (
+
+
 
 			    SELECT entity_name FROM db_observations WHERE content = '_status:archived'
 
+
+
 			  )
+
+
 
 		`, names).Scan(&matchingEntities).Error
 

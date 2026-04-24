@@ -14,19 +14,35 @@ func TestParseCodeowners_Basic(t *testing.T) {
 
 	input := []byte(`# Global owner
 
+
+
 * @myorg/platform-team
+
+
+
+
 
 
 
 # Backend services
 
+
+
 /services/ @myorg/backend-team @alice
+
+
+
+
 
 
 
 # Frontend
 
+
+
 /frontend/ bob@example.com
+
+
 
 `)
 
@@ -75,9 +91,15 @@ func TestParseCodeowners_Deduplication(t *testing.T) {
 
 	input := []byte(`/docs/ @myorg/docs-team
 
+
+
 /api/  @myorg/docs-team @alice
 
+
+
 *.md   @alice
+
+
 
 `)
 
@@ -109,7 +131,11 @@ func TestParseCodeowners_CommentsOnly(t *testing.T) {
 
 	input := []byte(`# This is a comment
 
+
+
 # Another comment
+
+
 
 `)
 
@@ -127,9 +153,15 @@ func TestParseCodeowners_PatternWithNoOwners(t *testing.T) {
 
 	input := []byte(`# Rule with no owners — should be skipped
 
+
+
 /orphan/
 
+
+
 /with-owner/ @solo
+
+
 
 `)
 

@@ -360,8 +360,11 @@ func (ai *AutoIndexer) upsertParsedFile(ctx context.Context, repo scanner.RepoIn
 		}
 
 		confidence := r.Confidence
+
 		if confidence == "" {
+
 			confidence = "authoritative"
+
 		}
 
 		rels = append(rels, memory.Relation{

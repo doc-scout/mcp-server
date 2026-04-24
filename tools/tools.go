@@ -263,7 +263,15 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 
 
+
+
+
+
 Use this instead of read_graph when you need to answer focused questions about a specific service — it returns only the relevant subgraph without loading every entity.
+
+
+
+
 
 
 
@@ -271,11 +279,23 @@ Examples:
 
 
 
+
+
+
+
   direction=outgoing, relation_type=depends_on  → transitive dependency tree of a service
 
 
 
+
+
+
+
   direction=incoming, relation_type=consumes_api → all services that consume a given API
+
+
+
+
 
 
 
@@ -320,7 +340,15 @@ Examples:
 
 
 
+
+
+
+
 Returns the ordered sequence of directed edges (from, relationType, to) that connect them, regardless of edge direction.
+
+
+
+
 
 
 
@@ -328,7 +356,15 @@ Use this to answer:
 
 
 
+
+
+
+
   - "How does service A connect to service B?"
+
+
+
+
 
 
 
@@ -336,11 +372,23 @@ Use this to answer:
 
 
 
+
+
+
+
   - "What is the relationship path between team X and service Y?"
 
 
 
+
+
+
+
 Returns found=false and an empty path when no connection exists within max_depth hops.
+
+
+
+
 
 
 
