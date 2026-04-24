@@ -36,37 +36,71 @@ func TestK8sServiceParser_Parse_DeploymentEnvVars(t *testing.T) {
 
 	input := []byte(`
 
+
+
 apiVersion: apps/v1
+
+
 
 kind: Deployment
 
+
+
 metadata:
+
+
 
   name: checkout-service
 
+
+
 spec:
+
+
 
   template:
 
+
+
     spec:
+
+
 
       containers:
 
+
+
       - name: checkout
+
+
 
         env:
 
+
+
         - name: PAYMENT_SERVICE_HOST
+
+
 
           value: payment-service
 
+
+
         - name: FRAUD_API_URL
+
+
 
           value: http://fraud-service:8080
 
+
+
         - name: LOG_LEVEL
 
+
+
           value: info
+
+
 
 `)
 
@@ -132,19 +166,35 @@ func TestK8sServiceParser_Parse_NonDeployment(t *testing.T) {
 
 	input := []byte(`
 
+
+
 apiVersion: v1
+
+
 
 kind: Service
 
+
+
 metadata:
+
+
 
   name: checkout-svc
 
+
+
 spec:
+
+
 
   selector:
 
+
+
     app: checkout
+
+
 
 `)
 

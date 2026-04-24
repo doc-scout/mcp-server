@@ -14,23 +14,43 @@ func TestParsePackageJSON_Basic(t *testing.T) {
 
 	input := []byte(`{
 
+
+
   "name": "my-service",
+
+
 
   "version": "1.2.3",
 
+
+
   "dependencies": {
+
+
 
     "express": "^4.18.0",
 
+
+
     "axios": "^1.6.0"
+
+
 
   },
 
+
+
   "devDependencies": {
+
+
 
     "jest": "^29.0.0"
 
+
+
   }
+
+
 
 }`)
 

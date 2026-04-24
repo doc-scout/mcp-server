@@ -47,27 +47,51 @@ func TestOpenAPIParser_Parse_YAML(t *testing.T) {
 
 	input := []byte(`
 
+
+
 openapi: "3.0.0"
+
+
 
 info:
 
+
+
   title: checkout-api
+
+
 
   version: "2.1.0"
 
+
+
 servers:
+
+
 
   - url: https://api.example.com/checkout
 
+
+
 paths:
+
+
 
   /orders:
 
+
+
     get: {}
+
+
 
   /orders/{id}:
 
+
+
     get: {}
+
+
 
 `)
 
@@ -145,7 +169,11 @@ func TestOpenAPIParser_Parse_MissingTitle(t *testing.T) {
 
 	input := []byte(`openapi: "3.0.0"
 
+
+
 info:
+
+
 
   version: "1.0"`)
 

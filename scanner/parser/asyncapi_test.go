@@ -44,29 +44,55 @@ func TestAsyncAPIParser_Parse_PublishAndSubscribe(t *testing.T) {
 
 	input := []byte(`
 
+
+
 asyncapi: "2.6.0"
+
+
 
 info:
 
+
+
   title: order-service
+
+
 
 channels:
 
+
+
   order.created:
+
+
 
     publish:
 
+
+
       message:
+
+
 
         name: OrderCreatedEvent
 
+
+
   payment.approved:
+
+
 
     subscribe:
 
+
+
       message:
 
+
+
         name: PaymentApprovedEvent
+
+
 
 `)
 
@@ -158,13 +184,23 @@ func TestAsyncAPIParser_Parse_EmptyChannels(t *testing.T) {
 
 	input := []byte(`
 
+
+
 asyncapi: "2.6.0"
+
+
 
 info:
 
+
+
   title: quiet-service
 
+
+
 channels: {}
+
+
 
 `)
 
@@ -190,11 +226,19 @@ func TestAsyncAPIParser_Parse_MissingTitle(t *testing.T) {
 
 	input := []byte(`
 
+
+
 asyncapi: "2.6.0"
+
+
 
 info: {}
 
+
+
 channels: {}
+
+
 
 `)
 

@@ -14,55 +14,107 @@ func TestParsePom_Basic(t *testing.T) {
 
 	input := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 
+
+
 <project>
+
+
 
   <groupId>com.myorg</groupId>
 
+
+
   <artifactId>my-service</artifactId>
+
+
 
   <version>1.2.3</version>
 
+
+
   <dependencies>
+
+
 
     <dependency>
 
+
+
       <groupId>org.springframework.boot</groupId>
+
+
 
       <artifactId>spring-boot-starter-web</artifactId>
 
+
+
     </dependency>
 
+
+
     <dependency>
+
+
 
       <groupId>com.fasterxml.jackson.core</groupId>
 
+
+
       <artifactId>jackson-databind</artifactId>
+
+
 
       <scope>compile</scope>
 
+
+
     </dependency>
 
+
+
     <dependency>
+
+
 
       <groupId>org.springframework.boot</groupId>
 
+
+
       <artifactId>spring-boot-starter-test</artifactId>
+
+
 
       <scope>test</scope>
 
+
+
     </dependency>
+
+
 
     <dependency>
 
+
+
       <groupId>javax.servlet</groupId>
+
+
 
       <artifactId>javax.servlet-api</artifactId>
 
+
+
       <scope>provided</scope>
+
+
 
     </dependency>
 
+
+
   </dependencies>
+
+
 
 </project>`)
 
@@ -129,21 +181,39 @@ func TestParsePom_OnlyTestDeps(t *testing.T) {
 
 	input := []byte(`<project>
 
+
+
   <groupId>com.example</groupId>
+
+
 
   <artifactId>lean-service</artifactId>
 
+
+
   <dependencies>
+
+
 
     <dependency>
 
+
+
       <artifactId>junit</artifactId>
+
+
 
       <scope>test</scope>
 
+
+
     </dependency>
 
+
+
   </dependencies>
+
+
 
 </project>`)
 
@@ -167,9 +237,15 @@ func TestParsePom_MissingArtifactID(t *testing.T) {
 
 	input := []byte(`<project>
 
+
+
   <groupId>com.example</groupId>
 
+
+
   <version>1.0.0</version>
+
+
 
 </project>`)
 
@@ -187,11 +263,19 @@ func TestParsePom_NoDependencies(t *testing.T) {
 
 	input := []byte(`<project>
 
+
+
   <groupId>com.example</groupId>
+
+
 
   <artifactId>simple-lib</artifactId>
 
+
+
   <version>0.1.0</version>
+
+
 
 </project>`)
 
@@ -221,27 +305,51 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 	input := []byte(`<project>
 
+
+
   <artifactId>my-app</artifactId>
+
+
 
   <dependencies>
 
+
+
     <dependency>
+
+
 
       <artifactId>mysql-connector-java</artifactId>
 
+
+
       <scope>runtime</scope>
 
+
+
     </dependency>
+
+
 
     <dependency>
 
+
+
       <artifactId>lombok</artifactId>
+
+
 
       <scope>provided</scope>
 
+
+
     </dependency>
 
+
+
   </dependencies>
+
+
 
 </project>`)
 

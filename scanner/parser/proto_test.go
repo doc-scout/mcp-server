@@ -32,29 +32,55 @@ func TestProtoParser_Parse_ServiceDefinition(t *testing.T) {
 
 	input := []byte(`
 
+
+
 syntax = "proto3";
+
+
 
 package com.example.payment;
 
 
 
+
+
+
+
 import "google/protobuf/empty.proto";
+
+
 
 import "fraud/fraud_service.proto";
 
 
 
+
+
+
+
 service PaymentService {
 
+
+
   rpc ProcessPayment(PaymentRequest) returns (PaymentResponse);
+
+
 
 }
 
 
 
+
+
+
+
 message PaymentRequest {}
 
+
+
 message PaymentResponse {}
+
+
 
 `)
 
@@ -142,9 +168,15 @@ func TestProtoParser_Parse_NoService(t *testing.T) {
 
 	input := []byte(`
 
+
+
 syntax = "proto3";
 
+
+
 message Foo {}
+
+
 
 `)
 

@@ -45,17 +45,31 @@ func TestSpringKafkaParser_Parse_YAML(t *testing.T) {
 
 	input := []byte(`
 
+
+
 spring:
+
+
 
   kafka:
 
+
+
     producer:
+
+
 
       topic: order.created
 
+
+
     consumer:
 
+
+
       topics: payment.approved, fraud.checked
+
+
 
 `)
 
@@ -109,9 +123,15 @@ func TestSpringKafkaParser_Parse_Properties(t *testing.T) {
 
 	input := []byte(`
 
+
+
 spring.kafka.producer.topic=order.created
 
+
+
 spring.kafka.consumer.topics=payment.approved,fraud.checked
+
+
 
 `)
 
@@ -151,9 +171,15 @@ func TestSpringKafkaParser_Parse_SkipsPlaceholders(t *testing.T) {
 
 	input := []byte(`
 
+
+
 spring.kafka.producer.topic=${TOPIC_ENV}
 
+
+
 spring.kafka.consumer.topics=real.topic
+
+
 
 `)
 
@@ -183,9 +209,15 @@ func TestSpringKafkaParser_Parse_NoKafkaConfig(t *testing.T) {
 
 	input := []byte(`
 
+
+
 server:
 
+
+
   port: 8080
+
+
 
 `)
 

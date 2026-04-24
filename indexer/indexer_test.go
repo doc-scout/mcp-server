@@ -163,27 +163,51 @@ func TestAutoIndexer_CreatesEntitiesFromCatalog(t *testing.T) {
 
 	catalogYAML := `
 
+
+
 apiVersion: backstage.io/v1alpha1
+
+
 
 kind: Component
 
+
+
 metadata:
+
+
 
   name: payment-service
 
+
+
   description: Handles payment
+
+
 
 spec:
 
+
+
   type: service
+
+
 
   lifecycle: production
 
+
+
   owner: team-payments
+
+
 
   dependsOn:
 
+
+
     - component:db
+
+
 
 `
 
@@ -479,19 +503,35 @@ func TestAutoIndexer_PreservesManualEntities(t *testing.T) {
 
 	catalogYAML := `
 
+
+
 apiVersion: backstage.io/v1alpha1
+
+
 
 kind: Component
 
+
+
 metadata:
+
+
 
   name: payment-service
 
+
+
 spec:
+
+
 
   type: service
 
+
+
   lifecycle: production
+
+
 
 `
 
