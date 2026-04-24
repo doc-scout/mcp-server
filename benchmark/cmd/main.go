@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"time"
 
 	"github.com/doc-scout/mcp-server/benchmark/accuracy"
+	"github.com/doc-scout/mcp-server/benchmark/orgscan"
 	"github.com/doc-scout/mcp-server/benchmark/report"
 	"github.com/doc-scout/mcp-server/benchmark/testdata"
 	"github.com/doc-scout/mcp-server/benchmark/token"
@@ -66,11 +68,17 @@ func Run(args []string) int {
 
 	version := fset.String("version", "dev", "docscout version stamp for the report")
 
+	org := fset.String("org", "", "GitHub org to scan live (optional; produces Org Scan Stats section)")
+
+	ghToken := fset.String("token", "", "GitHub token for --org mode (default: $GITHUB_TOKEN)")
+
+	orgTimeout := fset.Duration("org-timeout", 30*time.Minute, "timeout for --org live scan")
+
 	_ = fset.Parse(args)
 
 	if *dryRun {
 
-		printDryRun(*mode, *maxQ)
+		printDryRun(*mode, *org, *maxQ)
 
 		return 0
 
@@ -139,6 +147,40 @@ func Run(args []string) int {
 		Questions: questions,
 	}
 
+	if *org != "" {
+
+		tok := *ghToken
+
+		if tok == "" {
+
+			tok = os.Getenv("GITHUB_TOKEN")
+
+		}
+
+		fmt.Fprintf(os.Stderr, "Running live org scan for %s (timeout %s)...\n", *org, *orgTimeout)
+
+		orgCtx, cancel := context.WithTimeout(ctx, *orgTimeout)
+
+		defer cancel()
+
+		stats, err := orgscan.Run(orgCtx, *org, tok)
+
+		if err != nil {
+
+			fmt.Fprintf(os.Stderr, "benchmark: org scan: %v\n", err)
+
+			return 1
+
+		}
+
+		inp.OrgStats = stats
+
+		fmt.Fprintf(os.Stderr, "Org scan: %d repos, %d entities, %d relations (%s)\n",
+
+			stats.Repos, stats.EntityTotal, stats.RelTotal, stats.ScanDuration.Round(time.Second))
+
+	}
+
 	if *mode == "live" {
 
 		fmt.Fprintln(os.Stderr, "Running live token benchmark (Claude API)...")
@@ -191,13 +233,21 @@ func Run(args []string) int {
 
 }
 
-func printDryRun(mode string, maxQ int) {
+func printDryRun(mode, org string, maxQ int) {
 
 	fmt.Fprintf(os.Stderr, "Benchmark dry-run\n")
 
 	fmt.Fprintf(os.Stderr, "  mode:          %s\n", mode)
 
 	fmt.Fprintf(os.Stderr, "  max-questions: %d\n", maxQ)
+
+	if org != "" {
+
+		fmt.Fprintf(os.Stderr, "  org:           %s (live scan)\n", org)
+
+		fmt.Fprintf(os.Stderr, "  GITHUB_TOKEN:  %s\n", tokenStatus())
+
+	}
 
 	if mode == "live" {
 
@@ -207,9 +257,21 @@ func printDryRun(mode string, maxQ int) {
 
 		fmt.Fprintf(os.Stderr, "  estimated cost:      ~$%.4f USD\n", float64(estimatedCalls)*0.00025)
 
+		fmt.Fprintf(os.Stderr, "  ANTHROPIC_API_KEY: %s\n", keyStatus())
+
 	}
 
-	fmt.Fprintf(os.Stderr, "  ANTHROPIC_API_KEY: %s\n", keyStatus())
+}
+
+func tokenStatus() string {
+
+	if os.Getenv("GITHUB_TOKEN") != "" {
+
+		return "set"
+
+	}
+
+	return "NOT SET"
 
 }
 

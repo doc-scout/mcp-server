@@ -21,6 +21,22 @@ var Default = NewRegistry()
 
 func Register(p FileParser) { Default.Register(p) }
 
+// RegisterDefaults registers all built-in parsers on reg.
+// Callers that need an isolated registry (e.g. the benchmark CLI) use this
+// instead of the package-level Register helpers that modify Default.
+func RegisterDefaults(reg *ParserRegistry) {
+	reg.Register(GoModParser())
+	reg.Register(PackageJSONParser())
+	reg.Register(PomParser())
+	reg.Register(CodeownersParser())
+	reg.Register(CatalogParser())
+	reg.Register(AsyncAPIParser())
+	reg.Register(SpringKafkaParser())
+	reg.Register(OpenAPIParser())
+	reg.Register(ProtoParser())
+	reg.Register(K8sServiceParser())
+}
+
 // ParserRegistry is a thread-safe map of FileParser implementations keyed by FileType().
 
 type ParserRegistry struct {

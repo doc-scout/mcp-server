@@ -188,10 +188,15 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 				Name: "ingest_url",
 
 				Description: "Fetches a public URL (http/https) and ingests its content into the knowledge graph. " +
+
 					"Extracts the page title, meta description, headings (h1–h3), and word count. " +
+
 					"Creates a new graph entity (or adds observations to an existing one) and optionally stores the raw HTML in the content cache. " +
+
 					"Rate-limited to 5 requests per second per domain. " +
+
 					"Domain access can be restricted via the ALLOWED_INGEST_DOMAINS environment variable (comma-separated list; empty = allow all). " +
+
 					"Returns the entity name, URL, observation count, and whether the content was cached.",
 			}, withMetrics("ingest_url", metrics, withRecovery("ingest_url", ingestURLHandler(graph, cache))))
 
@@ -289,7 +294,39 @@ func Register(s *mcp.Server, sc DocumentScanner, graph GraphStore, search Conten
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Use this instead of read_graph when you need to answer focused questions about a specific service — it returns only the relevant subgraph without loading every entity.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -321,6 +358,22 @@ Examples:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   direction=outgoing, relation_type=depends_on  → transitive dependency tree of a service
 
 
@@ -337,7 +390,39 @@ Examples:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   direction=incoming, relation_type=consumes_api → all services that consume a given API
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -410,7 +495,39 @@ Examples:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Returns the ordered sequence of directed edges (from, relationType, to) that connect them, regardless of edge direction.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -442,7 +559,39 @@ Use this to answer:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   - "How does service A connect to service B?"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -474,6 +623,22 @@ Use this to answer:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   - "What is the relationship path between team X and service Y?"
 
 
@@ -490,7 +655,39 @@ Use this to answer:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Returns found=false and an empty path when no connection exists within max_depth hops.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
