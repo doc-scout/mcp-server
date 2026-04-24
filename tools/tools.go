@@ -326,9 +326,13 @@ Examples:
 			Name: "export_graph",
 
 			Description: "Exports the entire knowledge graph as an interactive HTML visualization or JSON. " +
+
 				"The HTML format produces a self-contained, offline-capable force-directed graph — " +
+
 				"no internet connection required. Use output_path to write the file directly to disk " +
+
 				"(e.g. output_path='/tmp/graph.html'), or omit it to receive the content inline. " +
+
 				"Open the resulting HTML file in any browser to explore entities, relations, and observations.",
 		}, withMetrics("export_graph", metrics, withRecovery("export_graph", exportGraphHandler(graph))))
 
