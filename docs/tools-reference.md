@@ -1,10 +1,11 @@
 # MCP Tools Reference
 
-DocScout-MCP exposes **25 MCP tools** across four categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
+DocScout-MCP exposes **26 MCP tools** across four categories. All tools are instrumented with call-count metrics and wrapped with panic recovery.
 
 !!! note "Tool availability"
     `search_content` is only registered when `SCAN_CONTENT=true` on a persistent `DATABASE_URL`.
-    All mutation tools (`create_*`, `add_observations`, `delete_*`, `update_entity`) are omitted when `GRAPH_READ_ONLY=true`.
+    `ingest_url` requires a non-read-only graph (`GRAPH_READ_ONLY` must not be set).
+    All mutation tools (`create_*`, `add_observations`, `delete_*`, `update_entity`, `ingest_url`) are omitted when `GRAPH_READ_ONLY=true`.
     `query_audit_log` and `get_audit_summary` require a persistent `DATABASE_URL`; without it they return a structured error.
     All other tools are always available.
 
@@ -194,8 +195,41 @@ Both filters can be combined. Leave both empty to return all relations.
 
 | Field | Type | Description |
 |---|---|---|
-| `relations` | array | Array of `{ from, to, relationType }` |
+| `relations` | array | Array of `{ from, to, relationType, confidence }` |
 | `count` | int | Total number of matching relations |
+
+---
+
+### `ingest_url`
+
+Fetches a public HTTP/HTTPS URL, extracts structured metadata from the HTML (title, headings, meta description, word count), and creates or updates a knowledge graph entity for the page. Optionally stores the raw content in the content cache for `search_content` queries.
+
+!!! note "Availability"
+    Only registered when `GRAPH_READ_ONLY` is not set. Domain allowlist can be configured with `ALLOWED_INGEST_DOMAINS` (comma-separated; empty = allow all). Rate-limited to 5 requests/second per domain.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `url` | string | ✅ | Full HTTP or HTTPS URL to fetch. `file://` and `data://` schemes are rejected. |
+| `entity_name` | string | | Override the graph entity name. Defaults to the page `<title>` (sanitized). |
+| `entity_type` | string | | Entity type to assign. Defaults to `"doc"`. |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `entity_name` | string | The name of the created or updated entity |
+| `url` | string | The fetched URL |
+| `observation_count` | int | Number of observations written to the graph |
+| `cached` | bool | Whether content was stored in the content cache |
+| `observations` | array | The observation strings extracted (title, headings, description, word count) |
+
+**Example:**
+
+```
+ingest_url(url="https://docs.example.com/api/overview", entity_type="doc")
+```
 
 ---
 
@@ -269,7 +303,10 @@ Performs a BFS traversal from a starting entity, following directed edges up to 
 |---|---|---|
 | `start_entity` | string | The starting entity name |
 | `nodes` | array | Reached nodes, each with `name`, `entityType`, `observations`, `distance`, `path` |
+| `edges` | array | Traversed edges, each with `from`, `to`, `relationType`, `confidence` |
 | `total_found` | int | Number of reachable nodes |
+
+The `confidence` field on each edge is `"authoritative"`, `"inferred"`, or `"ambiguous"` — see [Relation Confidence Scores](benchmarks.md#relation-confidence-scores).
 
 **Example queries:**
 
@@ -340,7 +377,7 @@ Finds the shortest connection path between two entities using undirected BFS. Re
 | Field | Type | Description |
 |---|---|---|
 | `found` | bool | Whether a path was found within `max_depth` |
-| `path` | array | Ordered sequence of `{ from, relation_type, to }` edges |
+| `path` | array | Ordered sequence of `{ from, relation_type, to, confidence }` edges |
 | `hops` | int | Number of edges in the path |
 
 **Example queries:**

@@ -39,13 +39,13 @@ graph LR
     GH -->|"GitHub API + Webhooks"| S
     S --> P
     P -->|"entities + relations"| G
-    G -->|"23 MCP tools"| AI
+    G -->|"26 MCP tools"| AI
 ```
 
 1. **Scan** — Crawls every repo in your org: docs, manifests, infra files, and root tooling files. Repeats on a configurable interval and reacts to GitHub webhooks for instant updates.
 2. **Parse** — Extracts services, owners, dependencies, and relations from `go.mod`, `pom.xml`, `package.json`, `CODEOWNERS`, `catalog-info.yaml`, and more.
 3. **Graph** — Persists everything as entities and relations in SQLite or PostgreSQL, surviving restarts.
-4. **Answer** — AI clients query the graph via 23 MCP tools. No file-reading loops, no token waste, no guessing.
+4. **Answer** — AI clients query the graph via 26 MCP tools. No file-reading loops, no token waste, no guessing.
 
 ---
 
@@ -179,15 +179,16 @@ docker run -i \
 
 ## Key Configuration
 
-| Variable                | Required | Default          | Description                                          |
-| ----------------------- | -------- | ---------------- | ---------------------------------------------------- |
-| `GITHUB_TOKEN`          | ✅       | —                | Fine-grained PAT (read-only `Contents` + `Metadata`) |
-| `GITHUB_ORG`            | ✅       | —                | GitHub org or username                               |
-| `SCAN_INTERVAL`         | ❌       | `30m`            | Re-scan interval (`10s`, `5m`, `1h`)                 |
-| `DATABASE_URL`          | ❌       | in-memory SQLite | `sqlite://path.db` or `postgres://...`               |
-| `HTTP_ADDR`             | ❌       | —                | Enable HTTP transport at this address (e.g. `:8080`) |
-| `SCAN_CONTENT`          | ❌       | `false`          | Cache file contents for full-text search             |
-| `GITHUB_WEBHOOK_SECRET` | ❌       | —                | Enable incremental scans on push events              |
+| Variable                  | Required | Default          | Description                                                              |
+| ------------------------- | -------- | ---------------- | ------------------------------------------------------------------------ |
+| `GITHUB_TOKEN`            | ✅       | —                | Fine-grained PAT (read-only `Contents` + `Metadata`)                    |
+| `GITHUB_ORG`              | ✅       | —                | GitHub org or username                                                   |
+| `SCAN_INTERVAL`           | ❌       | `30m`            | Re-scan interval (`10s`, `5m`, `1h`)                                     |
+| `DATABASE_URL`            | ❌       | in-memory SQLite | `sqlite://path.db` or `postgres://...`                                   |
+| `HTTP_ADDR`               | ❌       | —                | Enable HTTP transport at this address (e.g. `:8080`)                     |
+| `SCAN_CONTENT`            | ❌       | `false`          | Cache file contents for full-text search                                 |
+| `GITHUB_WEBHOOK_SECRET`   | ❌       | —                | Enable incremental scans on push events                                  |
+| `ALLOWED_INGEST_DOMAINS`  | ❌       | allow all        | Comma-separated domain allowlist for `ingest_url` (e.g. `docs.example.com`) |
 
 > See [full environment variable reference](docs/README.md) for all options including `SCAN_FILES`, `SCAN_DIRS`, `REPO_TOPICS`, `REPO_REGEX`, `EXTRA_REPOS`, and more.
 
@@ -220,13 +221,14 @@ For a deep dive, see [How It Works](docs/how-it-works.md).
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for completed features and upcoming work, including:
+See [ROADMAP.md](ROADMAP.md) for completed features and upcoming work.
 
-- **Semantic Search & RAG** — vector embeddings via `pgvector`
-- **Custom Parser Extensions** — plug in new manifest formats without forking
-- **Integration Topology Discovery** — Kafka, gRPC, HTTP call graph from config files
-- **Multi-Cloud Adapters** — GitLab, Bitbucket, Confluence
-- **Documentation Wiki (gh-pages)** — move the detailed guides to a dedicated GitHub Pages site
+Recent additions:
+
+- **Relation Confidence Scores** — every graph edge is tagged `authoritative`, `inferred`, or `ambiguous`
+- **`ingest_url` tool** — fetch any public URL and add it to the knowledge graph in one call
+- **GitHub Actions composite action** — `docscout-action` posts graph stats as PR comments and Step Summaries
+- **`--benchmark --org`** — run a live org scan and get a shareable accuracy + stats report
 
 ---
 
