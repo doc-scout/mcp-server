@@ -10,8 +10,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
 )
 
 func callTool(t *testing.T, session *mcp.ClientSession, name string, args map[string]any) string {
@@ -85,7 +85,7 @@ func TestDiscoverMCPServers_Inventory(t *testing.T) {
 
 	raw := callTool(t, session, "discover_mcp_servers", map[string]any{})
 
-	var result tools.DiscoverMCPServersResult
+	var result adaptermcp.DiscoverMCPServersResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 
@@ -124,7 +124,7 @@ func TestDiscoverMCPServers_CapabilitySearch(t *testing.T) {
 		"tool_name": "search",
 	})
 
-	var result tools.DiscoverMCPServersResult
+	var result adaptermcp.DiscoverMCPServersResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 
@@ -159,7 +159,7 @@ func TestDiscoverMCPServers_RepoFilter(t *testing.T) {
 		"repo": "org/repo-a",
 	})
 
-	var result tools.DiscoverMCPServersResult
+	var result adaptermcp.DiscoverMCPServersResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 
@@ -208,7 +208,7 @@ func TestDiscoverMCPServers_TraverseUsesMCPEdge(t *testing.T) {
 		"depth": 1,
 	})
 
-	var result tools.TraverseGraphResult
+	var result adaptermcp.TraverseGraphResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 
@@ -239,7 +239,7 @@ func TestDiscoverMCPServers_EmptyResult(t *testing.T) {
 		"tool_name": "nonexistent-tool-xyz",
 	})
 
-	var result tools.DiscoverMCPServersResult
+	var result adaptermcp.DiscoverMCPServersResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 

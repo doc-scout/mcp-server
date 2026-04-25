@@ -1,5 +1,4 @@
 // Copyright 2026 Leonan Carvalho
-
 // SPDX-License-Identifier: AGPL-3.0-only
 
 package main
@@ -10,10 +9,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/doc-scout/mcp-server/memory"
+	"gorm.io/gorm"
 )
 
 var reNonWord = regexp.MustCompile(`[^a-zA-Z0-9]`)
+
+// graphStats is the subset of graph service methods used by the report tool.
+type graphStats interface {
+	EntityCount() (int64, error)
+	EntityTypeCounts() (map[string]int64, error)
+}
 
 // nodeID converts an entity name into a valid Mermaid node identifier.
 func nodeID(name string) string {
@@ -140,9 +145,7 @@ type dbEdge struct {
 
 // queryTopNodes returns the top maxNodes entities ranked by connectivity degree,
 // plus the total entity count before truncation.
-func queryTopNodes(svc *memory.MemoryService, maxNodes int) ([]TopNode, int, error) {
-	db := svc.DB()
-
+func queryTopNodes(db *gorm.DB, maxNodes int) ([]TopNode, int, error) {
 	var totalCount int64
 	if err := db.Table("db_entities").Count(&totalCount).Error; err != nil {
 		return nil, 0, err
@@ -169,11 +172,10 @@ func queryTopNodes(svc *memory.MemoryService, maxNodes int) ([]TopNode, int, err
 
 // queryEdges returns edges between the given nodes (both endpoints in the set),
 // up to maxEdges, plus the total edge count in the subgraph before truncation.
-func queryEdges(svc *memory.MemoryService, nodes []TopNode, maxEdges int) ([]TopEdge, int, error) {
+func queryEdges(db *gorm.DB, nodes []TopNode, maxEdges int) ([]TopEdge, int, error) {
 	if len(nodes) == 0 {
 		return nil, 0, nil
 	}
-	db := svc.DB()
 
 	names := make([]string, len(nodes))
 	for i, n := range nodes {
@@ -210,9 +212,9 @@ func queryEdges(svc *memory.MemoryService, nodes []TopNode, maxEdges int) ([]Top
 }
 
 // countRelations returns the total number of relations in the DB.
-func countRelations(svc *memory.MemoryService) (int64, error) {
+func countRelations(db *gorm.DB) (int64, error) {
 	var count int64
-	err := svc.DB().Table("db_relations").Count(&count).Error
+	err := db.Table("db_relations").Count(&count).Error
 	return count, err
 }
 
@@ -225,7 +227,7 @@ type ReportConfig struct {
 }
 
 // GenerateReport builds the full Markdown+Mermaid report string.
-func GenerateReport(svc *memory.MemoryService, cfg ReportConfig) (string, error) {
+func GenerateReport(svc graphStats, db *gorm.DB, cfg ReportConfig) (string, error) {
 	typeCounts, err := svc.EntityTypeCounts()
 	if err != nil {
 		return "", fmt.Errorf("entity type counts: %w", err)
@@ -236,17 +238,17 @@ func GenerateReport(svc *memory.MemoryService, cfg ReportConfig) (string, error)
 		return "", fmt.Errorf("entity count: %w", err)
 	}
 
-	totalRelations, err := countRelations(svc)
+	totalRelations, err := countRelations(db)
 	if err != nil {
 		return "", fmt.Errorf("relation count: %w", err)
 	}
 
-	nodes, totalNodes, err := queryTopNodes(svc, cfg.MaxNodes)
+	nodes, totalNodes, err := queryTopNodes(db, cfg.MaxNodes)
 	if err != nil {
 		return "", fmt.Errorf("top nodes: %w", err)
 	}
 
-	edges, totalEdges, err := queryEdges(svc, nodes, cfg.MaxEdges)
+	edges, totalEdges, err := queryEdges(db, nodes, cfg.MaxEdges)
 	if err != nil {
 		return "", fmt.Errorf("edges: %w", err)
 	}

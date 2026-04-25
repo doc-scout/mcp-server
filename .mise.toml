@@ -21,13 +21,13 @@ description = "Configura o ambiente de desenvolvimento e hooks"
 run = "pre-commit install"
 
 [tasks.local]
-run = "go run ."
+run = "go run ./cmd/docscout"
 
 [tasks.inspector]
-run = "npx @modelcontextprotocol/inspector go run ."
+run = "npx @modelcontextprotocol/inspector go run ./cmd/docscout"
 
 [tasks.build]
-run = "go build -o docscout-mcp ."
+run = "go build -o docscout-mcp ./cmd/docscout"
 
 [tasks.test]
 run = "go test ./..."

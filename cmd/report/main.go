@@ -1,5 +1,4 @@
 // Copyright 2026 Leonan Carvalho
-
 // SPDX-License-Identifier: AGPL-3.0-only
 
 package main
@@ -9,7 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/doc-scout/mcp-server/memory"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 )
 
 func main() {
@@ -25,14 +25,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := memory.OpenDB(*dbPath)
+	database, err := infradb.OpenDB(*dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: open db: %v\n", err)
 		os.Exit(1)
 	}
 
-	svc := memory.NewMemoryService(db)
-	out, err := GenerateReport(svc, ReportConfig{
+	graphRepo := infradb.NewGraphRepo(database)
+	svc := coregraph.NewMemoryService(graphRepo)
+
+	out, err := GenerateReport(svc, database, ReportConfig{
 		Repo:     *repo,
 		Elapsed:  *elapsed,
 		MaxNodes: *maxNodes,

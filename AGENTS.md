@@ -1,7 +1,40 @@
 You are an expert Go Developer and a specialist in the Model Context Protocol (MCP).
 When contributing to this project (DocScout-MCP), follow these strict architectural and coding guidelines:
 
-# 0. Git Workflow (CRITICAL)
+# 0. Project Layout
+
+The project uses **Hexagonal Architecture (Ports & Adapters)**:
+
+```
+cmd/
+  docscout/        ← main entrypoint (slim: Wire → Run)
+  report/          ← standalone graph-report CLI
+internal/
+  core/            ← domain layer (no external deps)
+    graph/         ← Entity, Relation, TraverseNode, port interfaces (GraphRepository, GraphService)
+    audit/         ← AuditStore port + AuditEvent model
+    content/       ← ContentRepository port
+    scan/          ← RepoInfo, FileEntry models
+  infra/           ← outbound adapters
+    db/            ← SQLite/Postgres (GORM), GraphRepo, ContentCache, AuditStore impl
+    github/        ← GitHub API Scanner
+    github/parser/ ← manifest parsers (FileParser implementations)
+    embeddings/    ← VectorStore, SemanticSearcher, Indexer
+  adapter/
+    mcp/           ← MCP tool handlers (inbound adapter)
+    http/          ← HTTP health/webhook handlers (inbound adapter)
+  app/             ← composition root
+    wire.go        ← Components struct, Wire() — wires all deps
+    server.go      ← Run() — registers tools, starts transports
+    indexer.go     ← AutoIndexer — runs parsers on scan results
+    config.go      ← LoadConfig() — reads env vars
+benchmark/         ← accuracy and perf benchmarks
+tests/             ← E2E integration tests (one dir per tool)
+```
+
+**Dependency rule:** `core` ← `infra/adapter/app` ← `cmd`. The `core` layer must never import from `infra`, `adapter`, or `app`.
+
+# 1. Git Workflow (CRITICAL)
 
 **Never commit directly to `main`.** All work must go through a pull request:
 
@@ -39,12 +72,12 @@ This MCP server runs via Standard Input/Output (`stdio`). The JSON-RPC messages 
 
 # 6. Knowledge Graph Integrity
 - All mutations to the graph (via `create_entities`, `add_observations`) pass through `sanitizeObservations` before reaching the store. Never bypass this layer.
-- The `GraphAuditLogger` decorator wraps the store in `main.go` and logs every mutation to slog. Preserve this wiring when adding new graph operations.
+- The `GraphAuditLogger` decorator wraps the store in `internal/app/wire.go` and logs every mutation to slog. Preserve this wiring when adding new graph operations.
 - The `delete_entities` tool enforces a mass-delete guard (`massDeleteThreshold = 10`). Any new bulk-delete tools must implement the same pattern.
 
 # 7. Scanner Extension Points
 
-New manifest parsers implement the `FileParser` interface in `scanner/parser/extension.go` and register with the global `parser.Default` registry via `parser.Register()` in `main.go`.
+New manifest parsers implement the `FileParser` interface in `internal/infra/github/parser/extension.go` and register with the global `parser.Default` registry via `parser.Register()` in `internal/app/wire.go`.
 
 ## FileParser Interface
 
@@ -73,11 +106,11 @@ type ParsedFile struct {
 ## Registration Pattern
 
 ```go
-// In main.go — register at startup before scanner/indexer construction:
+// In internal/app/wire.go — register at startup before scanner/indexer construction:
 parser.Register(parser.GoModParser())
 parser.Register(myorg.NewPipfileParser())
 
-// Custom parser in mypkg/pipfile/parser.go:
+// Custom parser in internal/infra/github/parser/pipfile.go:
 type Parser struct{}
 func (p *Parser) FileType()  string   { return "pipfile" }
 func (p *Parser) Filenames() []string { return []string{"Pipfile"} }
