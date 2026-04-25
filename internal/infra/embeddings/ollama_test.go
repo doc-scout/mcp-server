@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/embeddings"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 )
 
 func TestOllamaProvider_Embed(t *testing.T) {
@@ -84,4 +84,3 @@ func TestOllamaProvider_ModelKey(t *testing.T) {
 	}
 
 }
-

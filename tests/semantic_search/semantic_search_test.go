@@ -14,11 +14,11 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 var testCounter atomic.Int64
@@ -83,7 +83,7 @@ func setupServer(t *testing.T) *mcp.ClientSession {
 
 	memorySrv := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
-	cc := memory.NewContentCache(db, true, 1024*1024)
+	cc := infradb.NewContentCache(db, true, 1024*1024)
 
 	// Pre-populate docs
 

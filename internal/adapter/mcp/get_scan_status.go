@@ -108,4 +108,3 @@ func getScanStatusHandler(sc DocumentScanner, graph GraphStore, search ContentSe
 	}
 
 }
-

@@ -10,8 +10,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/tests/testutils"
 	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
+	"github.com/doc-scout/mcp-server/tests/testutils"
 )
 
 // TestTriggerScan_Queued verifies that a trigger_scan call returns triggered=true.
@@ -53,7 +53,7 @@ func TestTriggerScan_Queued(t *testing.T) {
 
 	}
 
-	var result tools.TriggerScanResult
+	var result adaptermcp.TriggerScanResult
 
 	if err := json.Unmarshal([]byte(text.Text), &result); err != nil {
 

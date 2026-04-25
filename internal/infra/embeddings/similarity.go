@@ -88,5 +88,3 @@ func EntityText(e coregraph.Entity) string {
 	return fmt.Sprintf("%s [%s]: %s", e.Name, e.EntityType, obs)
 
 }
-
-

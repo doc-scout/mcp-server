@@ -104,5 +104,3 @@ func traverseGraphHandler(g GraphStore) func(ctx context.Context, req *mcp.CallT
 	}
 
 }
-
-

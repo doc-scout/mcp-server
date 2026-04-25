@@ -7,12 +7,44 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/doc-scout/mcp-server/scanner/parser"
+	"github.com/doc-scout/mcp-server/internal/infra/github/parser"
 )
 
 func TestParsePackageJSON_Basic(t *testing.T) {
 
 	input := []byte(`{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -76,7 +108,71 @@ func TestParsePackageJSON_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   "version": "1.2.3",
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -140,7 +236,71 @@ func TestParsePackageJSON_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     "express": "^4.18.0",
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -204,7 +364,71 @@ func TestParsePackageJSON_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -268,6 +492,38 @@ func TestParsePackageJSON_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     "jest": "^29.0.0"
 
 
@@ -300,7 +556,71 @@ func TestParsePackageJSON_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

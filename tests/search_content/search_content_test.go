@@ -11,10 +11,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 // setupContentServer creates an MCP test session with a pre-populated ContentCache.
@@ -44,7 +44,7 @@ func setupContentServer(t *testing.T) *mcp.ClientSession {
 
 	memorySrv := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
-	contentCache := memory.NewContentCache(db, true, 1024*1024)
+	contentCache := infradb.NewContentCache(db, true, 1024*1024)
 
 	// Pre-populate the content cache with test fixtures.
 

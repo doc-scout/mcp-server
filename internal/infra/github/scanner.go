@@ -18,9 +18,8 @@ import (
 
 	"github.com/google/go-github/v60/github"
 
-	"github.com/doc-scout/mcp-server/internal/infra/github/parser"
-
 	corescan "github.com/doc-scout/mcp-server/internal/core/scan"
+	"github.com/doc-scout/mcp-server/internal/infra/github/parser"
 )
 
 // DefaultTargetFiles is kept for backward compatibility but is no longer used by New().
@@ -105,9 +104,7 @@ var infraExtensions = map[string]bool{
 
 // corescan.FileEntry represents an indexed documentation file.
 
-
 // corescan.RepoInfo holds metadata about a repository that contains documentation.
-
 
 // Scanner manages GitHub org scanning and caching.
 
@@ -1273,4 +1270,3 @@ func (s *Scanner) Status() (scanning bool, lastScan time.Time, repoCount int) {
 	return s.scanning, s.lastScanAt, len(s.repos)
 
 }
-

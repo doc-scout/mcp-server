@@ -88,4 +88,3 @@ func listReposHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.Cal
 	}
 
 }
-

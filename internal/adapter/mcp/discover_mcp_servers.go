@@ -199,5 +199,3 @@ func hasMatchingTool(tools []string, query string) bool {
 	return false
 
 }
-
-

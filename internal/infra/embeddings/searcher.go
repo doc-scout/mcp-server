@@ -365,5 +365,3 @@ func (ss *SemanticSearcher) SearchEntities(ctx context.Context, query string, to
 	return results, stale, nil
 
 }
-
-

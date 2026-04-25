@@ -52,4 +52,3 @@ func getFileContentHandler(sc DocumentScanner, docMetrics *DocMetrics) func(ctx 
 	}
 
 }
-

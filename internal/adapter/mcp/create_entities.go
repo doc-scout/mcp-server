@@ -78,5 +78,3 @@ func createEntitiesHandler(graph GraphStore, semantic SemanticSearch) func(ctx c
 	}
 
 }
-
-

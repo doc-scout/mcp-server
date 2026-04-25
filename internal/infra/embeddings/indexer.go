@@ -403,4 +403,3 @@ func (idx *Indexer) ScheduleEntities(names []string) {
 	})
 
 }
-

@@ -12,10 +12,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 var testCounter atomic.Int64

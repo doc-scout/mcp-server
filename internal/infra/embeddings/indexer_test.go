@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/embeddings"
-	corecontent "github.com/doc-scout/mcp-server/internal/core/content"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 )
 
 var idxCounter atomic.Int64
@@ -41,13 +41,13 @@ func (f *fixedProvider) Embed(_ context.Context, texts []string) ([][]float32, e
 
 }
 
-func newIdxEnv(t *testing.T) (*embeddings.VectorStore, *memory.ContentCache, *memory.MemoryService) {
+func newIdxEnv(t *testing.T) (*embeddings.VectorStore, *infradb.ContentCache, *coregraph.MemoryService) {
 
 	t.Helper()
 
 	dsn := fmt.Sprintf("file:idx_test_%d?mode=memory&cache=shared", idxCounter.Add(1))
 
-	db, err := memory.OpenDB(dsn)
+	db, err := infradb.OpenDB(dsn)
 
 	if err != nil {
 
@@ -63,9 +63,9 @@ func newIdxEnv(t *testing.T) (*embeddings.VectorStore, *memory.ContentCache, *me
 
 	}
 
-	cc := memory.NewContentCache(db, true, 1024*1024)
+	cc := infradb.NewContentCache(db, true, 1024*1024)
 
-	ms := memory.NewMemoryService(db)
+	ms := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
 	return vs, cc, ms
 
@@ -164,4 +164,3 @@ func TestIndexer_IndexEntities_Upserts(t *testing.T) {
 	}
 
 }
-

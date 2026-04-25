@@ -38,4 +38,3 @@ func getUsageStatsHandler(m *ToolMetrics, d *DocMetrics) func(ctx context.Contex
 	}
 
 }
-

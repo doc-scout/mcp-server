@@ -11,15 +11,17 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
+	internalapp "github.com/doc-scout/mcp-server/internal/app"
+	coreaudit "github.com/doc-scout/mcp-server/internal/core/audit"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 // setupAuditServer creates a test MCP server with a live AuditStore.
 
-func setupAuditServer(t *testing.T) (*mcp.ClientSession, memory.AuditStore) {
+func setupAuditServer(t *testing.T) (*mcp.ClientSession, coreaudit.AuditStore) {
 
 	t.Helper()
 
@@ -33,7 +35,7 @@ func setupAuditServer(t *testing.T) (*mcp.ClientSession, memory.AuditStore) {
 
 	}
 
-	auditStore, err := memory.NewAuditStore(db)
+	auditStore, err := infradb.NewAuditStore(db)
 
 	if err != nil {
 
@@ -47,7 +49,7 @@ func setupAuditServer(t *testing.T) (*mcp.ClientSession, memory.AuditStore) {
 
 	agentFn := func() string { return "test-agent" }
 
-	auditedGraph := tools.NewGraphAuditLogger(memorySrv, agentFn, auditStore)
+	auditedGraph := internalapp.NewGraphAuditLogger(memorySrv, agentFn, auditStore)
 
 	adaptermcp.Register(server, &testutils.MockScanner{}, auditedGraph, nil, nil,
 
@@ -125,7 +127,7 @@ func TestAudit_CreateEntitiesAppearsInQueryLog(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	events, total, err := store.Query(t.Context(), memory.AuditFilter{Tool: "create_entities"})
+	events, total, err := store.Query(t.Context(), coreaudit.AuditFilter{Tool: "create_entities"})
 
 	if err != nil {
 
@@ -170,7 +172,7 @@ func TestAudit_QueryAuditLogMCPTool(t *testing.T) {
 		"tool": "create_entities",
 	})
 
-	var result tools.QueryAuditLogResult
+	var result adaptermcp.QueryAuditLogResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 
@@ -190,16 +192,16 @@ func TestAudit_GetAuditSummaryRiskyMassDelete(t *testing.T) {
 
 	session, store := setupAuditServer(t)
 
-	_ = store.Write(t.Context(), memory.AuditEvent{
+	_ = store.Write(t.Context(), coreaudit.AuditEvent{
 
 		Agent: "bot", Tool: "delete_entities", Operation: "delete",
 
-		Targets: memory.MarshalTargets([]string{}), Count: 15, Outcome: "ok",
+		Targets: infradb.MarshalTargets([]string{}), Count: 15, Outcome: "ok",
 	})
 
 	raw := callTool(t, session, "get_audit_summary", map[string]any{})
 
-	var result tools.GetAuditSummaryResult
+	var result adaptermcp.GetAuditSummaryResult
 
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 
@@ -227,16 +229,16 @@ func TestAudit_OutcomeError(t *testing.T) {
 
 	_ = session
 
-	_ = store.Write(t.Context(), memory.AuditEvent{
+	_ = store.Write(t.Context(), coreaudit.AuditEvent{
 
 		Agent: "test-agent", Tool: "delete_entities", Operation: "delete",
 
-		Targets: memory.MarshalTargets([]string{"missing"}), Count: 1,
+		Targets: infradb.MarshalTargets([]string{"missing"}), Count: 1,
 
 		Outcome: "error", ErrorMsg: "entity not found",
 	})
 
-	events, total, err := store.Query(t.Context(), memory.AuditFilter{Outcome: "error"})
+	events, total, err := store.Query(t.Context(), coreaudit.AuditFilter{Outcome: "error"})
 
 	if err != nil {
 

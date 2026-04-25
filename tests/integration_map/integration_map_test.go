@@ -10,13 +10,13 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/tests/testutils"
 	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
+	"github.com/doc-scout/mcp-server/tests/testutils"
 )
 
 // callIntegrationMap is a helper that calls get_integration_map and returns the parsed result.
 
-func callIntegrationMap(t *testing.T, session *mcp.ClientSession, args map[string]any) (tools.IntegrationMapResult, bool) {
+func callIntegrationMap(t *testing.T, session *mcp.ClientSession, args map[string]any) (adaptermcp.IntegrationMapResult, bool) {
 
 	t.Helper()
 
@@ -37,7 +37,7 @@ func callIntegrationMap(t *testing.T, session *mcp.ClientSession, args map[strin
 
 	if res.IsError {
 
-		return tools.IntegrationMapResult{}, true
+		return adaptermcp.IntegrationMapResult{}, true
 
 	}
 
@@ -55,7 +55,7 @@ func callIntegrationMap(t *testing.T, session *mcp.ClientSession, args map[strin
 
 	}
 
-	var result tools.IntegrationMapResult
+	var result adaptermcp.IntegrationMapResult
 
 	if err := json.Unmarshal([]byte(text.Text), &result); err != nil {
 

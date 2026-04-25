@@ -87,5 +87,3 @@ func findPathHandler(graph GraphStore) func(ctx context.Context, req *mcp.CallTo
 	}
 
 }
-
-

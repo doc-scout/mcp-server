@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	coreaudit "github.com/doc-scout/mcp-server/internal/core/audit"
 )
 
@@ -71,5 +72,3 @@ func getAuditSummaryHandler(r AuditReader) func(ctx context.Context, req *mcp.Ca
 	}
 
 }
-
-

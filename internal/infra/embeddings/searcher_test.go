@@ -13,9 +13,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/embeddings"
-	corecontent "github.com/doc-scout/mcp-server/internal/core/content"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 )
 
 var searchCounter atomic.Int64
@@ -64,13 +64,13 @@ func (k *keywordProvider) Embed(_ context.Context, texts []string) ([][]float32,
 
 }
 
-func newSearchEnv(t *testing.T) (*embeddings.VectorStore, *memory.ContentCache, *memory.MemoryService) {
+func newSearchEnv(t *testing.T) (*embeddings.VectorStore, *infradb.ContentCache, *coregraph.MemoryService) {
 
 	t.Helper()
 
 	dsn := fmt.Sprintf("file:search_test_%d?mode=memory&cache=shared", searchCounter.Add(1))
 
-	db, err := memory.OpenDB(dsn)
+	db, err := infradb.OpenDB(dsn)
 
 	if err != nil {
 
@@ -86,7 +86,7 @@ func newSearchEnv(t *testing.T) (*embeddings.VectorStore, *memory.ContentCache, 
 
 	}
 
-	return vs, memory.NewContentCache(db, true, 1024*1024), memory.NewMemoryService(db)
+	return vs, infradb.NewContentCache(db, true, 1024*1024), coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
 }
 
@@ -192,4 +192,3 @@ func TestSemanticSearcher_SearchEntities_TopResult(t *testing.T) {
 	}
 
 }
-

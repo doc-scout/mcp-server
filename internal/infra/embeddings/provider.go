@@ -96,4 +96,3 @@ func NewProvider(cfg Config) EmbeddingProvider {
 	return nil
 
 }
-

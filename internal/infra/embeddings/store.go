@@ -226,4 +226,3 @@ func (vs *VectorStore) DeleteEntityByName(entityName string) error {
 	return vs.db.Where("entity_name = ?", entityName).Delete(&dbEntityEmbedding{}).Error
 
 }
-

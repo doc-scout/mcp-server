@@ -20,8 +20,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 	corecontent "github.com/doc-scout/mcp-server/internal/core/content"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 )
 
 // IngestURLArgs are the inputs for the ingest_url tool.
@@ -565,5 +565,3 @@ func ingestURLHandler(graph GraphStore, cache corecontent.ContentRepository) fun
 	}
 
 }
-
-

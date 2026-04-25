@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 )
 
 func main() {

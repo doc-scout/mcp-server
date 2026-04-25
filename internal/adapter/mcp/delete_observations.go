@@ -27,5 +27,3 @@ func deleteObservationsHandler(graph GraphStore) func(ctx context.Context, req *
 	}
 
 }
-
-

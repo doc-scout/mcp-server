@@ -138,5 +138,3 @@ func getIntegrationMapHandler(graph GraphStore) func(ctx context.Context, req *m
 	}
 
 }
-
-

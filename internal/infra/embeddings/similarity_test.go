@@ -8,9 +8,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/embeddings"
-	corecontent "github.com/doc-scout/mcp-server/internal/core/content"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 )
 
 func TestCosineSimilarity_Identical(t *testing.T) {
@@ -104,4 +103,3 @@ func TestEntityText_NoObservations(t *testing.T) {
 	}
 
 }
-

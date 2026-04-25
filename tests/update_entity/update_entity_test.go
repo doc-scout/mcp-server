@@ -12,15 +12,15 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
 	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 var testCounter atomic.Int64
 
-func newSession(t *testing.T) (*mcp.ClientSession, *memory.MemoryService) {
+func newSession(t *testing.T) (*mcp.ClientSession, *coregraph.MemoryService) {
 
 	t.Helper()
 
@@ -66,7 +66,7 @@ func newSession(t *testing.T) (*mcp.ClientSession, *memory.MemoryService) {
 
 // callUpdate calls update_entity and returns the parsed result.
 
-func callUpdate(t *testing.T, session *mcp.ClientSession, args map[string]any) tools.UpdateEntityResult {
+func callUpdate(t *testing.T, session *mcp.ClientSession, args map[string]any) adaptermcp.UpdateEntityResult {
 
 	t.Helper()
 
@@ -99,7 +99,7 @@ func callUpdate(t *testing.T, session *mcp.ClientSession, args map[string]any) t
 
 	}
 
-	var result tools.UpdateEntityResult
+	var result adaptermcp.UpdateEntityResult
 
 	if err := json.Unmarshal([]byte(text.Text), &result); err != nil {
 

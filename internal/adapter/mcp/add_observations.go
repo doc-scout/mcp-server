@@ -94,5 +94,3 @@ func addObservationsHandler(graph GraphStore, semantic SemanticSearch) func(ctx 
 	}
 
 }
-
-

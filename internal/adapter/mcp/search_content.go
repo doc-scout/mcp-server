@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	corecontent "github.com/doc-scout/mcp-server/internal/core/content"
 )
 
@@ -54,5 +55,3 @@ func searchContentHandler(search ContentSearcher, docMetrics *DocMetrics) func(c
 	}
 
 }
-
-

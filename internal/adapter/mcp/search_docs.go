@@ -59,4 +59,3 @@ func searchDocsHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.Ca
 	}
 
 }
-

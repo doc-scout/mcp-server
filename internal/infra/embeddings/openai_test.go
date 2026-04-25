@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/embeddings"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 )
 
 func TestOpenAIProvider_Embed(t *testing.T) {
@@ -97,4 +97,3 @@ func TestOpenAIProvider_ModelKey(t *testing.T) {
 	}
 
 }
-

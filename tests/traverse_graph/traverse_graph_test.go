@@ -10,15 +10,14 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
-	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
-	"github.com/doc-scout/mcp-server/tests/testutils"
 	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	"github.com/doc-scout/mcp-server/tests/testutils"
 )
 
 // callTraverse is a helper that calls traverse_graph and unmarshals the result.
 
-func callTraverse(t *testing.T, session *mcp.ClientSession, args map[string]any) tools.TraverseGraphResult {
+func callTraverse(t *testing.T, session *mcp.ClientSession, args map[string]any) adaptermcp.TraverseGraphResult {
 
 	t.Helper()
 
@@ -59,7 +58,7 @@ func callTraverse(t *testing.T, session *mcp.ClientSession, args map[string]any)
 
 	}
 
-	var result tools.TraverseGraphResult
+	var result adaptermcp.TraverseGraphResult
 
 	if err := json.Unmarshal([]byte(text.Text), &result); err != nil {
 
@@ -193,7 +192,7 @@ func TestE2E_TraverseGraph_OutgoingDepth2(t *testing.T) {
 
 	}
 
-	byName := make(map[string]memory.TraverseNode)
+	byName := make(map[string]coregraph.TraverseNode)
 
 	for _, n := range result.Nodes {
 

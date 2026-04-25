@@ -129,4 +129,3 @@ func (p *ollamaProvider) embedOne(ctx context.Context, text string) ([]float32, 
 	return result.Embeddings[0], nil
 
 }
-

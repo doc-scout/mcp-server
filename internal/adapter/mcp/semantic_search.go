@@ -117,4 +117,3 @@ func semanticSearchHandler(semantic SemanticSearch) func(ctx context.Context, re
 	}
 
 }
-

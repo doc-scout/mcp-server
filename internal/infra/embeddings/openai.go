@@ -163,4 +163,3 @@ func (p *openAIProvider) embedBatch(ctx context.Context, texts []string) ([][]fl
 	return out, nil
 
 }
-

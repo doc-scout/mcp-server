@@ -35,5 +35,3 @@ func searchNodesHandler(graph GraphStore) func(ctx context.Context, req *mcp.Cal
 	}
 
 }
-
-

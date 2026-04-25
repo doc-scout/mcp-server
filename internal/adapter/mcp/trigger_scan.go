@@ -50,4 +50,3 @@ func triggerScanHandler(sc DocumentScanner) func(ctx context.Context, req *mcp.C
 	}
 
 }
-

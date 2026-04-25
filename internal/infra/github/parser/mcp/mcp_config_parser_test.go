@@ -7,7 +7,7 @@ package mcp_test
 import (
 	"testing"
 
-	mcpparser "github.com/doc-scout/mcp-server/scanner/parser/mcp"
+	mcpparser "github.com/doc-scout/mcp-server/internal/infra/github/parser/mcp"
 )
 
 func TestMcpConfigParser_FileType(t *testing.T) {

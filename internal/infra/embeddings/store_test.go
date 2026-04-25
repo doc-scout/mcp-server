@@ -9,9 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/embeddings"
-	corecontent "github.com/doc-scout/mcp-server/internal/core/content"
-	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
 )
 
 var storeCounter atomic.Int64
@@ -22,7 +21,7 @@ func newTestStore(t *testing.T) *embeddings.VectorStore {
 
 	dsn := fmt.Sprintf("file:store_test_%d?mode=memory&cache=shared", storeCounter.Add(1))
 
-	db, err := memory.OpenDB(dsn)
+	db, err := infradb.OpenDB(dsn)
 
 	if err != nil {
 
@@ -185,4 +184,3 @@ func abs32(x float32) float32 {
 	return x
 
 }
-

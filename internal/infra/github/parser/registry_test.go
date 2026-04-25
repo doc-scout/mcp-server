@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/scanner/parser"
+	"github.com/doc-scout/mcp-server/internal/infra/github/parser"
 )
 
 // stubParser is a minimal FileParser for testing.

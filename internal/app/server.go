@@ -16,8 +16,8 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	adapterhttp "github.com/doc-scout/mcp-server/internal/adapter/http"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 	coreaudit "github.com/doc-scout/mcp-server/internal/core/audit"
 	corescan "github.com/doc-scout/mcp-server/internal/core/scan"
 )
