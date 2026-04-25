@@ -28,7 +28,7 @@ claude mcp add --transport stdio docscout-mcp \
   --env GITHUB_TOKEN="github_pat_..." \
   --env GITHUB_ORG="<org/username>" \
   --env SCAN_INTERVAL="10m" \
-  -- go run .
+  -- go run ./cmd/docscout/
 ```
 
 _Note: The `--` separates the `claude mcp add` arguments from the command that executes the server._
