@@ -20,7 +20,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
 <project>
+
+
+
+
+
+
+
+
 
 
 
@@ -36,7 +52,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <artifactId>my-service</artifactId>
+
+
+
+
+
+
+
+
 
 
 
@@ -52,7 +84,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <dependencies>
+
+
+
+
+
+
+
+
 
 
 
@@ -68,7 +116,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <groupId>org.springframework.boot</groupId>
+
+
+
+
+
+
+
+
 
 
 
@@ -84,6 +148,14 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     </dependency>
 
 
@@ -92,7 +164,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     <dependency>
+
+
+
+
+
+
+
+
 
 
 
@@ -108,7 +196,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <artifactId>jackson-databind</artifactId>
+
+
+
+
+
+
+
+
 
 
 
@@ -124,6 +228,14 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     </dependency>
 
 
@@ -132,7 +244,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     <dependency>
+
+
+
+
+
+
+
+
 
 
 
@@ -148,7 +276,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <artifactId>spring-boot-starter-test</artifactId>
+
+
+
+
+
+
+
+
 
 
 
@@ -164,7 +308,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     </dependency>
+
+
+
+
+
+
+
+
 
 
 
@@ -180,7 +340,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <groupId>javax.servlet</groupId>
+
+
+
+
+
+
+
+
 
 
 
@@ -196,7 +372,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <scope>provided</scope>
+
+
+
+
+
+
+
+
 
 
 
@@ -212,7 +404,23 @@ func TestParsePom_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   </dependencies>
+
+
+
+
+
+
+
+
 
 
 
@@ -291,7 +499,23 @@ func TestParsePom_OnlyTestDeps(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <groupId>com.example</groupId>
+
+
+
+
+
+
+
+
 
 
 
@@ -307,7 +531,23 @@ func TestParsePom_OnlyTestDeps(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <dependencies>
+
+
+
+
+
+
+
+
 
 
 
@@ -323,7 +563,23 @@ func TestParsePom_OnlyTestDeps(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <artifactId>junit</artifactId>
+
+
+
+
+
+
+
+
 
 
 
@@ -339,6 +595,14 @@ func TestParsePom_OnlyTestDeps(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     </dependency>
 
 
@@ -347,7 +611,23 @@ func TestParsePom_OnlyTestDeps(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   </dependencies>
+
+
+
+
+
+
+
+
 
 
 
@@ -383,6 +663,14 @@ func TestParsePom_MissingArtifactID(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <groupId>com.example</groupId>
 
 
@@ -391,7 +679,23 @@ func TestParsePom_MissingArtifactID(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <version>1.0.0</version>
+
+
+
+
+
+
+
+
 
 
 
@@ -421,7 +725,23 @@ func TestParsePom_NoDependencies(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <groupId>com.example</groupId>
+
+
+
+
+
+
+
+
 
 
 
@@ -437,7 +757,23 @@ func TestParsePom_NoDependencies(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <version>0.1.0</version>
+
+
+
+
+
+
+
+
 
 
 
@@ -479,7 +815,23 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   <artifactId>my-app</artifactId>
+
+
+
+
+
+
+
+
 
 
 
@@ -495,7 +847,23 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     <dependency>
+
+
+
+
+
+
+
+
 
 
 
@@ -511,6 +879,14 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <scope>runtime</scope>
 
 
@@ -519,7 +895,23 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     </dependency>
+
+
+
+
+
+
+
+
 
 
 
@@ -535,7 +927,23 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
       <artifactId>lombok</artifactId>
+
+
+
+
+
+
+
+
 
 
 
@@ -551,6 +959,14 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
     </dependency>
 
 
@@ -559,7 +975,23 @@ func TestParsePom_RuntimeScope(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
   </dependencies>
+
+
+
+
+
+
+
+
 
 
 

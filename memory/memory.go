@@ -551,7 +551,39 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			SELECT DISTINCT e.* FROM db_entities e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -583,7 +615,39 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			WHERE LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -619,7 +683,39 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			SELECT DISTINCT e.* FROM db_entities e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -651,7 +747,39 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			WHERE (LOWER(e.name) LIKE ? OR LOWER(e.entity_type) LIKE ? OR LOWER(o.content) LIKE ?)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -683,6 +811,22 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			    SELECT entity_name FROM db_observations WHERE content = '_status:archived'
 
 
@@ -699,7 +843,39 @@ func (s store) searchNodesFiltered(query string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -795,7 +971,39 @@ func (s store) openNodesFiltered(names []string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			SELECT e.* FROM db_entities e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -827,7 +1035,39 @@ func (s store) openNodesFiltered(names []string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			  AND e.name NOT IN (
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -859,7 +1099,39 @@ func (s store) openNodesFiltered(names []string, includeArchived bool) (Knowledg
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
