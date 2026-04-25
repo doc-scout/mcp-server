@@ -1383,6 +1383,14 @@ func (srv *MemoryService) ListRelations(relationType, fromEntity string) ([]Rela
 
 }
 
+// DB returns the underlying *gorm.DB for advanced queries.
+
+func (srv *MemoryService) DB() *gorm.DB {
+
+	return srv.s.db
+
+}
+
 // EntityCount returns the total number of entities in the knowledge graph.
 
 func (srv *MemoryService) EntityCount() (int64, error) {
