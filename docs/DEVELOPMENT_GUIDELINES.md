@@ -36,7 +36,7 @@ MCP servers execute code locally on behalf of an LLM. Treat the LLM as an untrus
 
 - Keep unit tests focused on the underlying logic (e.g., GitHub Scanner, Cache updates) rather than the JSON-RPC transport wrapper.
 - Use explicit API mocks for GitHub.
-- Every new parser in `scanner/parser/` must have a corresponding `*_test.go` covering at least: valid input, missing required fields, edge cases (empty deps, all-excluded scopes).
+- Every new parser in `internal/infra/github/parser/` must have a corresponding `*_test.go` covering at least: valid input, missing required fields, edge cases (empty deps, all-excluded scopes).
 
 ## 7. Go Version
 
@@ -46,16 +46,16 @@ The project targets **Go 1.26+** (declared in `go.mod`). Use modern language fea
 
 Follow the established pattern when adding support for a new manifest format:
 
-1. **Parser** — create `scanner/parser/<format>.go` with a `Parse<Format>(data []byte) (Parsed<Format>, error)` function. Exported type holds the entity name, entity type, and direct dependencies.
-2. **Tests** — create `scanner/parser/<format>_test.go` with table-driven tests.
-3. **Scanner** — add the filename(s) to `scanner.DefaultTargetFiles` and a `case` to `classifyFile`.
-4. **Indexer** — add a Phase `2x` loop in `indexer/indexer.go` and an `upsert<Format>` method.
+1. **Parser** — create `internal/infra/github/parser/<format>.go` implementing the `FileParser` interface (`FileType()`, `Filenames()`, `Parse()`).
+2. **Tests** — create `internal/infra/github/parser/<format>_test.go` with table-driven tests.
+3. **Register** — call `parser.Register(New<Format>Parser())` in `internal/app/wire.go`; the `AutoIndexer` picks it up automatically.
+4. **Docs** — update `docs/how-it-works.md` and `README.md`.
 5. **Docs** — update `docs/how-it-works.md` and `README.md`.
 
 ## 9. Graph Safety Rules
 
-- **Observation filtering**: All user-originated observations pass through `tools.sanitizeObservations` before reaching the store. This rejects empty, too-short (< 2 chars), too-long (> 500 chars), and within-batch duplicate observations.
-- **Audit log**: `tools.GraphAuditLogger` wraps the store in `main.go` and emits a structured slog line for every mutation. Do not bypass this wrapper.
+- **Observation filtering**: All user-originated observations pass through `sanitizeObservations` (in the graph adapter layer) before reaching the store. This rejects empty, too-short (< 2 chars), too-long (> 500 chars), and within-batch duplicate observations.
+- **Audit log**: `GraphAuditLogger` (in `internal/app/`) wraps the store in `internal/app/wire.go` and emits a structured slog line for every mutation. Do not bypass this wrapper.
 - **Mass-delete guard**: `delete_entities` rejects batches of more than 10 entities unless `confirm: true` is set. Apply the same pattern to any new bulk-destructive tool.
 
 ## 10. Deployment Targets

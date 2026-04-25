@@ -108,7 +108,7 @@ claude mcp add --transport stdio \
 git clone https://github.com/doc-scout/mcp-server
 cd mcp-server
 
-GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run .
+GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run ./cmd/docscout/
 ```
 
 **Docker:**
@@ -237,7 +237,7 @@ See [ROADMAP.md](ROADMAP.md) for completed features and upcoming work, including
 go mod tidy
 
 # Build
-go build -o docscout-mcp .
+go build -o docscout-mcp ./cmd/docscout/
 
 # Test (unit + E2E integration)
 go test ./...
