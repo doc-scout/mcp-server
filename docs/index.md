@@ -73,7 +73,7 @@ Grant **Read-only** access to `Contents` and `Metadata` for your org's repositor
     claude mcp add --transport stdio \
       --env GITHUB_TOKEN=github_pat_... \
       --env GITHUB_ORG=my-org \
-      docscout-mcp -- go run github.com/doc-scout/mcp-server@latest
+      docscout-mcp -- go run github.com/doc-scout/mcp-server/cmd/docscout@latest
     ```
 
 === "Run Locally"
@@ -81,7 +81,7 @@ Grant **Read-only** access to `Contents` and `Metadata` for your org's repositor
     ```bash
     git clone https://github.com/doc-scout/mcp-server
     cd mcp-server
-    GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run .
+    GITHUB_TOKEN="github_pat_..." GITHUB_ORG="my-org" go run ./cmd/docscout/
     ```
 
 === "Docker"
