@@ -22,10 +22,10 @@ help: ## Show this help message
 
 # ── Development ───────────────────────────────────────────────────────────────
 build: ## Build the binary for the current platform
-	go build $(GOFLAGS) -o $(BINARY) .
+	go build $(GOFLAGS) -o $(BINARY) ./cmd/docscout/
 
 build-linux: ## Cross-compile for linux/amd64
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o $(BINARY)-linux-amd64 .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o $(BINARY)-linux-amd64 ./cmd/docscout/
 
 build-all: ## Cross-compile for all supported platforms
 	@for platform in $(PLATFORMS); do \
@@ -33,7 +33,7 @@ build-all: ## Cross-compile for all supported platforms
 		ARCH=$$(echo $$platform | cut -d/ -f2); \
 		OUT=$(BINARY)-$$OS-$$ARCH; \
 		echo "Building $$OUT..."; \
-		CGO_ENABLED=0 GOOS=$$OS GOARCH=$$ARCH go build $(GOFLAGS) -o bin/$$OUT . ; \
+		CGO_ENABLED=0 GOOS=$$OS GOARCH=$$ARCH go build $(GOFLAGS) -o bin/$$OUT ./cmd/docscout/ ; \
 	done
 
 test: ## Run all tests
@@ -72,10 +72,10 @@ clean: ## Remove build artifacts
 
 # ── Local run ─────────────────────────────────────────────────────────────────
 run: ## Run the server locally via go run (reads .env.local if present)
-	go run .
+	go run ./cmd/docscout/
 
 inspector: ## Launch MCP Inspector against the local server
-	npx @modelcontextprotocol/inspector go run .
+	npx @modelcontextprotocol/inspector go run ./cmd/docscout/
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 docker-build: ## Build Docker image (single-platform)
