@@ -28,7 +28,55 @@ func TestParseCodeowners_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 * @myorg/platform-team
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -76,7 +124,55 @@ func TestParseCodeowners_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /services/ @myorg/backend-team @alice
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -124,7 +220,39 @@ func TestParseCodeowners_Basic(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /frontend/ bob@example.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -201,6 +329,22 @@ func TestParseCodeowners_Deduplication(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /api/  @myorg/docs-team @alice
 
 
@@ -217,7 +361,39 @@ func TestParseCodeowners_Deduplication(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 *.md   @alice
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -277,7 +453,39 @@ func TestParseCodeowners_CommentsOnly(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Another comment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -323,6 +531,22 @@ func TestParseCodeowners_PatternWithNoOwners(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /orphan/
 
 
@@ -339,7 +563,39 @@ func TestParseCodeowners_PatternWithNoOwners(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /with-owner/ @solo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

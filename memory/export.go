@@ -204,7 +204,15 @@ const graphHTMLTemplate = `<!DOCTYPE html>
 
 
 
+
+
+
+
 <html lang="en">
+
+
+
+
 
 
 
@@ -212,7 +220,15 @@ const graphHTMLTemplate = `<!DOCTYPE html>
 
 
 
+
+
+
+
 <meta charset="utf-8">
+
+
+
+
 
 
 
@@ -220,7 +236,15 @@ const graphHTMLTemplate = `<!DOCTYPE html>
 
 
 
+
+
+
+
 <style>
+
+
+
+
 
 
 
@@ -228,7 +252,15 @@ const graphHTMLTemplate = `<!DOCTYPE html>
 
 
 
+
+
+
+
 body{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",monospace;overflow:hidden}
+
+
+
+
 
 
 
@@ -236,7 +268,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 #hud{position:fixed;top:12px;left:12px;background:rgba(22,27,34,.92);border:1px solid #30363d;border-radius:8px;padding:12px 16px;font-size:13px;max-width:300px;line-height:1.6}
+
+
+
+
 
 
 
@@ -244,7 +284,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 #hud small{color:#8b949e}
+
+
+
+
 
 
 
@@ -252,7 +300,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 #tip .tname{font-weight:700;color:#58a6ff;margin-bottom:4px}
+
+
+
+
 
 
 
@@ -260,7 +316,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 #tip .tobs{color:#adbac7}
+
+
+
+
 
 
 
@@ -268,7 +332,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 </head>
+
+
+
+
 
 
 
@@ -276,7 +348,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 <canvas id="c"></canvas>
+
+
+
+
 
 
 
@@ -284,7 +364,15 @@ canvas{display:block}
 
 
 
+
+
+
+
   <strong>{{.Title}}</strong><br>
+
+
+
+
 
 
 
@@ -292,7 +380,15 @@ canvas{display:block}
 
 
 
+
+
+
+
   <small>Scroll&nbsp;zoom &middot; Drag&nbsp;pan &middot; Hover&nbsp;details</small>
+
+
+
+
 
 
 
@@ -300,7 +396,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 <div id="tip"><div class="tname" id="tn"></div><div class="ttype" id="tt"></div><div class="tobs" id="to"></div></div>
+
+
+
+
 
 
 
@@ -308,7 +412,15 @@ canvas{display:block}
 
 
 
+
+
+
+
 const NODES=` + "`" + `{{.NodesJSON}}` + "`" + `;
+
+
+
+
 
 
 
@@ -316,7 +428,15 @@ const EDGES=` + "`" + `{{.EdgesJSON}}` + "`" + `;
 
 
 
+
+
+
+
 const nodes=JSON.parse(NODES),edges=JSON.parse(EDGES);
+
+
+
+
 
 
 
@@ -324,7 +444,15 @@ const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
 
 
 
+
+
+
+
 const tip=document.getElementById('tip');
+
+
+
+
 
 
 
@@ -336,11 +464,27 @@ let W=0,H=0,ox=0,oy=0,scale=1,dragging=false,dragStart={x:0,y:0};
 
 
 
+
+
+
+
+
+
+
+
 const palette=['#58a6ff','#3fb950','#ff7b72','#ffa657','#d2a8ff','#79c0ff','#56d364','#f0883e'];
 
 
 
+
+
+
+
 const typeColor={};let ci=0;
+
+
+
+
 
 
 
@@ -352,11 +496,27 @@ function colorFor(t){if(!typeColor[t])typeColor[t]=palette[ci++%palette.length];
 
 
 
+
+
+
+
+
+
+
+
 function resize(){W=window.innerWidth;H=window.innerHeight;canvas.width=W;canvas.height=H;}
 
 
 
+
+
+
+
 window.addEventListener('resize',()=>{resize();});
+
+
+
+
 
 
 
@@ -368,7 +528,19 @@ resize();
 
 
 
+
+
+
+
+
+
+
+
 nodes.forEach((n,i)=>{
+
+
+
+
 
 
 
@@ -376,7 +548,15 @@ nodes.forEach((n,i)=>{
 
 
 
+
+
+
+
   const r=Math.min(W,H)*0.3;
+
+
+
+
 
 
 
@@ -384,7 +564,15 @@ nodes.forEach((n,i)=>{
 
 
 
+
+
+
+
   n.y=H/2+r*Math.sin(angle)+(Math.random()-.5)*60;
+
+
+
+
 
 
 
@@ -392,7 +580,19 @@ nodes.forEach((n,i)=>{
 
 
 
+
+
+
+
 });
+
+
+
+
+
+
+
+
 
 
 
@@ -408,7 +608,19 @@ const idxOf=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
 
 
 
+
+
+
+
+
+
+
+
 let iteration=0;
+
+
+
+
 
 
 
@@ -416,7 +628,15 @@ function tick(){
 
 
 
+
+
+
+
   if(iteration++>600)return;
+
+
+
+
 
 
 
@@ -424,7 +644,15 @@ function tick(){
 
 
 
+
+
+
+
   nodes.forEach(n=>{n.fx=0;n.fy=0;});
+
+
+
+
 
 
 
@@ -432,7 +660,15 @@ function tick(){
 
 
 
+
+
+
+
     const a=nodes[i],b=nodes[j];
+
+
+
+
 
 
 
@@ -440,7 +676,15 @@ function tick(){
 
 
 
+
+
+
+
     const d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
+
+
+
+
 
 
 
@@ -448,11 +692,23 @@ function tick(){
 
 
 
+
+
+
+
     const fx=dx/d*f,fy=dy/d*f;
 
 
 
+
+
+
+
     a.fx+=fx;a.fy+=fy;b.fx-=fx;b.fy-=fy;
+
+
+
+
 
 
 
@@ -460,7 +716,15 @@ function tick(){
 
 
 
+
+
+
+
   edges.forEach(e=>{
+
+
+
+
 
 
 
@@ -468,7 +732,15 @@ function tick(){
 
 
 
+
+
+
+
     if(!a||!b)return;
+
+
+
+
 
 
 
@@ -476,7 +748,15 @@ function tick(){
 
 
 
+
+
+
+
     const d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
+
+
+
+
 
 
 
@@ -484,7 +764,15 @@ function tick(){
 
 
 
+
+
+
+
     const fx=dx/d*f,fy=dy/d*f;
+
+
+
+
 
 
 
@@ -492,7 +780,15 @@ function tick(){
 
 
 
+
+
+
+
   });
+
+
+
+
 
 
 
@@ -500,7 +796,15 @@ function tick(){
 
 
 
+
+
+
+
   nodes.forEach(n=>{
+
+
+
+
 
 
 
@@ -508,7 +812,15 @@ function tick(){
 
 
 
+
+
+
+
     n.x+=n.vx;n.y+=n.vy;
+
+
+
+
 
 
 
@@ -516,7 +828,19 @@ function tick(){
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -532,7 +856,19 @@ function toWorld(sx,sy){return{x:(sx-W/2)/scale-ox,y:(sy-H/2)/scale-oy};}
 
 
 
+
+
+
+
+
+
+
+
 const R=14;
+
+
+
+
 
 
 
@@ -540,7 +876,15 @@ function draw(){
 
 
 
+
+
+
+
   ctx.clearRect(0,0,W,H);
+
+
+
+
 
 
 
@@ -548,7 +892,15 @@ function draw(){
 
 
 
+
+
+
+
   ctx.translate(W/2,H/2);ctx.scale(scale,scale);ctx.translate(ox,oy);
+
+
+
+
 
 
 
@@ -556,7 +908,15 @@ function draw(){
 
 
 
+
+
+
+
     const a=nodes[idxOf[e.from]],b=nodes[idxOf[e.to]];
+
+
+
+
 
 
 
@@ -564,7 +924,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+
+
+
+
 
 
 
@@ -572,7 +940,15 @@ function draw(){
 
 
 
+
+
+
+
     const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+
+
+
+
 
 
 
@@ -580,7 +956,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.fillText(e.label,mx,my-4/scale);
+
+
+
+
 
 
 
@@ -588,7 +972,15 @@ function draw(){
 
 
 
+
+
+
+
     const ax=b.x-Math.cos(angle)*(R+2)/scale,ay=b.y-Math.sin(angle)*(R+2)/scale;
+
+
+
+
 
 
 
@@ -596,7 +988,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.beginPath();ctx.moveTo(ax,ay);
+
+
+
+
 
 
 
@@ -604,7 +1004,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.lineTo(ax-Math.cos(angle+0.4)*as,ay-Math.sin(angle+0.4)*as);
+
+
+
+
 
 
 
@@ -612,7 +1020,15 @@ function draw(){
 
 
 
+
+
+
+
   });
+
+
+
+
 
 
 
@@ -620,7 +1036,15 @@ function draw(){
 
 
 
+
+
+
+
     const c=colorFor(n.type);
+
+
+
+
 
 
 
@@ -628,7 +1052,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.fillStyle=c+'22';ctx.fill();
+
+
+
+
 
 
 
@@ -636,7 +1068,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.font=` + "`" + `bold ${11/scale}px -apple-system,monospace` + "`" + `;
+
+
+
+
 
 
 
@@ -644,7 +1084,15 @@ function draw(){
 
 
 
+
+
+
+
     ctx.fillText(n.label,n.x,n.y+R*1.8/scale);
+
+
+
+
 
 
 
@@ -652,7 +1100,15 @@ function draw(){
 
 
 
+
+
+
+
   ctx.restore();
+
+
+
+
 
 
 
@@ -664,7 +1120,19 @@ function draw(){
 
 
 
+
+
+
+
+
+
+
+
 canvas.addEventListener('mousemove',e=>{
+
+
+
+
 
 
 
@@ -672,7 +1140,15 @@ canvas.addEventListener('mousemove',e=>{
 
 
 
+
+
+
+
   let hov=null;
+
+
+
+
 
 
 
@@ -680,7 +1156,15 @@ canvas.addEventListener('mousemove',e=>{
 
 
 
+
+
+
+
   if(hov){
+
+
+
+
 
 
 
@@ -688,7 +1172,15 @@ canvas.addEventListener('mousemove',e=>{
 
 
 
+
+
+
+
     document.getElementById('tt').textContent=hov.type;
+
+
+
+
 
 
 
@@ -696,7 +1188,15 @@ canvas.addEventListener('mousemove',e=>{
 
 
 
+
+
+
+
     tip.style.display='block';
+
+
+
+
 
 
 
@@ -704,7 +1204,15 @@ canvas.addEventListener('mousemove',e=>{
 
 
 
+
+
+
+
   }else{tip.style.display='none';}
+
+
+
+
 
 
 
@@ -712,7 +1220,15 @@ canvas.addEventListener('mousemove',e=>{
 
 
 
+
+
+
+
 });
+
+
+
+
 
 
 
@@ -720,7 +1236,15 @@ canvas.addEventListener('mouseleave',()=>{tip.style.display='none';});
 
 
 
+
+
+
+
 canvas.addEventListener('mousedown',e=>{dragging=true;dragStart={x:e.clientX,y:e.clientY};});
+
+
+
+
 
 
 
@@ -728,7 +1252,15 @@ canvas.addEventListener('mouseup',()=>{dragging=false;});
 
 
 
+
+
+
+
 canvas.addEventListener('wheel',e=>{
+
+
+
+
 
 
 
@@ -736,7 +1268,15 @@ canvas.addEventListener('wheel',e=>{
 
 
 
+
+
+
+
   scale=Math.max(0.1,Math.min(10,scale*(e.deltaY<0?1.1:0.91)));
+
+
+
+
 
 
 
@@ -748,7 +1288,19 @@ canvas.addEventListener('wheel',e=>{
 
 
 
+
+
+
+
+
+
+
+
 function loop(){tick();draw();requestAnimationFrame(loop);}
+
+
+
+
 
 
 
@@ -756,11 +1308,23 @@ loop();
 
 
 
+
+
+
+
 </script>
 
 
 
+
+
+
+
 </body>
+
+
+
+
 
 
 
