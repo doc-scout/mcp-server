@@ -162,7 +162,7 @@ func queryTopNodes(svc *memory.MemoryService, maxNodes int) ([]TopNode, int, err
 
 	nodes := make([]TopNode, len(rows))
 	for i, r := range rows {
-		nodes[i] = TopNode{Name: r.Name, EntityType: r.EntityType, Degree: r.Degree}
+		nodes[i] = TopNode(r)
 	}
 	return nodes, int(totalCount), nil
 }
