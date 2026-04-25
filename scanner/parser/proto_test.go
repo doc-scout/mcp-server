@@ -46,7 +46,39 @@ func TestProtoParser_Parse_ServiceDefinition(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 syntax = "proto3";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -94,7 +126,55 @@ package com.example.payment;
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import "google/protobuf/empty.proto";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -142,6 +222,38 @@ import "fraud/fraud_service.proto";
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 service PaymentService {
 
 
@@ -158,7 +270,39 @@ service PaymentService {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   rpc ProcessPayment(PaymentRequest) returns (PaymentResponse);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -206,6 +350,38 @@ service PaymentService {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 message PaymentRequest {}
 
 
@@ -222,7 +398,39 @@ message PaymentRequest {}
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 message PaymentResponse {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -338,6 +546,22 @@ func TestProtoParser_Parse_NoService(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 syntax = "proto3";
 
 
@@ -354,7 +578,39 @@ syntax = "proto3";
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 message Foo {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

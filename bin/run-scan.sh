@@ -105,40 +105,41 @@ fi
 
 echo "Results — Entities: ${ENTITY_COUNT}, Relations: ${RELATION_COUNT}" >&2
 
-# ── Build highlighted entity types section (optional) ─────────────────────────
-ENTITY_TYPE_SECTION=""
-if [ -n "$ENTITY_TYPES" ] && command -v sqlite3 &>/dev/null && [ -f "$TMPDB" ]; then
-  ENTITY_TYPE_SECTION="\n### Entity Breakdown\n\n| Type | Count |\n|------|-------|\n"
-  IFS=',' read -ra TYPES <<< "$ENTITY_TYPES"
-  for TYPE in "${TYPES[@]}"; do
-    TYPE="$(echo "$TYPE" | tr -d '[:space:]')"
-    COUNT="$(sqlite3 "$TMPDB" "SELECT COUNT(*) FROM db_entities WHERE entity_type = '${TYPE}';" 2>/dev/null || echo 0)"
-    ENTITY_TYPE_SECTION="${ENTITY_TYPE_SECTION}| \`${TYPE}\` | ${COUNT} |\n"
-  done
+# ── Generate rich Mermaid report ─────────────────────────────────────────────
+REPORT=""
+if command -v go &>/dev/null; then
+  REPORT="$(go run "${GITHUB_ACTION_PATH}/cmd/report" \
+    --db "$TMPDB" \
+    --max-nodes "${MAX_NODES:-20}" \
+    --max-edges "${MAX_EDGES:-40}" \
+    --repo "$GITHUB_REPOSITORY" \
+    --elapsed "$ELAPSED" 2>/dev/null)" || REPORT=""
 fi
-
-# ── Write GitHub Step Summary ─────────────────────────────────────────────────
-{
-  echo "## DocScout Graph Analysis"
-  echo ""
-  echo "| Metric | Count |"
-  echo "|--------|-------|"
-  echo "| Entities | ${ENTITY_COUNT} |"
-  echo "| Relations | ${RELATION_COUNT} |"
-  echo ""
-  echo "Scan completed in ${ELAPSED}s for \`${GITHUB_REPOSITORY}\`"
-  if [ -n "$ENTITY_TYPES" ]; then
-    printf "%b" "${ENTITY_TYPE_SECTION}"
-  fi
-} >> "${GITHUB_STEP_SUMMARY}"
 
 # ── Set output variables ──────────────────────────────────────────────────────
 echo "entity_count=${ENTITY_COUNT}" >> "${GITHUB_OUTPUT}"
 echo "relation_count=${RELATION_COUNT}" >> "${GITHUB_OUTPUT}"
 
+# ── Write GitHub Step Summary ─────────────────────────────────────────────────
+if [ -n "$REPORT" ]; then
+  echo "$REPORT" >> "${GITHUB_STEP_SUMMARY}"
+else
+  {
+    echo "## DocScout Graph Analysis"
+    echo ""
+    echo "| Metric | Count |"
+    echo "|--------|-------|"
+    echo "| Entities | ${ENTITY_COUNT} |"
+    echo "| Relations | ${RELATION_COUNT} |"
+    echo ""
+    echo "Scan completed in ${ELAPSED}s for \`${GITHUB_REPOSITORY}\`"
+  } >> "${GITHUB_STEP_SUMMARY}"
+fi
+
 # ── Optional PR comment ───────────────────────────────────────────────────────
 if [ "${COMMENT_ON_PR}" = "true" ] && [ -n "${PR_NUMBER}" ]; then
-  COMMENT_BODY="## DocScout Graph Analysis
+  if [ -z "$REPORT" ]; then
+    REPORT="## DocScout Graph Analysis
 
 | Metric | Count |
 |--------|-------|
@@ -146,20 +147,14 @@ if [ "${COMMENT_ON_PR}" = "true" ] && [ -n "${PR_NUMBER}" ]; then
 | Relations | ${RELATION_COUNT} |
 
 Scan completed in ${ELAPSED}s for \`${GITHUB_REPOSITORY}\`"
-
-  if [ -n "$ENTITY_TYPES" ]; then
-    COMMENT_BODY="${COMMENT_BODY}
-
-$(printf "%b" "${ENTITY_TYPE_SECTION}")"
   fi
 
   if command -v gh &>/dev/null; then
     echo "Posting PR comment on PR #${PR_NUMBER}..." >&2
-    # Try to update an existing DocScout comment; create new if none exists.
     gh pr comment "${PR_NUMBER}" \
-      --body "${COMMENT_BODY}" \
+      --body "${REPORT}" \
       --edit-last 2>/dev/null \
-      || gh pr comment "${PR_NUMBER}" --body "${COMMENT_BODY}"
+      || gh pr comment "${PR_NUMBER}" --body "${REPORT}"
   else
     echo "Warning: 'gh' CLI not found — skipping PR comment." >&2
   fi

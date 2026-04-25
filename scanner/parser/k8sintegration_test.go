@@ -50,7 +50,39 @@ func TestK8sServiceParser_Parse_DeploymentEnvVars(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 apiVersion: apps/v1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -82,7 +114,39 @@ kind: Deployment
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 metadata:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -114,7 +178,39 @@ metadata:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spec:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -146,7 +242,39 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     spec:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -178,7 +306,39 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       - name: checkout
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -210,7 +370,39 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         - name: PAYMENT_SERVICE_HOST
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -242,7 +434,39 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         - name: FRAUD_API_URL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -274,6 +498,22 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         - name: LOG_LEVEL
 
 
@@ -290,7 +530,39 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
           value: info
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -384,7 +656,39 @@ func TestK8sServiceParser_Parse_NonDeployment(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 apiVersion: v1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -416,7 +720,39 @@ kind: Service
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 metadata:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -448,7 +784,39 @@ metadata:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spec:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -480,7 +848,39 @@ spec:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     app: checkout
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

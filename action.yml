@@ -14,10 +14,14 @@ inputs:
     description: Post a PR comment with graph stats (true/false)
     required: false
     default: 'false'
-  entity_types:
-    description: Comma-separated entity types to highlight in the summary (e.g. 'service,api')
+  max_nodes:
+    description: Maximum number of nodes in the service topology diagram
     required: false
-    default: ''
+    default: '20'
+  max_edges:
+    description: Maximum number of edges in the service topology diagram
+    required: false
+    default: '40'
 
 outputs:
   entity_count:
@@ -30,6 +34,12 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: '${{ github.action_path }}/go.mod'
+        cache: false
+
     - name: Install DocScout
       shell: bash
       run: ${{ github.action_path }}/bin/install-docscout.sh
@@ -43,6 +53,8 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         COMMENT_ON_PR: ${{ inputs.comment_on_pr }}
-        ENTITY_TYPES: ${{ inputs.entity_types }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+        MAX_NODES: ${{ inputs.max_nodes }}
+        MAX_EDGES: ${{ inputs.max_edges }}
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
