@@ -26,9 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Check out the branch the release targets (usually main) so the
-          # auto-commit action can push RESULTS.md back instead of a detached HEAD.
-          ref: ${{ github.event.release.target_commitish || github.ref || 'main' }}
+          # Check out a real branch so git-auto-commit-action can push back.
+          # - release events: use target_commitish (e.g. "main")
+          # - tag push: ref_type == 'tag', so fall back to 'main'
+          # - workflow_dispatch: ref is refs/heads/<branch>, which checkout accepts
+          ref: ${{ github.event.release.target_commitish || (github.ref_type == 'tag' && 'main' || github.ref) }}
           fetch-depth: 0
 
       - uses: actions/setup-go@v5
