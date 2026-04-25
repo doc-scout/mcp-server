@@ -65,10 +65,10 @@ type PathEdge struct {
 // IntegrationEdge is a single integration relationship entry in an IntegrationMap.
 type IntegrationEdge struct {
 	Target     string `json:"target"`
-	Schema     string `json:"schema,omitempty"`     // event-topic schema name
-	Version    string `json:"version,omitempty"`    // api version
-	Paths      int    `json:"paths,omitempty"`      // api path count
-	Confidence string `json:"confidence"`           // "authoritative" | "inferred"
+	Schema     string `json:"schema,omitempty"`      // event-topic schema name
+	Version    string `json:"version,omitempty"`     // api version
+	Paths      int    `json:"paths,omitempty"`       // api path count
+	Confidence string `json:"confidence"`            // "authoritative" | "inferred"
 	SourceRepo string `json:"source_repo,omitempty"` // originating repo
 }
 

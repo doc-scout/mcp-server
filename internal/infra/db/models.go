@@ -25,11 +25,11 @@ type dbObservation struct {
 }
 
 type dbDocContent struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	RepoName  string    `gorm:"index;uniqueIndex:idx_repo_path"`
-	Path      string    `gorm:"uniqueIndex:idx_repo_path"`
+	ID        uint   `gorm:"primaryKey;autoIncrement"`
+	RepoName  string `gorm:"index;uniqueIndex:idx_repo_path"`
+	Path      string `gorm:"uniqueIndex:idx_repo_path"`
 	SHA       string
-	FileType  string    `gorm:"index"`
-	Content   string    `gorm:"type:text"`
+	FileType  string `gorm:"index"`
+	Content   string `gorm:"type:text"`
 	IndexedAt time.Time
 }
