@@ -58,7 +58,39 @@ func TestAsyncAPIParser_Parse_PublishAndSubscribe(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 asyncapi: "2.6.0"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -90,7 +122,39 @@ info:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   title: order-service
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -122,7 +186,39 @@ channels:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   order.created:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -154,7 +250,39 @@ channels:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       message:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -186,7 +314,39 @@ channels:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   payment.approved:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -218,6 +378,22 @@ channels:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       message:
 
 
@@ -234,7 +410,39 @@ channels:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         name: PaymentApprovedEvent
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -354,7 +562,39 @@ func TestAsyncAPIParser_Parse_EmptyChannels(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 asyncapi: "2.6.0"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -386,6 +626,22 @@ info:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   title: quiet-service
 
 
@@ -402,7 +658,39 @@ info:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 channels: {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -456,7 +744,39 @@ func TestAsyncAPIParser_Parse_MissingTitle(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 asyncapi: "2.6.0"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -488,7 +808,39 @@ info: {}
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 channels: {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

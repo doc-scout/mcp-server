@@ -26,17 +26,31 @@ func TestMcpConfigParser_ParseDotMcpJSON(t *testing.T) {
 
 	input := []byte(`{
 
+
+
 		"mcpServers": {
+
+
 
 			"github": {
 
+
+
 				"command": "npx",
+
+
 
 				"args": ["-y", "@modelcontextprotocol/server-github"]
 
+
+
 			}
 
+
+
 		}
+
+
 
 	}`)
 
@@ -108,17 +122,31 @@ func TestMcpConfigParser_UnknownServerNoToolObs(t *testing.T) {
 
 	input := []byte(`{
 
+
+
 		"mcpServers": {
+
+
 
 			"my-custom-server": {
 
+
+
 				"command": "my-server",
+
+
 
 				"args": ["--port", "3000"]
 
+
+
 			}
 
+
+
 		}
+
+
 
 	}`)
 

@@ -59,7 +59,39 @@ func TestSpringKafkaParser_Parse_YAML(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spring:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -91,7 +123,39 @@ spring:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     producer:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -123,6 +187,22 @@ spring:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     consumer:
 
 
@@ -139,7 +219,39 @@ spring:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       topics: payment.approved, fraud.checked
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -221,6 +333,22 @@ func TestSpringKafkaParser_Parse_Properties(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spring.kafka.producer.topic=order.created
 
 
@@ -237,7 +365,39 @@ spring.kafka.producer.topic=order.created
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spring.kafka.consumer.topics=payment.approved,fraud.checked
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -305,6 +465,22 @@ func TestSpringKafkaParser_Parse_SkipsPlaceholders(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spring.kafka.producer.topic=${TOPIC_ENV}
 
 
@@ -321,7 +497,39 @@ spring.kafka.producer.topic=${TOPIC_ENV}
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 spring.kafka.consumer.topics=real.topic
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -379,6 +587,22 @@ func TestSpringKafkaParser_Parse_NoKafkaConfig(t *testing.T) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 server:
 
 
@@ -395,7 +619,39 @@ server:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   port: 8080
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
