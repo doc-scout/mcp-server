@@ -598,3 +598,81 @@ traverse_graph(entity="payment-service", relation_type="uses_mcp", direction="ou
 **Well-known server enrichment:**
 
 The following servers are automatically enriched with tool observations even if not declared inline: `github`, `filesystem`, `postgres`, `fetch`, `brave-search`, `slack`. Unknown servers are indexed with transport/command/url only.
+
+---
+
+## Visualization Tools
+
+### `export_graph`
+
+Exports the full knowledge graph as a self-contained interactive HTML visualization or a raw JSON nodes+edges payload.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `format` | string | | `html` (default) — self-contained force-directed graph with vanilla JS Canvas; `json` — nodes+edges array |
+| `title` | string | | Title shown in the exported artifact. Defaults to `"Knowledge Graph"` |
+| `output_path` | string | | Absolute path to write the file (e.g. `/tmp/graph.html`). If omitted, content is returned inline |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `format` | string | `html` or `json` |
+| `entity_count` | int | Total entities in the exported graph |
+| `edge_count` | int | Total relations in the exported graph |
+| `output_path` | string | Path written to (only when `output_path` was provided) |
+| `content` | string | Inline file content (only when `output_path` was omitted) |
+
+**Example queries:**
+
+```
+# Get an interactive visualization of the full graph
+export_graph(format="html", title="My Org")
+
+# Write the graph to disk and open it in a browser
+export_graph(format="html", output_path="/tmp/graph.html")
+
+# Get the graph as JSON for downstream processing
+export_graph(format="json")
+```
+
+---
+
+## Semantic Search Tools
+
+### `semantic_search`
+
+Performs vector-embedding-based semantic search across indexed documentation and knowledge graph entities. Returns cosine-similarity-ranked results. Requires `DOCSCOUT_EMBED_OPENAI_KEY` or `DOCSCOUT_EMBED_OLLAMA_URL` to be configured; returns an error otherwise.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `query` | string | ✓ | Natural-language search query |
+| `target` | string | | What to search: `content` (indexed docs), `entities` (knowledge graph), or `both` (default) |
+| `top_k` | int | | Maximum results per target. Default `5`, max `20` |
+| `repo` | string | | Scope content search to a single repository full name (e.g. `org/payment-service`) |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `content_results` | array | Matched document snippets with similarity score, repo, and path |
+| `entity_results` | array | Matched graph entities with similarity score and observations |
+| `stale_docs` | int | Number of docs whose embeddings are outdated (background re-index pending) |
+| `stale_entities` | int | Number of entities whose embeddings are outdated |
+
+**Example queries:**
+
+```
+# Find docs related to authentication
+semantic_search(query="authentication and JWT token validation")
+
+# Find services related to payment processing
+semantic_search(query="payment processing and fraud detection", target="entities")
+
+# Scope to a specific repo
+semantic_search(query="database migrations", target="content", repo="org/backend-service")
+```
