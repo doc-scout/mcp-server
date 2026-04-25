@@ -11,7 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 // callIntegrationMap is a helper that calls get_integration_map and returns the parsed result.

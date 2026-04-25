@@ -1,5 +1,4 @@
 // Copyright 2026 Leonan Carvalho
-
 // SPDX-License-Identifier: AGPL-3.0-only
 
 package main
@@ -8,17 +7,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/doc-scout/mcp-server/memory"
+	"gorm.io/gorm"
+
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 )
 
-func setupTestDB(t *testing.T) *memory.MemoryService {
+func setupTestDB(t *testing.T) (*coregraph.MemoryService, *gorm.DB) {
 	t.Helper()
-	db, err := memory.OpenDB("")
+	database, err := infradb.OpenDB("")
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	svc := memory.NewMemoryService(db)
-	_, err = svc.CreateEntities([]memory.Entity{
+	graphRepo := infradb.NewGraphRepo(database)
+	svc := coregraph.NewMemoryService(graphRepo)
+	_, err = svc.CreateEntities([]coregraph.Entity{
 		{Name: "svc-a", EntityType: "service"},
 		{Name: "svc-b", EntityType: "service"},
 		{Name: "api-v1", EntityType: "api"},
@@ -26,14 +29,14 @@ func setupTestDB(t *testing.T) *memory.MemoryService {
 	if err != nil {
 		t.Fatalf("create entities: %v", err)
 	}
-	_, err = svc.CreateRelations([]memory.Relation{
+	_, err = svc.CreateRelations([]coregraph.Relation{
 		{From: "svc-a", To: "svc-b", RelationType: "calls_service", Confidence: "authoritative"},
 		{From: "svc-a", To: "api-v1", RelationType: "exposes_api", Confidence: "inferred"},
 	})
 	if err != nil {
 		t.Fatalf("create relations: %v", err)
 	}
-	return svc
+	return svc, database
 }
 
 func TestNodeID(t *testing.T) {
@@ -138,8 +141,8 @@ func TestBuildFlowchartEmpty(t *testing.T) {
 }
 
 func TestQueryTopNodes(t *testing.T) {
-	svc := setupTestDB(t)
-	nodes, total, err := queryTopNodes(svc, 10)
+	_, database := setupTestDB(t)
+	nodes, total, err := queryTopNodes(database, 10)
 	if err != nil {
 		t.Fatalf("queryTopNodes: %v", err)
 	}
@@ -155,9 +158,9 @@ func TestQueryTopNodes(t *testing.T) {
 }
 
 func TestQueryEdges(t *testing.T) {
-	svc := setupTestDB(t)
-	nodes, _, _ := queryTopNodes(svc, 10)
-	edges, total, err := queryEdges(svc, nodes, 10)
+	_, database := setupTestDB(t)
+	nodes, _, _ := queryTopNodes(database, 10)
+	edges, total, err := queryEdges(database, nodes, 10)
 	if err != nil {
 		t.Fatalf("queryEdges: %v", err)
 	}
@@ -170,8 +173,8 @@ func TestQueryEdges(t *testing.T) {
 }
 
 func TestGenerateReport(t *testing.T) {
-	svc := setupTestDB(t)
-	out, err := GenerateReport(svc, ReportConfig{
+	svc, database := setupTestDB(t)
+	out, err := GenerateReport(svc, database, ReportConfig{
 		Repo:     "org/repo",
 		Elapsed:  42,
 		MaxNodes: 20,
@@ -198,9 +201,10 @@ func TestGenerateReport(t *testing.T) {
 }
 
 func TestGenerateReportEmptyDB(t *testing.T) {
-	db, _ := memory.OpenDB("")
-	svc := memory.NewMemoryService(db)
-	out, err := GenerateReport(svc, ReportConfig{Repo: "org/repo", MaxNodes: 20, MaxEdges: 40})
+	database, _ := infradb.OpenDB("")
+	graphRepo := infradb.NewGraphRepo(database)
+	svc := coregraph.NewMemoryService(graphRepo)
+	out, err := GenerateReport(svc, database, ReportConfig{Repo: "org/repo", MaxNodes: 20, MaxEdges: 40})
 	if err != nil {
 		t.Fatalf("GenerateReport empty: %v", err)
 	}

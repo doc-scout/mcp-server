@@ -11,7 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 // TestTriggerScan_Queued verifies that a trigger_scan call returns triggered=true.

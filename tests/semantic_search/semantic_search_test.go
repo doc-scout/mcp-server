@@ -14,10 +14,11 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/embeddings"
-	"github.com/doc-scout/mcp-server/memory"
+	"github.com/doc-scout/mcp-server/internal/infra/embeddings"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 var testCounter atomic.Int64
@@ -72,7 +73,7 @@ func setupServer(t *testing.T) *mcp.ClientSession {
 
 	dsn := fmt.Sprintf("file:semantic_e2e_%d?mode=memory&cache=shared", testCounter.Add(1))
 
-	db, err := memory.OpenDB(dsn)
+	db, err := infradb.OpenDB(dsn)
 
 	if err != nil {
 
@@ -80,7 +81,7 @@ func setupServer(t *testing.T) *mcp.ClientSession {
 
 	}
 
-	memorySrv := memory.NewMemoryService(db)
+	memorySrv := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
 	cc := memory.NewContentCache(db, true, 1024*1024)
 
@@ -94,7 +95,7 @@ func setupServer(t *testing.T) *mcp.ClientSession {
 
 	// Pre-populate entities
 
-	memorySrv.CreateEntities([]memory.Entity{
+	memorySrv.CreateEntities([]coregraph.Entity{
 
 		{Name: "payment-svc", EntityType: "service", Observations: []string{"lang:go", "handles stripe payments"}},
 
@@ -129,7 +130,7 @@ func setupServer(t *testing.T) *mcp.ClientSession {
 
 	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "v1"}, nil)
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, cc, searcher, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, nil)
+	adaptermcp.Register(server, &testutils.MockScanner{}, memorySrv, cc, searcher, adaptermcp.NewToolMetrics(), adaptermcp.NewDocMetrics(), nil, false, nil)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 

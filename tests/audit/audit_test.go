@@ -11,9 +11,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/memory"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 // setupAuditServer creates a test MCP server with a live AuditStore.
@@ -24,7 +25,7 @@ func setupAuditServer(t *testing.T) (*mcp.ClientSession, memory.AuditStore) {
 
 	ctx := t.Context()
 
-	db, err := memory.OpenDB("")
+	db, err := infradb.OpenDB("")
 
 	if err != nil {
 
@@ -42,15 +43,15 @@ func setupAuditServer(t *testing.T) (*mcp.ClientSession, memory.AuditStore) {
 
 	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "v0"}, nil)
 
-	memorySrv := memory.NewMemoryService(db)
+	memorySrv := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
 	agentFn := func() string { return "test-agent" }
 
 	auditedGraph := tools.NewGraphAuditLogger(memorySrv, agentFn, auditStore)
 
-	tools.Register(server, &testutils.MockScanner{}, auditedGraph, nil, nil,
+	adaptermcp.Register(server, &testutils.MockScanner{}, auditedGraph, nil, nil,
 
-		tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, auditStore)
+		adaptermcp.NewToolMetrics(), adaptermcp.NewDocMetrics(), nil, false, auditStore)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 

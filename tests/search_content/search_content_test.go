@@ -11,9 +11,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/memory"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 // setupContentServer creates an MCP test session with a pre-populated ContentCache.
@@ -33,15 +34,15 @@ func setupContentServer(t *testing.T) *mcp.ClientSession {
 
 	dsn := fmt.Sprintf("file:search_content_e2e_%d?mode=memory&cache=shared", testCounter.Add(1))
 
-	db, err := memory.OpenDB(dsn)
+	db, err := infradb.OpenDB(dsn)
 
 	if err != nil {
 
-		t.Fatalf("memory.OpenDB: %v", err)
+		t.Fatalf("infradb.OpenDB: %v", err)
 
 	}
 
-	memorySrv := memory.NewMemoryService(db)
+	memorySrv := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
 	contentCache := memory.NewContentCache(db, true, 1024*1024)
 
@@ -78,7 +79,7 @@ func setupContentServer(t *testing.T) *mcp.ClientSession {
 
 	}
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, contentCache, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, nil)
+	adaptermcp.Register(server, &testutils.MockScanner{}, memorySrv, contentCache, nil, adaptermcp.NewToolMetrics(), adaptermcp.NewDocMetrics(), nil, false, nil)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 

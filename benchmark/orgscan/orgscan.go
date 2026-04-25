@@ -1,5 +1,4 @@
 // Copyright 2026 Leonan Carvalho
-
 // SPDX-License-Identifier: AGPL-3.0-only
 
 // Package orgscan wires up the full scanner+indexer stack against a live GitHub
@@ -18,10 +17,12 @@ import (
 	"github.com/google/go-github/v60/github"
 	"golang.org/x/oauth2"
 
-	"github.com/doc-scout/mcp-server/indexer"
-	"github.com/doc-scout/mcp-server/memory"
-	"github.com/doc-scout/mcp-server/scanner"
-	"github.com/doc-scout/mcp-server/scanner/parser"
+	"github.com/doc-scout/mcp-server/internal/app"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	corescan "github.com/doc-scout/mcp-server/internal/core/scan"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
+	ghinfra "github.com/doc-scout/mcp-server/internal/infra/github"
+	"github.com/doc-scout/mcp-server/internal/infra/github/parser"
 )
 
 // OrgStats holds the graph statistics collected after a full org scan.
@@ -59,11 +60,12 @@ func Run(ctx context.Context, org, token string) (*OrgStats, error) {
 	tmp.Close()
 	defer os.Remove(tmp.Name())
 
-	db, err := memory.OpenDB(tmp.Name())
+	database, err := infradb.OpenDB(tmp.Name())
 	if err != nil {
 		return nil, fmt.Errorf("orgscan: open db: %w", err)
 	}
-	svc := memory.NewMemoryService(db)
+	graphRepo := infradb.NewGraphRepo(database)
+	svc := coregraph.NewMemoryService(graphRepo)
 
 	reg := parser.NewRegistry()
 	parser.RegisterDefaults(reg)
@@ -72,12 +74,12 @@ func Run(ctx context.Context, org, token string) (*OrgStats, error) {
 	ghClient := github.NewClient(oauth2.NewClient(ctx, ts))
 
 	const veryLongInterval = 999 * time.Hour
-	sc := scanner.New(ghClient, org, veryLongInterval, nil, nil, nil, nil, nil, (*regexp.Regexp)(nil), reg)
+	sc := ghinfra.New(ghClient, org, veryLongInterval, nil, nil, nil, nil, nil, (*regexp.Regexp)(nil), reg)
 
-	ai := indexer.New(sc, svc, nil, reg)
+	ai := app.New(sc, svc, nil, reg)
 
 	done := make(chan int, 1)
-	sc.SetOnScanComplete(func(repos []scanner.RepoInfo) {
+	sc.SetOnScanComplete(func(repos []corescan.RepoInfo) {
 		ai.Run(ctx, repos)
 		select {
 		case done <- len(repos):
@@ -111,7 +113,7 @@ func Run(ctx context.Context, org, token string) (*OrgStats, error) {
 		Count      int64
 	}
 	var confRows []confRow
-	if err := db.Raw("SELECT COALESCE(NULLIF(confidence,''),'authoritative') AS confidence, COUNT(*) AS count FROM db_relations GROUP BY confidence").Scan(&confRows).Error; err != nil {
+	if err := database.Raw("SELECT COALESCE(NULLIF(confidence,''),'authoritative') AS confidence, COUNT(*) AS count FROM db_relations GROUP BY confidence").Scan(&confRows).Error; err != nil {
 		return nil, fmt.Errorf("orgscan: relation confidence counts: %w", err)
 	}
 

@@ -12,9 +12,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/doc-scout/mcp-server/memory"
+	coregraph "github.com/doc-scout/mcp-server/internal/core/graph"
+	infradb "github.com/doc-scout/mcp-server/internal/infra/db"
 	"github.com/doc-scout/mcp-server/tests/testutils"
-	"github.com/doc-scout/mcp-server/tools"
+	adaptermcp "github.com/doc-scout/mcp-server/internal/adapter/mcp"
 )
 
 var testCounter atomic.Int64
@@ -31,17 +32,17 @@ func newSession(t *testing.T) *mcp.ClientSession {
 
 	dsn := fmt.Sprintf("file:memdb_findpath_%d?mode=memory&cache=shared", testCounter.Add(1))
 
-	db, err := memory.OpenDB(dsn)
+	db, err := infradb.OpenDB(dsn)
 
 	if err != nil {
 
-		t.Fatalf("memory.OpenDB: %v", err)
+		t.Fatalf("infradb.OpenDB: %v", err)
 
 	}
 
-	memorySrv := memory.NewMemoryService(db)
+	memorySrv := coregraph.NewMemoryService(infradb.NewGraphRepo(db))
 
-	tools.Register(server, &testutils.MockScanner{}, memorySrv, nil, nil, tools.NewToolMetrics(), tools.NewDocMetrics(), nil, false, nil)
+	adaptermcp.Register(server, &testutils.MockScanner{}, memorySrv, nil, nil, adaptermcp.NewToolMetrics(), adaptermcp.NewDocMetrics(), nil, false, nil)
 
 	t1, t2 := mcp.NewInMemoryTransports()
 
@@ -67,7 +68,7 @@ func newSession(t *testing.T) *mcp.ClientSession {
 
 // callFindPath calls the find_path tool and returns a parsed FindPathResult.
 
-func callFindPath(t *testing.T, session *mcp.ClientSession, args map[string]any) tools.FindPathResult {
+func callFindPath(t *testing.T, session *mcp.ClientSession, args map[string]any) adaptermcp.FindPathResult {
 
 	t.Helper()
 
@@ -106,7 +107,7 @@ func callFindPath(t *testing.T, session *mcp.ClientSession, args map[string]any)
 
 	}
 
-	var result tools.FindPathResult
+	var result adaptermcp.FindPathResult
 
 	if err := json.Unmarshal([]byte(text.Text), &result); err != nil {
 
