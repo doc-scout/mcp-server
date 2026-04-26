@@ -18,7 +18,7 @@ on:
         default: theoretical
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   benchmark:
@@ -52,9 +52,9 @@ jobs:
       - name: Add benchmark results to job summary
         run: cat benchmark/RESULTS.md >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload RESULTS.md as artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload RESULTS.md to release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag' || github.event_name == 'release'
         with:
-          name: benchmark-results-${{ github.ref_name }}
-          path: benchmark/RESULTS.md
-          retention-days: 90
+          tag_name: ${{ github.ref_name }}
+          files: benchmark/RESULTS.md
