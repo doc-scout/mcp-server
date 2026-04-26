@@ -54,7 +54,7 @@ When `GITHUB_WEBHOOK_SECRET` is set, the `/webhook` endpoint is activated. GitHu
 
 ## 2. The Deterministic Knowledge Graph
 
-Rather than letting the AI infer relationships, the **AutoIndexer** (`indexer/indexer.go`) translates parsed manifests into graph entities, relations, and observations stored in SQLite or PostgreSQL.
+Rather than letting the AI infer relationships, the **AutoIndexer** (`internal/app/indexer.go`) translates parsed manifests into graph entities, relations, and observations stored in SQLite or PostgreSQL.
 
 ### Indexer Phases
 
