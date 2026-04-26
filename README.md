@@ -237,7 +237,7 @@ See [ROADMAP.md](ROADMAP.md) for completed features and upcoming work, including
 go mod tidy
 
 # Build
-go build -o docscout-mcp .
+go build -o docscout-mcp ./cmd/docscout/
 
 # Test (unit + E2E integration)
 go test ./...

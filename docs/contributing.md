@@ -33,7 +33,7 @@ cd mcp-server
 go mod download
 
 # Build
-go build -o docscout-mcp .
+go build -o docscout-mcp ./cmd/docscout/
 
 # Run unit + E2E tests
 go test ./...
@@ -45,7 +45,7 @@ go test ./...
 GITHUB_TOKEN="github_pat_..." \
 GITHUB_ORG="my-org" \
 SCAN_INTERVAL="2m" \
-go run .
+go run ./cmd/docscout/
 ```
 
 ---
@@ -54,16 +54,25 @@ go run .
 
 ```
 .
-├── main.go                   # Entry point, wiring, HTTP/stdio transport
-├── scanner/                  # GitHub API crawling + file classification
-│   ├── scanner.go
-│   ├── retry.go              # Exponential backoff for GitHub API calls
-│   └── parser/               # Manifest parsers (go.mod, pom.xml, ...)
-├── indexer/                  # Auto-populates knowledge graph after each scan
-├── memory/                   # Knowledge graph store (GORM + SQLite/PG)
-├── tools/                    # MCP tool handlers + middleware
-├── webhook/                  # GitHub webhook validation and dispatch
-├── tests/                    # E2E integration tests (one package per tool)
+├── cmd/
+│   ├── docscout/             # Main entrypoint (Wire → Run)
+│   └── report/               # Standalone graph-report CLI
+├── internal/
+│   ├── core/                 # Domain layer — no external deps
+│   │   ├── graph/            # Entity, Relation, port interfaces
+│   │   ├── audit/            # AuditStore port + AuditEvent model
+│   │   ├── content/          # ContentRepository port
+│   │   └── scan/             # RepoInfo, FileEntry models
+│   ├── infra/                # Outbound adapters
+│   │   ├── db/               # SQLite/Postgres (GORM)
+│   │   ├── github/           # GitHub API scanner
+│   │   │   └── parser/       # Manifest parsers (go.mod, pom.xml, …)
+│   │   └── embeddings/       # Vector store + semantic search
+│   ├── adapter/
+│   │   ├── mcp/              # MCP tool handlers (inbound)
+│   │   └── http/             # HTTP health/webhook handlers (inbound)
+│   └── app/                  # Composition root (wire.go, server.go, …)
+├── tests/                    # E2E integration tests (one dir per tool)
 └── docs/                     # This documentation site
 ```
 
@@ -80,7 +89,7 @@ Read [Development Guidelines](DEVELOPMENT_GUIDELINES.md) and `AGENTS.md` in the 
 All inputs from LLM clients are untrusted. Validate against the internal index before passing to `os.ReadFile` or GitHub API calls.
 
 !!! info "New parsers"
-New manifest parsers go in `scanner/parser/` and follow the `Parse*` function signature pattern. Register them in the indexer phases and add the filename to `DefaultTargetFiles`.
+New manifest parsers go in `internal/infra/github/parser/` and implement the `FileParser` interface. Register them via `parser.Register()` in `internal/app/wire.go`.
 
 ---
 
@@ -91,7 +100,7 @@ New manifest parsers go in `scanner/parser/` and follow the `Parse*` function si
 go test ./...
 
 # Run a specific package with verbose output
-go test ./tools/... -v
+go test ./internal/adapter/mcp/... -v
 
 # Run a specific test
 go test ./tests/traverse_graph/... -run TestE2E_TraverseGraph_Incoming -v
@@ -119,7 +128,7 @@ Every PR must pass the full test suite. New features must include:
   ```
 - [ ] Tool descriptions are detailed enough for an LLM to choose the right tool
 - [ ] No `fmt.Print*` writing to stdout
-- [ ] If adding a new MCP tool: registered in `tools/tools.go`, handler in its own file, mock updated in `tools/tools_test.go` and `tests/testutils/utils.go`
+- [ ] If adding a new MCP tool: handler in `internal/adapter/mcp/`, registered in `internal/app/server.go`, mock updated in `tests/testutils/utils.go`
 
 ---
 

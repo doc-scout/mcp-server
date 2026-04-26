@@ -18,7 +18,7 @@ on:
         default: theoretical
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   benchmark:
@@ -49,8 +49,12 @@ jobs:
       - name: Print RESULTS.md
         run: cat benchmark/RESULTS.md
 
-      - name: Commit updated RESULTS.md
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Add benchmark results to job summary
+        run: cat benchmark/RESULTS.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload RESULTS.md as artifact
+        uses: actions/upload-artifact@v4
         with:
-          commit_message: "bench: update RESULTS.md for ${{ github.ref_name }} [skip ci]"
-          file_pattern: benchmark/RESULTS.md
+          name: benchmark-results-${{ github.ref_name }}
+          path: benchmark/RESULTS.md
+          retention-days: 90
